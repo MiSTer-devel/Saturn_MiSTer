@@ -121,17 +121,17 @@ module VDP2 (
 	//V 263/313
 	parameter HRES_320  = 9'd427;
 	parameter HRES_352  = 9'd455;//
-	parameter HS_START  = 9'd369;
-	parameter HS_END    = HS_START + 9'd32;
+	parameter HS_START_320  = 9'd350;
+	parameter HS_START_352  = 9'd380;
 	parameter HBL_START_320 = 9'd312;
 	parameter HBL_START_352 = 9'd344;
 //	parameter HBL_END_320 = 9'd415 - 9'd1;//9'd410;
 //	parameter HBL_END_352 = 9'd443 - 9'd1;//9'd442;
 	parameter VRES_NTSC = 9'd263;
 	parameter VRES_PAL  = 9'd313;
-	parameter VS_START_224  = 9'd235;
-	parameter VS_START_240  = 9'd251;//?
-	parameter VS_START_256  = 9'd251;//?
+	parameter VS_START_224  = 9'd239;
+	parameter VS_START_240  = 9'd245;//?
+	parameter VS_START_256  = 9'd276;//?
 	parameter VS_END_224    = VS_START_224 + 9'd3;
 	parameter VS_END_240    = VS_START_240 + 9'd3;
 	parameter VS_END_256    = VS_START_256 + 9'd3;
@@ -229,11 +229,13 @@ module VDP2 (
 	wire LAST_DOT = (H_CNT == HRES_320 - 1 && !HRES[0]) || (H_CNT == HRES_352 - 1 && HRES[0]);
 //	wire PRELAST_DOT = (H_CNT == HRES_320 - 2 && !HRES[0]) || (H_CNT == HRES_352 - 2 && HRES[0]);
 //	wire [8:0] HBL_START = !HRES[0] ? HBL_START_320 : HBL_START_352;
+	wire [8:0] HS_START = (!HRES[0] ? HS_START_320 : HS_START_352) - (!PAL ? 0 : 4);
+	wire [8:0] HS_END =  HS_START + 9'd32; 
 	wire [8:0] HBL_END = !HRES[0] ? HBL_END_320 - 9'd2 : HBL_END_352 - 9'd2;
 	wire [8:0] HDISP_END = !HRES[0] ? 9'd320 - 9'd1 : 9'd352 - 9'd1;
 	wire [8:0] VBL_START = VBL_START_224 + {VRES,4'h0};
-	wire [8:0] VS_START  = VS_START_224 + {VRES,4'h0};
-	wire [8:0] VS_END    = VS_END_224 + {VRES,4'h0};
+	wire [8:0] VS_START  = !VRES[1] ? (!VRES[0] ? VS_START_224 : VS_START_240) : VS_START_256 ; // + {VRES,4'h0};
+	wire [8:0] VS_END    = !VRES[1] ? (!VRES[0] ? VS_END_224 : VS_END_240) : VS_END_256; //VS_END_224 + {VRES,4'h0};
 	wire [8:0] VBORD_START  = !VRES[1] ? (!VRES[0] ? 9'd263-9'd12 : 9'd263-9'd4) : 9'd313-9'd0;
 	wire [8:0] VBORD_END  = !VRES[1] ? (!VRES[0] ? 9'd224+9'd12 : 9'd240+9'd4) : 9'd256+9'd0;
 	wire [8:0] NEXT_TO_LAST_LINE  = !PAL ? (VRES_NTSC - 9'd2) : (VRES_PAL - 9'd2);
