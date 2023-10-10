@@ -1,4 +1,4 @@
-# [Sega Saturn](https://en.wikipedia.org/wiki/Sega_Saturn) for MiSTer (WIP)
+# [Sega Saturn](https://en.wikipedia.org/wiki/Sega_Saturn) for MiSTer
 
 ## Hardware Requirements
 
@@ -8,6 +8,8 @@
 > **Note:** Dual SDRAM modules is recommended for better compatibility.
 
 ## Status
+
+Current status is WIP/Beta
 
 Known issues:
 
