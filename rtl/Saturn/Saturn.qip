@@ -10,7 +10,7 @@ set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) V
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) VDP1/VDP1.sv ]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) VDP2/VDP2_pkg.sv ]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) VDP2/VDP2.sv ]
-set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) VDP2/VDP2_MEM.sv]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) VDP2/VDP2_mem.sv]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) SCSP/SCSP_pkg.sv ]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) SCSP/SCSP.sv ]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) CD/YGR019.sv ]
