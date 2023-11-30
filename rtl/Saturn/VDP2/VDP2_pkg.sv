@@ -766,7 +766,7 @@ package VDP2_PKG;
 		bit         N1LCEN;
 		bit         N0LCEN;
 	} LNCLEN_t;
-	parameter bit [15:0] LNCLEN_MASK = 16'h03FF;
+	parameter bit [15:0] LNCLEN_MASK = 16'h003F;
 	
 	typedef struct packed	//RW,1800EA
 	{
