@@ -54,18 +54,32 @@ module SMPC (
 //	bit   [1:0] IOSEL;
 //	bit   [1:0] EXLE;
 	
-	bit         RESD;
-	bit         STE;
+	bit          RESD;
+	bit          STE;
 	
-	bit   [7:0] SEC;
-	bit   [7:0] MIN;
-	bit   [7:0] HOUR;
-	bit   [7:0] DAY;
+	bit  [ 7: 0] SEC;
+	bit  [ 7: 0] MIN;
+	bit  [ 7: 0] HOUR;
+	bit  [ 7: 0] DAYS;
+	bit  [ 3: 0] DAY;
+	bit  [ 3: 0] MONTH;
+	bit  [15: 0] YEAR;
 	
-	bit   [7:0] SMEM[4];
+	bit  [ 7: 0] SMEM[4];
 
 	parameter SR_PDE = 2;
 	parameter SR_RESB = 3;
+	
+	typedef enum bit [6:0] {
+		CS_IDLE	       = 7'b0000001,
+		CS_START        = 7'b0000010, 
+		CS_RESET        = 7'b0000100, 
+		CS_WAIT         = 7'b0001000, 
+		CS_EXEC         = 7'b0010000,
+		CS_INTBACK_PERI = 7'b0100000,
+		CS_END          = 7'b1000000
+	} CommExecState_t;
+	CommExecState_t COMM_ST;
 	
 	bit SEC_CLK;
 	always @(posedge CLK or negedge RST_N) begin
@@ -87,10 +101,21 @@ module SMPC (
 	
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
-			SEC <= '0;
-			MIN <= '0;
-			HOUR <= '0;
-			DAY <= '0;
+			SEC <= 8'h00;
+			MIN <= 8'h00;
+			HOUR <= 8'h00;
+			DAYS <= 8'h01;
+			{DAY,MONTH} <= 8'h01;
+			YEAR <= 16'h2024;
+		end else if (COMM_ST == CS_EXEC && COMREG == 8'h16) begin
+`ifdef DEBUG
+			SEC <= IREG[6];
+			MIN <= IREG[5];
+			HOUR <= IREG[4];
+			DAYS <= IREG[3];
+			{DAY,MONTH} <= IREG[2];
+			YEAR <= {IREG[0],IREG[1]};
+`endif
 		end else if (SEC_CLK && CE) begin
 `ifdef DEBUG
 			SEC[3:0] <= SEC[3:0] + 4'd1;
@@ -109,17 +134,25 @@ module SMPC (
 							if (HOUR[3:0] == 4'd9) begin
 								HOUR[3:0] <= 4'd0;
 								HOUR[7:4] <= HOUR[7:4] + 4'd1;
-								if (HOUR[7:4] == 4'd2 && HOUR[3:0] == 4'd3) begin
-									HOUR[7:4] <= 4'd0;
-									HOUR[3:0] <= 4'd0;
-									DAY[3:0] <= DAY[3:0] + 4'd1;
-									if (DAY[3:0] == 4'd9) begin
-										DAY[7:4] <= DAY[7:4] + 4'd1;
-										DAY[3:0] <= 4'd0;
-										if (DAY[7:4] == 4'd3 && HOUR[3:0] == 4'd1) begin//TODO
-											DAY[7:4] <= 4'd0;
-											DAY[3:0] <= 4'd1;
-										end
+							end
+							else if (HOUR == 8'h23) begin
+								HOUR <= 8'h00;
+								DAYS[3:0] <= DAYS[3:0] + 4'd1;
+								if (DAYS[3:0] == 4'd9) begin
+									DAYS[7:4] <= DAYS[7:4] + 4'd1;
+									DAYS[3:0] <= 4'd0;
+								end
+								else if ((DAYS == 8'h28 && MONTH == 4'd2) || 
+								         (DAYS == 8'h30 && MONTH == 4'd4) || 
+											(DAYS == 8'h30 && MONTH == 4'd6) || 
+											(DAYS == 8'h30 && MONTH == 4'd9) || 
+											(DAYS == 8'h30 && MONTH == 4'd11) || 
+											 DAYS == 8'h31) begin
+									DAYS <= 8'h01;
+									MONTH <= MONTH + 4'd1;
+									if (MONTH == 4'd12) begin
+										MONTH <= 4'd1;
+										YEAR <= YEAR + 16'd1;
 									end
 								end
 							end
@@ -130,17 +163,6 @@ module SMPC (
 `endif
 		end
 	end
-	
-	typedef enum bit [6:0] {
-		CS_IDLE	       = 7'b0000001,
-		CS_START        = 7'b0000010, 
-		CS_RESET        = 7'b0000100, 
-		CS_WAIT         = 7'b0001000, 
-		CS_EXEC         = 7'b0010000,
-		CS_INTBACK_PERI = 7'b0100000,
-		CS_END          = 7'b1000000
-	} CommExecState_t;
-	CommExecState_t COMM_ST;
 	
 	bit [7:0] REG_DO;
 	bit [ 4:0] OREG_CNT;
@@ -324,8 +346,7 @@ module SMPC (
 							8'h10: begin		//INTBACK
 								if (IREG[2] == 8'hF0 && (IREG[0][0] || IREG[1][3])) begin
 									if (IREG[0][0]) begin
-										WAIT_CNT <= 20'd500;
-										COMM_ST <= CS_WAIT;
+										COMM_ST <= CS_EXEC;
 									end else begin
 										INTBACK_EXEC <= 1;
 										INTBACK_PERI <= 1;
@@ -465,10 +486,10 @@ module SMPC (
 									OREG_RAM_WA <= OREG_CNT;
 									case (OREG_CNT)
 										5'd0: OREG_RAM_D <= {STE,RESD,6'b000000};
-										5'd1: OREG_RAM_D <= 8'h20;
-										5'd2: OREG_RAM_D <= 8'h22;
-										5'd3: OREG_RAM_D <= 8'h01;
-										5'd4: OREG_RAM_D <= DAY;
+										5'd1: OREG_RAM_D <= YEAR[15:8];
+										5'd2: OREG_RAM_D <= YEAR[7:0];
+										5'd3: OREG_RAM_D <= {DAY,MONTH};
+										5'd4: OREG_RAM_D <= DAYS;
 										5'd5: OREG_RAM_D <= HOUR;
 										5'd6: OREG_RAM_D <= MIN;
 										5'd7: OREG_RAM_D <= SEC;
