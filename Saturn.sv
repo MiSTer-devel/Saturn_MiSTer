@@ -943,17 +943,18 @@ module emu
 	always @(posedge clk_sys) begin
 		reg old_busy;
 		
-		old_busy <= ddr_busy[8];
-		if ((bios_download || cart_download) && ioctl_wr) ioctl_wait <= 1;
-		if (~ddr_busy[8] && old_busy) ioctl_wait <= 0;
+//		old_busy <= ddr_busy[8];
+//		if ((bios_download || cart_download) && ioctl_wr) ioctl_wait <= 1;
+//		if (~ddr_busy[8] && old_busy) ioctl_wait <= 0;
+		ioctl_wait <= ddr_busy[8];
 	end
-	wire [24:1] IO_ADDR = cart_download ? {3'b011,ioctl_addr[21:1]} : {6'b000000,ioctl_addr[18:1]};
+	wire [24:1] IO_ADDR = cart_download ? {3'b010,ioctl_addr[21:1]} : {6'b000000,ioctl_addr[18:1]};
 	wire [15:0] IO_DATA = {ioctl_data[7:0],ioctl_data[15:8]};
 	wire        IO_WR = (bios_download | cart_download) & ioctl_wr;
 
-	parameter bit [7:0] SRAM_INIT[16] = '{8'h42,8'h61,8'h63,8'h6B,8'h55,8'h70,8'h52,8'h61,8'h6D,8'h20,8'h46,8'h6F,8'h72,8'h6D,8'h61,8'h74};
-	wire [ 7:0] SRAM_INIT_DATA = !ioctl_addr[15:7] ? SRAM_INIT[ioctl_addr[4:1]] : 8'h00;
-	wire        SRAM_INIT_WE = bios_download & ~|ioctl_addr[18:16] & ioctl_wr;
+//	parameter bit [7:0] SRAM_INIT[16] = '{8'h42,8'h61,8'h63,8'h6B,8'h55,8'h70,8'h52,8'h61,8'h6D,8'h20,8'h46,8'h6F,8'h72,8'h6D,8'h61,8'h74};
+//	wire [ 7:0] SRAM_INIT_DATA = !ioctl_addr[15:7] ? SRAM_INIT[ioctl_addr[4:1]] : 8'h00;
+//	wire        SRAM_INIT_WE = bios_download & ~|ioctl_addr[18:16] & ioctl_wr;
 	
 	wire [31:0] ddr_do[10];
 	wire        ddr_busy[10];
@@ -964,7 +965,7 @@ module emu
 		.rst(reset || rst_ram),
 		
 		//CD RAM
-		.mem0_addr({ 6'b010000,   CD_RAM_A[18:1]}             ),
+		.mem0_addr({ 6'b011000,   CD_RAM_A[18:1]}             ),
 		.mem0_din ({16'h0000,CD_RAM_D}                        ),
 `ifdef MISTER_DUAL_SDRAM
 		.mem0_wr  ('0                                         ),
@@ -1027,7 +1028,7 @@ module emu
 //		.mem5_wr  ('0                                         ),
 //		.mem5_rd  (0                                          ),
 //`else
-		.mem5_addr(VDP1_A                                     ),
+		.mem5_addr({ 2'b00,VDP1_A}                            ),
 		.mem5_din ({16'h0000,VDP1_D}                          ),
 		.mem5_wr  ({2'b00,VDP1_WE}                            ),
 		.mem5_rd  (VDP1_RD                                    ),
@@ -1052,7 +1053,7 @@ module emu
 		.mem7_wr  ('0                                         ),
 		.mem7_rd  (0                                          ),
 `else
-		.mem7_addr({3'b011,CART_MEM_A}                        ),
+		.mem7_addr({3'b010,CART_MEM_A}                        ),
 		.mem7_din ({16'h0000,CART_MEM_D}                      ),
 		.mem7_wr  ({2'b00,CART_MEM_WE}                        ),
 		.mem7_rd  (CART_MEM_RD                                ),
@@ -1181,7 +1182,7 @@ module emu
 	assign VDP1_FB1_Q = !FB1_EXT_SEL ? FB1_Q : FB1_EXT_Q;
 
 //`ifndef MISTER_DUAL_SDRAM
-	bit [24:1] VDP1_A;
+	bit [22:1] VDP1_A;
 	bit [15:0] VDP1_D;
 	bit [ 1:0] VDP1_WE;
 	bit        VDP1_RD;
@@ -1230,13 +1231,13 @@ module emu
 			case (vdp1_state)
 				2'd0: begin
 					if ((VDP1_FB0_RD && FB0_EXT_SEL) || VDP1_FB0_RPEND) begin
-						VDP1_A <= {6'b001010,1'b0,VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]};
+						VDP1_A <= {4'b1010,1'b0,VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]};
 						VDP1_RD <= 1;
 						VDP1_FB0_RPEND <= 0; 
 						vdp1_state <= 2'd1;
 					end else if (VDP1_FB0_WPEND && !VDP1_WE) begin
 						if (!ddr_busy[5]) begin
-							VDP1_A <= {6'b001010,1'b0,VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]};
+							VDP1_A <= {4'b1010,1'b0,VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]};
 							VDP1_D <= VDP1_FB0_D;
 							VDP1_WE <= VDP1_FB0_WPEND;
 							VDP1_FB0_WPEND <= '0;
@@ -1244,13 +1245,13 @@ module emu
 							vdp1_state <= 2'd0;
 						end
 					end else if ((VDP1_FB1_RD && FB1_EXT_SEL) || VDP1_FB1_RPEND) begin
-						VDP1_A <= {6'b001100,1'b0,VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]};
+						VDP1_A <= {4'b1100,1'b0,VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]};
 						VDP1_RD <= 1;
 						VDP1_FB1_RPEND <= 0; 
 						vdp1_state <= 2'd2;
 					end else if (VDP1_FB1_WPEND && !VDP1_WE) begin
 						if (!ddr_busy[5]) begin
-							VDP1_A <= {6'b001100,1'b0,VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]};
+							VDP1_A <= {4'b1100,1'b0,VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]};
 							VDP1_D <= VDP1_FB1_D;
 							VDP1_WE <= VDP1_FB1_WPEND;
 							VDP1_FB1_WPEND <= '0;

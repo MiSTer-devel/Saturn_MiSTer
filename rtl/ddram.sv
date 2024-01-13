@@ -119,7 +119,7 @@ module ddram
 
 reg  [ 24:  1] ram_address;
 reg  [ 63:  0] ram_din;
-reg  [  7:  0] ram_ba;
+reg  [  7:  0] ram_be;
 reg  [  7:  0] ram_burst;
 reg            ram_read = 0;
 reg            ram_write = 0;
@@ -128,9 +128,8 @@ reg  [  3:  0] ram_chan;
 reg  [ 24:  1] rcache_addr[10] = '{10{'1}};
 reg  [127:  0] rcache_buf[10];
 reg            rcache_word[10];
-reg            rcache_update[10];
 reg  [ 24:  1] write_addr[10];
-reg  [ 63:  0] write_buf[10];
+reg  [ 31:  0] write_buf[10];
 reg  [  7:  0] write_be[10];
 
 reg            read_busy[10] = '{10{0}};
@@ -149,16 +148,69 @@ reg  [  2:  0] state = 0;
 reg  [  1:  0] cache_wraddr;
 reg            cache_update;
 
+reg            old_rd[10],old_wr[10],old_rst;
 always @(posedge clk) begin
-	bit old_rd[10], old_we[10], old_rst;
-	bit write,read;
-	bit [3:0] chan;
-
-	old_rst <= rst;
 	for (int i=0; i<10; i++) begin
 		old_rd[i] <= mem_rd[i];
-		old_we[i] <= |mem_wr[i];
-		if (rst && !old_rst) begin
+		old_wr[i] <= |mem_wr[i];
+	end
+	old_rst <= rst;
+end
+wire           rst_pulse = (rst && !old_rst);
+
+wire           fifo_wrreq[10];
+wire           fifo_rdreq[10];
+always_comb begin
+	for (int i=0; i<10; i++) begin
+		fifo_wrreq[i] = (|mem_wr[i] && !old_wr[i]);
+		fifo_rdreq[i] = (state == 3'h1 && ram_chan == i);
+	end
+end
+
+wire [ 59:  0] fifo_dout[10];
+wire           fifo_empty[10];
+wire           fifo_full[10];
+ddr_infifo fifo0 (clk, rst_pulse, {mem0_addr,mem0_wr,mem0_din}, fifo_wrreq[0], fifo_rdreq[0], fifo_dout[0], fifo_empty[0], fifo_full[0]);
+ddr_infifo fifo1 (clk, rst_pulse, {mem1_addr,mem1_wr,mem1_din}, fifo_wrreq[1], fifo_rdreq[1], fifo_dout[1], fifo_empty[1], fifo_full[1]);
+ddr_infifo fifo2 (clk, rst_pulse, {mem2_addr,mem2_wr,mem2_din}, fifo_wrreq[2], fifo_rdreq[2], fifo_dout[2], fifo_empty[2], fifo_full[2]);
+ddr_infifo fifo3 (clk, rst_pulse, {mem3_addr,mem3_wr,mem3_din}, fifo_wrreq[3], fifo_rdreq[3], fifo_dout[3], fifo_empty[3], fifo_full[3]);
+ddr_infifo fifo4 (clk, rst_pulse, {mem4_addr,mem4_wr,mem4_din}, fifo_wrreq[4], fifo_rdreq[4], fifo_dout[4], fifo_empty[4], fifo_full[4]);
+ddr_infifo fifo5 (clk, rst_pulse, {mem5_addr,mem5_wr,mem5_din}, fifo_wrreq[5], fifo_rdreq[5], fifo_dout[5], fifo_empty[5], fifo_full[5]);
+ddr_infifo fifo6 (clk, rst_pulse, {mem6_addr,mem6_wr,mem6_din}, fifo_wrreq[6], fifo_rdreq[6], fifo_dout[6], fifo_empty[6], fifo_full[6]);
+ddr_infifo fifo7 (clk, rst_pulse, {mem7_addr,mem7_wr,mem7_din}, fifo_wrreq[7], fifo_rdreq[7], fifo_dout[7], fifo_empty[7], fifo_full[7]);
+ddr_infifo fifo8 (clk, rst_pulse, {mem8_addr,mem8_wr,mem8_din}, fifo_wrreq[8], fifo_rdreq[8], fifo_dout[8], fifo_empty[8], fifo_full[8]);
+ddr_infifo fifo9 (clk, rst_pulse, {mem9_addr,mem9_wr,mem9_din}, fifo_wrreq[9], fifo_rdreq[9], fifo_dout[9], fifo_empty[9], fifo_full[9]);
+
+wire [ 24:  1] fifo_write_addr[10];
+wire [ 63:  0] fifo_write_buf[10];
+wire [  7:  0] fifo_write_be[10];
+always_comb begin
+	for (int i=0; i<10; i++) begin
+		fifo_write_addr[i] = fifo_dout[i][24-1+4+32:1-1+4+32];
+		if (mem_16b[i]) begin
+			fifo_write_buf[i] = {4{fifo_dout[i][15:0]}};
+			case (fifo_dout[i][2-1+4+32:1-1+4+32])
+				2'b00: fifo_write_be[i] = {fifo_dout[i][1+32:0+32],6'b000000};
+				2'b01: fifo_write_be[i] = {2'b00,fifo_dout[i][1+32:0+32],4'b0000};
+				2'b10: fifo_write_be[i] = {4'b0000,fifo_dout[i][1+32:0+32],2'b00};
+				2'b11: fifo_write_be[i] = {6'b000000,fifo_dout[i][1+32:0+32]};
+			endcase
+		end else begin
+			fifo_write_buf[i] = {2{fifo_dout[i][31:0]}};
+			case (fifo_dout[i][2-1+4+32])
+				1'b0: fifo_write_be[i] = {fifo_dout[i][3+32:0+32],4'b0000};
+				1'b1: fifo_write_be[i] = {4'b0000,fifo_dout[i][3+32:0+32]};
+			endcase
+		end
+	end
+end
+
+always @(posedge clk) begin
+	bit write,fifo_write,read;
+	bit [3:0] chan;
+
+	for (int i=0; i<10; i++) begin
+		if (rst_pulse) begin
 			rcache_addr[i] <= '1;
 			read_busy[i] <= 0;
 		end
@@ -170,34 +222,31 @@ always @(posedge clk) begin
 			rcache_word[i] <= mem_16b[i];
 		end
 		
-		if (rst && !old_rst) begin
-			write_busy[i] <= 0;
-			rcache_update[i] <= 0;
+		if (rst_pulse) begin
+			write_busy[i] <= 0;		
 		end
-		else if (|mem_wr[i] && !old_we[i]) begin
-			write_addr[i] <= mem_addr[i];
-			write_busy[i] <= 1;
-			if (mem_16b[i]) begin
-				write_buf[i] <= {4{mem_din[i][15:0]}};
-				case (mem_addr[i][2:1])
-					2'b00: write_be[i] <= {mem_wr[i][1:0],6'b000000};
-					2'b01: write_be[i] <= {2'b00,mem_wr[i][1:0],4'b0000};
-					2'b10: write_be[i] <= {4'b0000,mem_wr[i][1:0],2'b00};
-					2'b11: write_be[i] <= {6'b000000,mem_wr[i][1:0]};
-				endcase
-			end else begin
-				write_buf[i] <= {2{mem_din[i]}};
-				case (mem_addr[i][2])
-					1'b0: write_be[i] <= {mem_wr[i][3:0],4'b0000};
-					1'b1: write_be[i] <= {4'b0000,mem_wr[i][3:0]};
-				endcase
-			end
-			
-			rcache_update[i] <= (rcache_addr[i][24:5] == mem_addr[i][24:5]);
-		end
+//		else if (|mem_wr[i] && !old_wr[i]) begin
+//			write_addr[i] <= mem_addr[i];
+//			write_busy[i] <= 1;
+//			if (mem_16b[i]) begin
+//				write_buf[i] <= {2{mem_din[i][15:0]}};
+//				case (mem_addr[i][2:1])
+//					2'b00: write_be[i] <= {mem_wr[i][1:0],6'b000000};
+//					2'b01: write_be[i] <= {2'b00,mem_wr[i][1:0],4'b0000};
+//					2'b10: write_be[i] <= {4'b0000,mem_wr[i][1:0],2'b00};
+//					2'b11: write_be[i] <= {6'b000000,mem_wr[i][1:0]};
+//				endcase
+//			end else begin
+//				write_buf[i] <= mem_din[i];
+//				case (mem_addr[i][2])
+//					1'b0: write_be[i] <= {mem_wr[i][3:0],4'b0000};
+//					1'b1: write_be[i] <= {4'b0000,mem_wr[i][3:0]};
+//				endcase
+//			end
+//		end
 	end
 	
-	if (rst && !old_rst) begin
+	if (rst_pulse) begin
 		state <= '0;
 		ram_write <= 0;
 		ram_read  <= 0;
@@ -209,44 +258,67 @@ always @(posedge clk) begin
 		case (state)
 			0: begin
 				write = 0;
+				fifo_write = 0;
 				read = 0;
 				chan = 4'h0;
-				if      (write_busy[0]) begin write = 1; chan = 4'h0; end
+//				if      (write_busy[0]) begin write = 1; chan = 4'h0; end
+				if      (!fifo_empty[0]) begin fifo_write = 1; chan = 4'h0; end
 				else if (read_busy[0])  begin read = 1;  chan = 4'h0; end
-				else if (write_busy[1]) begin write = 1; chan = 4'h1; end
+//				else if (write_busy[1]) begin write = 1; chan = 4'h1; end
+				else if (!fifo_empty[1]) begin fifo_write = 1; chan = 4'h1; end
 				else if (read_busy[1])  begin read = 1;  chan = 4'h1; end
-				else if (write_busy[2]) begin write = 1; chan = 4'h2; end
+//				else if (write_busy[2]) begin write = 1; chan = 4'h2; end
+				else if (!fifo_empty[2]) begin fifo_write = 1; chan = 4'h2; end
 				else if (read_busy[2])  begin read = 1;  chan = 4'h2; end
-				else if (write_busy[3]) begin write = 1; chan = 4'h3; end
+//				else if (write_busy[3]) begin write = 1; chan = 4'h3; end
+				else if (!fifo_empty[3]) begin fifo_write = 1; chan = 4'h3; end
 				else if (read_busy[3])  begin read = 1;  chan = 4'h3; end
-				else if (write_busy[4]) begin write = 1; chan = 4'h4; end
+//				else if (write_busy[4]) begin write = 1; chan = 4'h4; end
+				else if (!fifo_empty[4]) begin fifo_write = 1; chan = 4'h4; end
 				else if (read_busy[4])  begin read = 1;  chan = 4'h4; end
-				else if (write_busy[5]) begin write = 1; chan = 4'h5; end
+//				else if (write_busy[5]) begin write = 1; chan = 4'h5; end
+				else if (!fifo_empty[5]) begin fifo_write = 1; chan = 4'h5; end
 				else if (read_busy[5])  begin read = 1;  chan = 4'h5; end
-				else if (write_busy[6]) begin write = 1; chan = 4'h6; end
+//				else if (write_busy[6]) begin write = 1; chan = 4'h6; end
+				else if (!fifo_empty[6]) begin fifo_write = 1; chan = 4'h6; end
 				else if (read_busy[6])  begin read = 1;  chan = 4'h6; end
-				else if (write_busy[7]) begin write = 1; chan = 4'h7; end
+//				else if (write_busy[7]) begin write = 1; chan = 4'h7; end
+				else if (!fifo_empty[7]) begin fifo_write = 1; chan = 4'h7; end
 				else if (read_busy[7])  begin read = 1;  chan = 4'h7; end
-				else if (write_busy[8]) begin write = 1; chan = 4'h8; end
+//				else if (write_busy[8]) begin write = 1; chan = 4'h8; end
+				else if (!fifo_empty[8]) begin fifo_write = 1; chan = 4'h8; end
 				else if (read_busy[8])  begin read = 1;  chan = 4'h8; end
-				else if (write_busy[9]) begin write = 1; chan = 4'h9; end
+//				else if (write_busy[9]) begin write = 1; chan = 4'h9; end
+				else if (!fifo_empty[9]) begin fifo_write = 1; chan = 4'h9; end
 				else if (read_busy[9])  begin read = 1;  chan = 4'h9; end
 				
 				if (write) begin
 					ram_address <= {write_addr[chan][24:3],2'b00};
-					ram_din		<= write_buf[chan];
-					ram_ba      <= write_be[chan];
+					ram_din		<= {2{write_buf[chan]}};
+					ram_be      <= write_be[chan];
 					ram_write 	<= 1;
 					ram_burst   <= 1;
 					ram_chan    <= chan;
 					cache_wraddr<= write_addr[chan][4:3];
-					cache_update<= rcache_update[chan];
+					cache_update<= (rcache_addr[chan][24:5] == write_addr[chan][24:5]);
 					write_busy[chan] <= 0;
+					state       <= 3'h1;
+				end
+				if (fifo_write) begin
+					ram_address <= {fifo_write_addr[chan][24:3],2'b00};
+					ram_din		<= fifo_write_buf[chan];
+					ram_be      <= fifo_write_be[chan];
+					ram_write 	<= 1;
+					ram_burst   <= 1;
+					ram_chan    <= chan;
+					cache_wraddr<= fifo_write_addr[chan][4:3];
+					cache_update<= (rcache_addr[chan][24:5] == fifo_write_addr[chan][24:5]);
+//					write_busy[chan] <= 0;
 					state       <= 3'h1;
 				end
 				if (read) begin
 					ram_address <= {rcache_addr[chan][24:5],4'b0000};
-					ram_ba      <= 8'hFF;
+					ram_be      <= 8'hFF;
 					ram_read    <= 1;
 					ram_burst   <= 4;
 					ram_chan    <= chan;
@@ -274,8 +346,8 @@ always @(posedge clk) begin
 end
 
 
-wire [ 63:  0] cache_data = state == 3'h1 ? write_buf[ram_chan] : DDRAM_DOUT; 
-wire [  7:  0] cache_be = state == 3'h1 ? write_be[ram_chan] : 8'hFF; 
+wire [ 63:  0] cache_data = state == 3'h1 ? ram_din : DDRAM_DOUT; 
+wire [  7:  0] cache_be = state == 3'h1 ? ram_be : 8'hFF; 
 wire           cache_wren = (state == 3'h1 ? cache_update : state == 3'h2 ? DDRAM_DOUT_READY : 1'b0) && !DDRAM_BUSY;
 wire [ 63:  0] cache_q[10];
 
@@ -305,7 +377,7 @@ always_comb begin
 				1'b1: mem_dout[i] = cache_q[i][31:00];
 			endcase
 			
-		mem_busy[i] = read_busy[i] | |write_busy[i];
+		mem_busy[i] = read_busy[i] | |write_busy[i] | fifo_full[i];
 	end
 end
 assign {mem0_dout,mem1_dout,mem2_dout,mem3_dout,mem4_dout,mem5_dout,mem6_dout,mem7_dout,mem8_dout,mem9_dout} = {mem_dout[0],mem_dout[1],mem_dout[2],mem_dout[3],mem_dout[4],mem_dout[5],mem_dout[6],mem_dout[7],mem_dout[8],mem_dout[9]};
@@ -313,7 +385,7 @@ assign {mem0_busy,mem1_busy,mem2_busy,mem3_busy,mem4_busy,mem5_busy,mem6_busy,me
 
 assign DDRAM_CLK      = clk;
 assign DDRAM_BURSTCNT = ram_burst;
-assign DDRAM_BE       = ram_ba;
+assign DDRAM_BE       = ram_be;
 assign DDRAM_ADDR     = {7'b0011000, ram_address[24:3]}; // RAM at 0x30000000
 assign DDRAM_RD       = ram_read;
 assign DDRAM_DIN      = ram_din;
@@ -387,3 +459,85 @@ module ddr_cache_ram (
 		altdpram_component.wrcontrol_reg = "INCLOCK";
 
 endmodule
+
+module ddr_infifo (
+	input	         CLK,
+	input          RST,
+	
+	input	 [59: 0] DATA,
+	input	         WRREQ,
+	
+	input	         RDREQ,
+	output [59: 0] Q,
+	output	      EMPTY,
+	output	      FULL
+);
+
+	wire [59: 0] sub_wire0;
+	bit  [ 2: 0] RADDR;
+	bit  [ 2: 0] WADDR;
+	bit  [ 3: 0] AMOUNT;
+	
+	always @(posedge CLK) begin
+		if (RST) begin
+			AMOUNT <= '0;
+			RADDR <= '0;
+			WADDR <= '0;
+		end
+		else begin
+			if (WRREQ && !AMOUNT[3]) begin
+				WADDR <= WADDR + 3'd1;
+			end
+			if (RDREQ && AMOUNT) begin
+				RADDR <= RADDR + 3'd1;
+			end
+			
+			if (WRREQ && !RDREQ && !AMOUNT[3]) begin
+				AMOUNT <= AMOUNT + 4'd1;
+			end else if (!WRREQ && RDREQ && AMOUNT) begin
+				AMOUNT <= AMOUNT - 4'd1;
+			end
+		end
+	end
+	assign EMPTY = ~|AMOUNT;
+	assign FULL = AMOUNT[3];
+	
+	altdpram	altdpram_component (
+				.data (DATA),
+				.inclock (CLK),
+				.rdaddress (RADDR),
+				.wraddress (WADDR),
+				.wren (WRREQ),
+				.q (sub_wire0),
+				.aclr (1'b0),
+				.byteena (1'b1),
+				.inclocken (1'b1),
+				.rdaddressstall (1'b0),
+				.rden (1'b1),
+//				.sclr (1'b0),
+				.wraddressstall (1'b0));
+	defparam
+		altdpram_component.indata_aclr = "OFF",
+		altdpram_component.indata_reg = "INCLOCK",
+		altdpram_component.intended_device_family = "Cyclone V",
+		altdpram_component.lpm_type = "altdpram",
+		altdpram_component.outdata_aclr = "OFF",
+		altdpram_component.outdata_reg = "UNREGISTERED",
+		altdpram_component.ram_block_type = "MLAB",
+		altdpram_component.rdaddress_aclr = "OFF",
+		altdpram_component.rdaddress_reg = "UNREGISTERED",
+		altdpram_component.rdcontrol_aclr = "OFF",
+		altdpram_component.rdcontrol_reg = "UNREGISTERED",
+		altdpram_component.read_during_write_mode_mixed_ports = "CONSTRAINED_DONT_CARE",
+		altdpram_component.width = 60,
+		altdpram_component.widthad = 3,
+		altdpram_component.width_byteena = 1,
+		altdpram_component.wraddress_aclr = "OFF",
+		altdpram_component.wraddress_reg = "INCLOCK",
+		altdpram_component.wrcontrol_aclr = "OFF",
+		altdpram_component.wrcontrol_reg = "INCLOCK";
+		
+	assign Q = sub_wire0;
+
+endmodule
+
