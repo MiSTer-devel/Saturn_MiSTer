@@ -1956,12 +1956,10 @@ module VDP2 (
 	wire [ 8: 0] WxSY[2] = '{REGS.WPSY0.WxSY,REGS.WPSY1.WxSY};
 	wire [ 8: 0] WxEY[2] = '{REGS.WPEY0.WxEY,REGS.WPEY1.WxEY};
 	
-	wire W0_HIT = {SCRNX,SCRNX0&HRES[1]} >= {WxSX[0][9:1],WxSX[0][0]&HRES[1]}    && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[0][9:1],WxEX[0][0]&HRES[1]} &&
-	              WSCRNY                 >= {WxSY[0][8:1],WxSY[0][0]&~INTERLACE} && WSCRNY                 <= {WxEY[0][8:1],WxEY[0][0]&~INTERLACE} &&
-					  WxEX[0] != 10'h3FF;
-	wire W1_HIT = {SCRNX,SCRNX0|HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]|HRES[1]}    && {SCRNX,SCRNX0|HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]|HRES[1]} &&
-	              WSCRNY                 >= {WxSY[1][8:1],WxSY[1][0]&~INTERLACE} && WSCRNY                 <= {WxEY[1][8:1],WxEY[1][0]&~INTERLACE} &&
-					  WxEX[1] != 10'h3FF;
+	wire W0_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[0][9:1],WxSX[0][0]&HRES[1]} || {WxSX[0][9:1],WxSX[0][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[0][9:1],WxEX[0][0]&HRES[1]} && {WxEX[0][9:1],WxEX[0][0]|~HRES[1]} != 10'h3FF &&
+	               WSCRNY                 >= {WxSY[0][8:1],WxSY[0][0]&~INTERLACE}                                                && WSCRNY                 <= {WxEY[0][8:1],WxEY[0][0]&~INTERLACE};
+	wire W1_HIT = ({SCRNX,SCRNX0|HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]&HRES[1]} || {WxSX[1][9:1],WxSX[1][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]&HRES[1]} && {WxEX[1][9:1],WxEX[1][0]|~HRES[1]} != 10'h3FF &&
+	               WSCRNY                 >= {WxSY[1][8:1],WxSY[1][0]&~INTERLACE}                                                && WSCRNY                 <= {WxEY[1][8:1],WxEY[1][0]&~INTERLACE};
 					  
 	bit          W0_HIT_PIPE[17*2];
 	bit          W1_HIT_PIPE[17*2];
@@ -3060,7 +3058,7 @@ module VDP2 (
 				endcase
 			end
 			
-			if (DOT_CE_R || (DOT_CE_F & HRES[1])) begin
+			if (!HRES[1] && DOT_CE_R) begin
 				CFST <= !DOT_FST.P ? DOT_FST.DC : DC_FST_LATCH;
 				CSEC <= !DOT_SEC.P ? DOT_SEC.DC : DC_SEC_LATCH;
 				CTHD <= !DOT_THD.P ? DOT_THD.DC : DC_THD_LATCH;
@@ -3071,6 +3069,21 @@ module VDP2 (
 				CCENTHD <= DOT_THD.CCEN;
 				PTHD <= DOT_THD.P; 
 				LCEN <= DOT_FST.LCEN; 
+				COEN <= DOT_FST.COEN; 
+				COSL <= DOT_FST.COSL;
+				SDEN <= DOT_FST.SDEN;
+			end
+			else if (HRES[1] && (DOT_CE_R || DOT_CE_F)) begin
+				CFST <= !DOT_FST.P ? DOT_FST.DC : DC_FST_LATCH;
+				CSEC <= !DOT_SEC.P ? DOT_SEC.DC : DC;
+				CTHD <= '0;
+				CFTH <= '0;
+				CCRT <= !REGS.CCCTL.CCRTMD ? DOT_FST.CCRT : DOT_SEC.CCRT;
+				CCENFST <= !DOT_FST.CCM3 ? DOT_FST.CCEN : DOT_FST.CCEN & (CC_FST | ~DOT_FST.P);
+				CCENSEC <= 0;
+				CCENTHD <= 0;
+				PTHD <= 0; 
+				LCEN <= 0; 
 				COEN <= DOT_FST.COEN; 
 				COSL <= DOT_FST.COSL;
 				SDEN <= DOT_FST.SDEN;
