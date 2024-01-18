@@ -163,7 +163,7 @@ wire           fifo_rdreq[10];
 always_comb begin
 	for (int i=0; i<10; i++) begin
 		fifo_wrreq[i] = (|mem_wr[i] && !old_wr[i]);
-		fifo_rdreq[i] = (state == 3'h1 && ram_chan == i);
+		fifo_rdreq[i] = (state == 3'h1 && !DDRAM_BUSY && ram_chan == i);
 	end
 end
 
@@ -225,7 +225,7 @@ always @(posedge clk) begin
 		if (rst_pulse) begin
 			write_busy[i] <= 0;		
 		end
-//		else if (|mem_wr[i] && !old_wr[i]) begin
+		else if (|mem_wr[i] && !old_wr[i]) begin
 //			write_addr[i] <= mem_addr[i];
 //			write_busy[i] <= 1;
 //			if (mem_16b[i]) begin
@@ -243,7 +243,11 @@ always @(posedge clk) begin
 //					1'b1: write_be[i] <= {4'b0000,mem_wr[i][3:0]};
 //				endcase
 //			end
-//		end
+
+			if (rcache_addr[i][24:5] == mem_addr[i][24:5]) begin
+				rcache_addr[i] <= '1;
+			end
+		end
 	end
 	
 	if (rst_pulse) begin
@@ -300,7 +304,7 @@ always @(posedge clk) begin
 					ram_burst   <= 1;
 					ram_chan    <= chan;
 					cache_wraddr<= write_addr[chan][4:3];
-					cache_update<= (rcache_addr[chan][24:5] == write_addr[chan][24:5]);
+					cache_update<= 0;
 					write_busy[chan] <= 0;
 					state       <= 3'h1;
 				end
@@ -312,7 +316,7 @@ always @(posedge clk) begin
 					ram_burst   <= 1;
 					ram_chan    <= chan;
 					cache_wraddr<= fifo_write_addr[chan][4:3];
-					cache_update<= (rcache_addr[chan][24:5] == fifo_write_addr[chan][24:5]);
+					cache_update<= 0;
 //					write_busy[chan] <= 0;
 					state       <= 3'h1;
 				end
@@ -377,7 +381,7 @@ always_comb begin
 				1'b1: mem_dout[i] = cache_q[i][31:00];
 			endcase
 			
-		mem_busy[i] = read_busy[i] | |write_busy[i] | fifo_full[i];
+		mem_busy[i] = read_busy[i] /*| |write_busy[i]*/ | fifo_full[i];
 	end
 end
 assign {mem0_dout,mem1_dout,mem2_dout,mem3_dout,mem4_dout,mem5_dout,mem6_dout,mem7_dout,mem8_dout,mem9_dout} = {mem_dout[0],mem_dout[1],mem_dout[2],mem_dout[3],mem_dout[4],mem_dout[5],mem_dout[6],mem_dout[7],mem_dout[8],mem_dout[9]};
