@@ -42,6 +42,7 @@ module VDP1 (
 	output     [ 1: 0] FB1_WE,
 	output             FB1_RD,
 	input              FB_RDY,
+	output             FB_MODE3,
 	
 	input      [ 7: 0] DBG_EXT
 	
@@ -123,6 +124,7 @@ module VDP1 (
 	assign FB_DRAW_Q = FB_SEL ? FB0_Q : FB1_Q;
 	assign FB_DISP_Q = FB_SEL ? FB1_Q : FB0_Q;
 	
+	assign FB_MODE3 = (TVMR.TVM[1:0] == 2'b11);
 	
 	typedef enum bit [3:0] {
 		VS_IDLE,  
@@ -428,7 +430,7 @@ module VDP1 (
 		bit [10: 0] SYS_CLIP_X1,SYS_CLIP_X2,SYS_CLIP_Y1,SYS_CLIP_Y2;
 		bit [ 3: 0] CMD_COORD_LEFT_OVER,CMD_COORD_RIGHT_OVER,CMD_COORD_TOP_OVER,CMD_COORD_BOTTOM_OVER;
 		bit         CMD_NSPR_LEFT_OVER,CMD_NSPR_TOP_OVER;
-		bit         CMD_SSPR_WIDTH_OVER,CMD_SSPR_HEIGHT_OVER;
+//		bit         CMD_SSPR_WIDTH_OVER,CMD_SSPR_HEIGHT_OVER;
 		bit         CMD_SSPR_LEFT_OVER,CMD_SSPR_RIGHT_OVER,CMD_SSPR_TOP_OVER,CMD_SSPR_BOTTOM_OVER;
 		bit         LINE_LEFT_OVER,LINE_RIGHT_OVER,LINE_TOP_OVER,LINE_BOTTOM_OVER;
 		bit         CMD_TEXT_SIZE_OVER;
@@ -538,8 +540,8 @@ module VDP1 (
 			CMD_SSPR_TOP_OVER <= $signed(CMD_SSPR_TOP) < $signed({{5{SYS_CLIP_Y1[10]}},SYS_CLIP_Y1}) && $signed(CMD_SSPR_BOTTOM) < $signed({{5{SYS_CLIP_Y1[10]}},SYS_CLIP_Y1});
 			CMD_SSPR_BOTTOM_OVER <= $signed(CMD_SSPR_TOP) > $signed({{5{SYS_CLIP_Y2[10]}},SYS_CLIP_Y2}) && $signed(CMD_SSPR_BOTTOM) > $signed({{5{SYS_CLIP_Y2[10]}},SYS_CLIP_Y2});
 
-			CMD_SSPR_WIDTH_OVER <= (CMD.CMDXB.COORD[10] && CMD.CMDCTRL.ZP);
-			CMD_SSPR_HEIGHT_OVER <= (CMD.CMDYB.COORD[10] && CMD.CMDCTRL.ZP);
+//			CMD_SSPR_WIDTH_OVER <= (CMD.CMDXB.COORD[10] && CMD.CMDCTRL.ZP);
+//			CMD_SSPR_HEIGHT_OVER <= (CMD.CMDYB.COORD[10] && CMD.CMDCTRL.ZP);
 												
 			CMD_TEXT_SIZE_OVER <= !CMD.CMDSIZE.SX || !CMD.CMDSIZE.SY;
 											  
@@ -1671,7 +1673,7 @@ module VDP1 (
 						ERASE_X <= {EWLR.X1,3'b000};
 						ERASE_Y <= ERASE_Y + 9'd1;
 					end
-					FB_ERASE_A <= {ERASE_Y[7:0],ERASE_X[8:0]};//TODO: 8bit/pixel mode
+					FB_ERASE_A <= {ERASE_Y[7:0],ERASE_X[8:0]};
 				end
 			end
 			if (!VTIM_N && VTIM_N_OLD) begin
@@ -1684,15 +1686,15 @@ module VDP1 (
 	assign FRAME_ERASE_HIT = (OUT_X >= {EWLR.X1,3'b000}) & (OUT_X < {EWRR.X3,3'b000}) & (OUT_Y >= EWLR.Y1) & (OUT_Y <= EWRR.Y3) & FRAME_ERASE & VTIM_N;
 	assign VBLANK_ERASE_HIT = (ERASE_X >= {EWLR.X1,3'b000}) & (ERASE_X < {EWRR.X3,3'b000}) & (ERASE_Y >= EWLR.Y1) & (ERASE_Y <= EWRR.Y3) & VBLANK_ERASE & ~VTIM_N;
 	
-	assign FB_DISP_A = {OUT_Y[7:0],OUT_X};
+	assign FB_DISP_A = TVMR.TVM[1:0] == 2'b11 ? {OUT_Y[8:0],OUT_X[8:1]} : {OUT_Y[7:0],OUT_X[8:0]};
 	bit DCLK;
 	always @(posedge CLK) begin
 		if      (DCE_R) DCLK <= 1;
 		else if (DCE_F) DCLK <= 0;
 	end
-	assign VOUT = !TVMR.TVM[0] ? FB_DISP_Q : 
-	              DCLK         ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]};
-		
+	assign VOUT = TVMR.TVM[1:0] == 2'b11 ? (!OUT_X[0] ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
+	              TVMR.TVM[1:0] == 2'b01 ? (DCLK ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
+					  FB_DISP_Q;
 	
 	//VRAM
 	wire CPU_VRAM_REQ = (A[20:19] == 2'b00) & ~AD_N & ~CS_N & ~REQ_N;	//000000-07FFFF
@@ -1737,6 +1739,7 @@ module VDP1 (
 		bit         CLT_READ_PEND;
 		bit         GRD_READ_PEND;
 		bit [ 3: 0] VRAM_READ_POS;
+		bit [ 8: 0] FB_Y;
 		
 		if (!RST_N) begin
 			VRAM_ST <= VS_IDLE;
@@ -2040,17 +2043,27 @@ module VDP1 (
 						end
 					end
 					else if (((FB_READ_PEND && !FB_RD) || (FB_DRAW_PEND && !FB_WE)) && FB_DRAW_WE) begin
-						if (!TVMR.TVM[0]) begin
-							FB_A <= {(!DIE ? DRAW_Y[7:0] : DRAW_Y[8:1]),DRAW_X[8:0]};
-							FB_D <= FB_DRAW_D;
-							FB_WE <= {2{FB_DRAW_PEND}};
-							FB_RD <= FB_READ_PEND;
-						end else begin
-							FB_A <= {(!DIE ? DRAW_Y[7:0] : DRAW_Y[8:1]),DRAW_X[9:1]};
-							FB_D <= {FB_DRAW_D[7:0],FB_DRAW_D[7:0]};
-							FB_WE <= {~DRAW_X[0],DRAW_X[0]} & {2{FB_DRAW_PEND}};
-							FB_RD <= FB_READ_PEND;
-						end
+						FB_Y = !DIE ? DRAW_Y[8:0] : DRAW_Y[9:1];
+						casex (TVMR.TVM[1:0]) 
+							2'bx0: begin
+								FB_A <= {FB_Y[7:0],DRAW_X[8:0]};
+								FB_D <= FB_DRAW_D;
+								FB_WE <= {2{FB_DRAW_PEND}};
+								FB_RD <= FB_READ_PEND;
+							end
+							2'b01: begin
+								FB_A <= {FB_Y[7:0],DRAW_X[9:1]};
+								FB_D <= {FB_DRAW_D[7:0],FB_DRAW_D[7:0]};
+								FB_WE <= {~DRAW_X[0],DRAW_X[0]} & {2{FB_DRAW_PEND}};
+								FB_RD <= FB_READ_PEND;
+							end
+							2'b11: begin
+								FB_A <= {FB_Y[8:0],DRAW_X[8:1]};
+								FB_D <= {FB_DRAW_D[7:0],FB_DRAW_D[7:0]};
+								FB_WE <= {~DRAW_X[0],DRAW_X[0]} & {2{FB_DRAW_PEND}};
+								FB_RD <= FB_READ_PEND;
+							end
+						endcase
 						FB_ST <= FS_DRAW;
 					end
 				end

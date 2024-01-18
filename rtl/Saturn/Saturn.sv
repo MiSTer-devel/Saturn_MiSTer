@@ -41,6 +41,7 @@ module Saturn (
 	output            VDP1_FB1_RD,
 	
 	input             VDP1_FB_RDY,
+	output            VDP1_FB_MODE3,
 	
 	output     [18:1] VDP2_RA0_A,
 	output     [16:1] VDP2_RA1_A,
@@ -717,6 +718,7 @@ module Saturn (
 		.FB1_RD(VDP1_FB1_RD),
 		.FB1_Q(VDP1_FB1_Q),
 		.FB_RDY(VDP1_FB_RDY),
+		.FB_MODE3(VDP1_FB_MODE3),
 		
 		.DBG_EXT(DBG_EXT)
 		

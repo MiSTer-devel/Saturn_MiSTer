@@ -574,6 +574,7 @@ module emu
 	wire  [1:0] VDP1_FB1_WE;
 	wire        VDP1_FB1_RD;
 	wire        VDP1_FB_RDY;
+	wire        VDP1_FB_MODE3;
 	
 	wire [17:1] VDP2_RA0_A;
 	wire [16:1] VDP2_RA1_A;
@@ -737,6 +738,7 @@ module emu
 		.VDP1_FB1_RD(VDP1_FB1_RD),
 		.VDP1_FB1_Q(VDP1_FB1_Q),
 		.VDP1_FB_RDY(VDP1_FB_RDY),
+		.VDP1_FB_MODE3(VDP1_FB_MODE3),
 			
 		.VDP2_RA0_A(VDP2_RA0_A),
 		.VDP2_RA1_A(VDP2_RA1_A),
@@ -1153,16 +1155,18 @@ module emu
 
 
 	//VDP1 FB (first 352x256x16 bit)
-	wire FB0_EXT_SEL = VDP1_FB0_A[9:1] >= 9'd352;
-	wire FB1_EXT_SEL = VDP1_FB1_A[9:1] >= 9'd352;
-	bit [15:0] FB0_EXT_Q;
-	bit [15:0] FB1_EXT_Q;
+	wire         FB0_EXT_SEL = VDP1_FB_MODE3 ? VDP1_FB0_A[17:9] >= 9'd352 : VDP1_FB0_A[9:1] >= 9'd352;
+	wire         FB1_EXT_SEL = VDP1_FB_MODE3 ? VDP1_FB1_A[17:9] >= 9'd352 : VDP1_FB1_A[9:1] >= 9'd352;
+	wire [17: 1] FB0_EXT_A = VDP1_FB_MODE3 ? {VDP1_FB0_A[17:9],VDP1_FB0_A[8:1]} : {VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]};
+	wire [17: 1] FB1_EXT_A = VDP1_FB_MODE3 ? {VDP1_FB1_A[17:9],VDP1_FB1_A[8:1]} : {VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]};
+	bit  [15: 0] FB0_EXT_Q;
+	bit  [15: 0] FB1_EXT_Q;
 	
 	bit [15:0] FB0_Q;
 	vdp1_fb_352x256x16 vdp1_fb0
 	(
 		.clock(clk_sys),
-		.address({VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]}),
+		.address(FB0_EXT_A),
 		.data(VDP1_FB0_D),
 		.wren(VDP1_FB0_WE & {2{~FB0_EXT_SEL}}),
 		.q(FB0_Q)
@@ -1172,7 +1176,7 @@ module emu
 	vdp1_fb_352x256x16 vdp1_fb1
 	(
 		.clock(clk_sys),
-		.address({VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]}),
+		.address(FB1_EXT_A),
 		.data(VDP1_FB1_D),
 		.wren(VDP1_FB1_WE & {2{~FB1_EXT_SEL}}),
 		.q(FB1_Q)
@@ -1231,13 +1235,13 @@ module emu
 			case (vdp1_state)
 				2'd0: begin
 					if ((VDP1_FB0_RD && FB0_EXT_SEL) || VDP1_FB0_RPEND) begin
-						VDP1_A <= {4'b1010,1'b0,VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]};
+						VDP1_A <= {4'b1010,1'b0,FB0_EXT_A};
 						VDP1_RD <= 1;
 						VDP1_FB0_RPEND <= 0; 
 						vdp1_state <= 2'd1;
 					end else if (VDP1_FB0_WPEND && !VDP1_WE) begin
 						if (!ddr_busy[5]) begin
-							VDP1_A <= {4'b1010,1'b0,VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]};
+							VDP1_A <= {4'b1010,1'b0,FB0_EXT_A};
 							VDP1_D <= VDP1_FB0_D;
 							VDP1_WE <= VDP1_FB0_WPEND;
 							VDP1_FB0_WPEND <= '0;
@@ -1245,13 +1249,13 @@ module emu
 							vdp1_state <= 2'd0;
 						end
 					end else if ((VDP1_FB1_RD && FB1_EXT_SEL) || VDP1_FB1_RPEND) begin
-						VDP1_A <= {4'b1100,1'b0,VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]};
+						VDP1_A <= {4'b1100,1'b0,FB1_EXT_A};
 						VDP1_RD <= 1;
 						VDP1_FB1_RPEND <= 0; 
 						vdp1_state <= 2'd2;
 					end else if (VDP1_FB1_WPEND && !VDP1_WE) begin
 						if (!ddr_busy[5]) begin
-							VDP1_A <= {4'b1100,1'b0,VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]};
+							VDP1_A <= {4'b1100,1'b0,FB1_EXT_A};
 							VDP1_D <= VDP1_FB1_D;
 							VDP1_WE <= VDP1_FB1_WPEND;
 							VDP1_FB1_WPEND <= '0;
