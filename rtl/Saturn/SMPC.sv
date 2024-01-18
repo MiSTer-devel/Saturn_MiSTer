@@ -100,6 +100,8 @@ module SMPC (
 	end
 	
 	always @(posedge CLK or negedge RST_N) begin
+		bit        MIN_CLK,HOUR_CLK,DAYS_CLK,MONTH_CLK,YEAR_CLK;
+		
 		if (!RST_N) begin
 			SEC <= 8'h00;
 			MIN <= 8'h00;
@@ -108,7 +110,7 @@ module SMPC (
 			{DAY,MONTH} <= 8'h01;
 			YEAR <= 16'h2024;
 		end else if (COMM_ST == CS_EXEC && COMREG == 8'h16) begin
-`ifdef DEBUG
+`ifndef DEBUG
 			SEC <= IREG[6];
 			MIN <= IREG[5];
 			HOUR <= IREG[4];
@@ -116,49 +118,71 @@ module SMPC (
 			{DAY,MONTH} <= IREG[2];
 			YEAR <= {IREG[0],IREG[1]};
 `endif
-		end else if (SEC_CLK && CE) begin
-`ifdef DEBUG
-			SEC[3:0] <= SEC[3:0] + 4'd1;
-			if (SEC[3:0] == 4'd9) begin
-				SEC[3:0] <= 4'd0;
-				SEC[7:4] <= SEC[7:4] + 4'd1;
-				if (SEC[7:4] == 4'd5) begin
-					SEC[7:4] <= 4'd0;
-					MIN[3:0] <= MIN[3:0] + 4'd1;
-					if (MIN[3:0] == 4'd9) begin
-						MIN[3:0] <= 4'd0;
-						MIN[7:4] <= MIN[7:4] + 4'd1;
-						if (MIN[7:4] == 4'd5) begin
-							MIN[7:4] <= 4'd0;
-							HOUR[3:0] <= HOUR[3:0] + 4'd1;
-							if (HOUR[3:0] == 4'd9) begin
-								HOUR[3:0] <= 4'd0;
-								HOUR[7:4] <= HOUR[7:4] + 4'd1;
-							end
-							else if (HOUR == 8'h23) begin
-								HOUR <= 8'h00;
-								DAYS[3:0] <= DAYS[3:0] + 4'd1;
-								if (DAYS[3:0] == 4'd9) begin
-									DAYS[7:4] <= DAYS[7:4] + 4'd1;
-									DAYS[3:0] <= 4'd0;
-								end
-								else if ((DAYS == 8'h28 && MONTH == 4'd2) || 
-								         (DAYS == 8'h30 && MONTH == 4'd4) || 
-											(DAYS == 8'h30 && MONTH == 4'd6) || 
-											(DAYS == 8'h30 && MONTH == 4'd9) || 
-											(DAYS == 8'h30 && MONTH == 4'd11) || 
-											 DAYS == 8'h31) begin
-									DAYS <= 8'h01;
-									MONTH <= MONTH + 4'd1;
-									if (MONTH == 4'd12) begin
-										MONTH <= 4'd1;
-										YEAR <= YEAR + 16'd1;
-									end
-								end
-							end
-						end
+		end else if (CE) begin
+`ifndef DEBUG
+			MIN_CLK <= 0;
+			HOUR_CLK <= 0;
+			DAYS_CLK <= 0;
+			MONTH_CLK <= 0;
+			YEAR_CLK <= 0;
+			if (SEC_CLK) begin
+				SEC[3:0] <= SEC[3:0] + 4'd1;
+				if (SEC[3:0] == 4'd9) begin
+					SEC[3:0] <= 4'd0;
+					SEC[7:4] <= SEC[7:4] + 4'd1;
+					if (SEC[7:4] == 4'd5) begin
+						SEC[7:4] <= 4'd0;
+						MIN_CLK <= 1;
 					end
 				end
+			end
+			if (MIN_CLK) begin
+				MIN[3:0] <= MIN[3:0] + 4'd1;
+				if (MIN[3:0] == 4'd9) begin
+					MIN[3:0] <= 4'd0;
+					MIN[7:4] <= MIN[7:4] + 4'd1;
+					if (MIN[7:4] == 4'd5) begin
+						MIN[7:4] <= 4'd0;
+						HOUR_CLK <= 1;
+					end
+				end
+			end
+			if (HOUR_CLK) begin
+				HOUR[3:0] <= HOUR[3:0] + 4'd1;
+				if (HOUR[3:0] == 4'd9) begin
+					HOUR[3:0] <= 4'd0;
+					HOUR[7:4] <= HOUR[7:4] + 4'd1;
+				end
+				else if (HOUR == 8'h23) begin
+					HOUR <= 8'h00;
+					DAYS_CLK <= 1;
+				end
+			end
+			if (DAYS_CLK) begin
+				DAYS[3:0] <= DAYS[3:0] + 4'd1;
+				if (DAYS[3:0] == 4'd9) begin
+					DAYS[7:4] <= DAYS[7:4] + 4'd1;
+					DAYS[3:0] <= 4'd0;
+				end
+				else if ((DAYS == 8'h28 && MONTH == 4'd2) || 
+							(DAYS == 8'h30 && MONTH == 4'd4) || 
+							(DAYS == 8'h30 && MONTH == 4'd6) || 
+							(DAYS == 8'h30 && MONTH == 4'd9) || 
+							(DAYS == 8'h30 && MONTH == 4'd11) || 
+							 DAYS == 8'h31) begin
+					DAYS <= 8'h01;
+					MONTH_CLK <= 1;
+				end
+			end
+			if (MONTH_CLK) begin
+				MONTH <= MONTH + 4'd1;
+				if (MONTH == 4'd12) begin
+					MONTH <= 4'd1;
+					YEAR_CLK <= 1;
+				end
+			end
+			if (YEAR_CLK) begin
+				YEAR <= YEAR + 16'd1;
 			end
 `endif
 		end
