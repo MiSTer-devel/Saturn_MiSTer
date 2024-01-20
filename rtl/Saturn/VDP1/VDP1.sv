@@ -597,7 +597,7 @@ module VDP1 (
 								end
 							
 								4'h1: if (CMD_POS == 4'hE) begin	//scaled sprite
-									if (CMD_SSPR_LEFT_OVER || CMD_SSPR_RIGHT_OVER || CMD_SSPR_TOP_OVER || CMD_SSPR_BOTTOM_OVER || CMD_TEXT_SIZE_OVER) begin
+									if (CMD_SSPR_LEFT_OVER || CMD_SSPR_RIGHT_OVER || CMD_SSPR_TOP_OVER || CMD_SSPR_BOTTOM_OVER) begin
 										CMD_ST <= CMDS_END;
 									end else if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
@@ -2320,7 +2320,7 @@ module VDP1_PAT_FIFO (
 		altdpram_component.wrcontrol_aclr = "OFF",
 		altdpram_component.wrcontrol_reg = "INCLOCK";
 		
-	assign Q = sub_wire0;
+	assign Q = !AMOUNT ? '1 : sub_wire0;
 
 endmodule
 
