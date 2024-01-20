@@ -965,7 +965,6 @@ module VDP2 (
 	bit          VRAM_WRDY;
 	bit          VRAM_WLOCK;
 	always @(posedge CLK or negedge RST_N) begin
-		bit FIFO_EMPTY_OLD;
 		bit CS_N_OLD;
 //		bit VRAM_WRITE_END;
 		
@@ -1448,8 +1447,7 @@ module VDP2 (
 			if (CS_N && !CS_N_OLD) begin
 				VRAM_WLOCK <= ~FIFO_EMPTY;
 			end
-			FIFO_EMPTY_OLD <= FIFO_EMPTY;
-			if (FIFO_EMPTY && !FIFO_EMPTY_OLD) begin
+			if (FIFO_EMPTY && VRAM_WRITE_PEND_CLR && VRAM_WLOCK) begin
 				VRAM_WLOCK <= 0;
 			end
 			
@@ -2750,7 +2748,7 @@ module VDP2 (
 			// synopsys translate_on
 		end
 		else if (DOT_CE_R || (DOT_CE_F & HRES[1])) begin
-			SDOT <= SpriteData(REGS.SPCTL,FBD);
+			SDOT <= SpriteData(REGS.SPCTL, FBD, REGS.SDCTL.TPSDSL);
 		end
 	end
 	
@@ -2777,7 +2775,7 @@ module VDP2 (
 		bit   [4:0] SCCRT, R0CCRT, N0CCRT, N1CCRT, N2CCRT, N3CCRT, BKCCRT, LCCCRT;
 		bit         SCOEN, R0COEN, N0COEN, N1COEN, N2COEN, N3COEN, BKCOEN;
 		bit         SCOSL, R0COSL, N0COSL, N1COSL, N2COSL, N3COSL, BKCOSL;
-		bit         BKSDEN, R0SDEN, N0SDEN, N1SDEN, N2SDEN, N3SDEN;
+		bit         SSDEN, R0SDEN, N0SDEN, N1SDEN, N2SDEN, N3SDEN, BKSDEN;
 		bit         SLCEN, R0LCEN, N0LCEN, N1LCEN, N2LCEN, N3LCEN;
 		ScreenDot_t FST, SEC, THD, FTH;
 		bit   [2:0] FST_PRI, SEC_PRI, THD_PRI, FTH_PRI;
@@ -2872,6 +2870,7 @@ module VDP2 (
 			BKCOEN = REGS.CLOFEN.BKCOEN;BKCOSL = REGS.CLOFSL.BKCOSL;
 			
 			BKSDEN = REGS.SDCTL.BKSDEN & SDOT.SD & SCRN_EN[7];
+			SSDEN  =                     SDOT.SD & SCRN_EN[7];
 			R0SDEN = REGS.SDCTL.R0SDEN & SDOT.SD & SCRN_EN[7];
 			N0SDEN = REGS.SDCTL.N0SDEN & SDOT.SD & SCRN_EN[7];
 			N1SDEN = REGS.SDCTL.N1SDEN & SDOT.SD & SCRN_EN[7];
@@ -2892,7 +2891,7 @@ module VDP2 (
 				if          (SON  && SPRIN                     ) begin
 					THD = SEC; THD_PRI = SEC_PRI;
 					SEC = FST; SEC_PRI = FST_PRI;
-					FST = {SCAOS,SCCEN,SCCM3,SCCRT,SCOEN,SCOSL,1'b0,SLCEN,SDOT.P,SDOT.DC}; FST_PRI = SPRIN;
+					FST = {SCAOS,SCCEN,SCCM3,SCCRT,SCOEN,SCOSL,SSDEN,SLCEN,SDOT.P,SDOT.DC}; FST_PRI = SPRIN;
 				end
 `ifdef DEBUG
 				FST_PRI5_DBG <= FST_PRI;

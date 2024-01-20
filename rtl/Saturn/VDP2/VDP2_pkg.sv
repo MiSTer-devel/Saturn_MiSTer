@@ -2223,7 +2223,7 @@ package VDP2_PKG;
 	} SpriteDotData_t;
 	parameter SpriteDotData_t SDD_NULL = {1'b0,1'b0,1'b0,3'b000,3'b000,15'h0000};
 	
-	function SpriteDotData_t SpriteData(input SPCTL_t SPCTL, input bit [15:0] DATA);
+	function SpriteDotData_t SpriteData(input SPCTL_t SPCTL, input bit [15:0] DATA, input bit TPSDSL);
 		SpriteDotData_t SDD;
 		bit          MSB;
 		bit          NSD;
@@ -2257,16 +2257,16 @@ package VDP2_PKG;
 		
 		TP = ~|DATA[14:0];
 		
-		MSD = MSB & ~TP & ~SPCTL.SPWINEN;
-		TSD = MSB &  TP & ~SPCTL.SPWINEN;
+		MSD = MSB & ~TP &          ~SPCTL.SPWINEN;
+		TSD = MSB &  TP & TPSDSL & ~SPCTL.SPWINEN;
 		
 		RGB888 = {DATA[14:10],3'b000,DATA[9:5],3'b000,DATA[4:0],3'b000};
 		RGB_TP = TP & TPEN & SPCTL.SPWINEN;
 		
 		if (SPCTL.SPCLMD && DATA[15])
-			SDD = {1'b0, RGB_TP, 1'b0,    1'b0, 3'h0, 3'h0, RGB888       };
+			SDD = {1'b0, RGB_TP, 1'b0,        1'b0, 3'h0, 3'h0, RGB888       };
 		else
-			SDD = {1'b1, TP    , MSB , NSD|MSD, PR  , CC  , {13'h0000,DC}};
+			SDD = {1'b1, TP    , MSB , NSD|MSD|TSD, PR  , CC  , {13'h0000,DC}};
 
 		return SDD;
 	endfunction
