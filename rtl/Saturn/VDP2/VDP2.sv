@@ -3120,7 +3120,7 @@ module VDP2 (
 			// synopsys translate_on
 		end else begin
 			if (DOT_CE_R || DOT_CE_F) begin
-				CSEC2 = ExtColorCalc(CSEC, CCENSEC, CTHD, PTHD, CCENTHD, CFTH, LCEN, REGS.RAMCTL.CRMD);
+				CSEC2 = ExtColorCalc(CSEC, CCENSEC, CTHD, PTHD, CCENTHD, CFTH, LCEN, REGS.RAMCTL.CRMD, REGS.CCCTL.EXCCEN);
 				C = ColorCalc(CFST, CSEC2, CCRT, CCENFST, REGS.CCCTL.CCMD);
 				DCOL.B <= Shadow(ColorOffset(C.B, REGS.COAB.COBL, REGS.COBB.COBL, COEN, COSL), SDEN); 
 				DCOL.G <= Shadow(ColorOffset(C.G, REGS.COAG.COGR, REGS.COBG.COGR, COEN, COSL), SDEN); 

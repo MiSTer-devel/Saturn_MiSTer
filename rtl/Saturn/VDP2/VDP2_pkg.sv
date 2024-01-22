@@ -2386,12 +2386,12 @@ package VDP2_PKG;
 	endfunction
 	
 	function DotColor_t ExtColorCalc(input DotColor_t DCSEC, input bit CCENSEC, input DotColor_t DCTHD, input bit PTHD, input bit CCENTHD, input DotColor_t DCFTH, 
-	                                 input bit LCEN, input bit [1:0] CRMD);
+	                                 input bit LCEN, input bit [1:0] CRMD, input bit EXCCEN);
 		bit RTSEC,RTTHD;
 		DotColor_t TEMP;
 
-		RTSEC = CCENSEC & ~(|CRMD && PTHD);
-		RTTHD = CCENTHD & LCEN;
+		RTSEC = CCENSEC & ~(|CRMD && PTHD) & EXCCEN;
+		RTTHD = CCENTHD & LCEN & EXCCEN;
 		
 		TEMP.R = ColorCalcExtRatio(DCSEC.R, DCTHD.R, DCFTH.R, RTSEC, RTTHD);
 		TEMP.G = ColorCalcExtRatio(DCSEC.G, DCTHD.G, DCFTH.G, RTSEC, RTTHD);
