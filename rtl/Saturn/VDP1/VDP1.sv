@@ -586,7 +586,7 @@ module VDP1 (
 						if (!CMD.CMDCTRL.JP[2] && !CMD.CMDCTRL.END) begin
 							case (CMD.CMDCTRL.COMM) 
 								4'h0: if (CMD_POS == 4'hE) begin	//normal sprite
-									if (CMD_NSPR_LEFT_OVER || CMD_NSPR_TOP_OVER || CMD_COORD_RIGHT_OVER[0] || CMD_COORD_BOTTOM_OVER[0] || CMD_TEXT_SIZE_OVER) begin
+									if (CMD_NSPR_LEFT_OVER || CMD_NSPR_TOP_OVER || CMD_COORD_RIGHT_OVER[0] || CMD_COORD_BOTTOM_OVER[0]) begin
 										CMD_ST <= CMDS_END;
 									end else if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
@@ -792,59 +792,39 @@ module VDP1 (
 					BOTTOM_VERT.Y <= CMD_SSPR_BOTTOM.COORD;
 					case (CMD.CMDCTRL.ZP[1:0])
 						2'b00: begin 
-//							LEFT_VERT.X <= CMD.CMDXA.COORD; 
-//							RIGHT_VERT.X <= CMD.CMDXC.COORD;
 							DIR[0] <= SSPR_DIRX;
 							ROW_WIDTH <= !SSPR_DIRX ? $signed(CMD.CMDXC.COORD) - $signed(CMD.CMDXA.COORD) + 11'd1 : $signed(CMD.CMDXA.COORD) - $signed(CMD.CMDXC.COORD) + 11'd1;
 						end
 						2'b01: begin 
-//							LEFT_VERT.X <= CMD.CMDXA.COORD; 
-//							RIGHT_VERT.X <= CMD.CMDXA.COORD + CMD.CMDXB.COORD;
 							DIR[0] <= CMD.CMDXB.COORD[10];
 							ROW_WIDTH <= SSPR_WIDTH_ABS + 11'd1;
 						end
 						2'b10: begin 
-//							LEFT_VERT.X <= CMD.CMDXA.COORD - {CMD.CMDXB.COORD[10],CMD.CMDXB.COORD[10:1]};
-//							RIGHT_VERT.X <= CMD.CMDXA.COORD + {CMD.CMDXB.COORD[10],CMD.CMDXB.COORD[10:1]} + {10'h000,CMD.CMDXB.COORD[0]};
 							DIR[0] <= CMD.CMDXB.COORD[10];
 							ROW_WIDTH <= SSPR_WIDTH_ABS + 11'd1;
 						end
 						2'b11: begin 
-//							LEFT_VERT.X <= CMD.CMDXA.COORD - CMD.CMDXB.COORD;
-//							RIGHT_VERT.X <= CMD.CMDXA.COORD;
 							DIR[0] <= CMD.CMDXB.COORD[10];
 							ROW_WIDTH <= SSPR_WIDTH_ABS + 11'd1;
 						end
 					endcase
 					case (CMD.CMDCTRL.ZP[3:2])
 						2'b00: begin 
-//							LEFT_VERT.Y <= CMD.CMDYA.COORD; 
-//							RIGHT_VERT.Y <= CMD.CMDYA.COORD;
-//							BOTTOM_VERT.Y <= CMD.CMDYC.COORD;
 							COL_DIRY <= SSPR_DIRY;
 							COL_HEIGHT <= !SSPR_DIRY ? $signed(CMD.CMDYC.COORD) - $signed(CMD.CMDYA.COORD) + 11'd1 : $signed(CMD.CMDYA.COORD) - $signed(CMD.CMDYC.COORD) + 11'd1;
-							DIR[1] <= SSPR_DIRY;
+							DIR[1] <= 0;
 						end
 						2'b01: begin 
-//							LEFT_VERT.Y <= CMD.CMDYA.COORD; 
-//							RIGHT_VERT.Y <= CMD.CMDYA.COORD;
-//							BOTTOM_VERT.Y <= CMD.CMDYA.COORD + CMD.CMDYB.COORD;
 							COL_DIRY <= CMD.CMDYB.COORD[10];
 							COL_HEIGHT <= SSPR_HEIGHT_ABS + 11'd1;
 							DIR[1] <= CMD.CMDYB.COORD[10];
 						end
 						2'b10: begin 
-//							LEFT_VERT.Y <= CMD.CMDYA.COORD - {CMD.CMDYB.COORD[10],CMD.CMDYB.COORD[10:1]};
-//							RIGHT_VERT.Y <= CMD.CMDYA.COORD - {CMD.CMDYB.COORD[10],CMD.CMDYB.COORD[10:1]};
-//							BOTTOM_VERT.Y <= CMD.CMDYA.COORD + {CMD.CMDYB.COORD[10],CMD.CMDYB.COORD[10:1]} + {10'h000,CMD.CMDYB.COORD[0]};
 							COL_DIRY <= CMD.CMDYB.COORD[10];
 							COL_HEIGHT <= SSPR_HEIGHT_ABS + 11'd1;
 							DIR[1] <= CMD.CMDYB.COORD[10];
 						end
 						2'b11: begin 
-//							LEFT_VERT.Y <= CMD.CMDYA.COORD - CMD.CMDYB.COORD;
-//							RIGHT_VERT.Y <= CMD.CMDYA.COORD - CMD.CMDYB.COORD;
-//							BOTTOM_VERT.Y <= CMD.CMDYA.COORD;
 							COL_DIRY <= CMD.CMDYB.COORD[10];
 							COL_HEIGHT <= SSPR_HEIGHT_ABS + 11'd1;
 							DIR[1] <= CMD.CMDYB.COORD[10];
