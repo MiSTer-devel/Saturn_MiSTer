@@ -187,6 +187,41 @@ package VDP1_PKG;
 	} Vertex_t;
 	parameter Vertex_t VERT_NULL = {11'h000,11'h000};
 	
+	//Rotation screen
+	typedef struct packed
+	{
+		bit [ 2: 0] UNUSED;
+		bit [12: 0] INT;
+		bit [ 9: 0] FRAC;
+		bit [ 5: 0] UNUSED2;
+	} ScrnStart_t;
+	parameter ScrnStart_t SCNST_NULL = {3'h0,13'h0000,10'h000,6'h00};
+	
+	typedef struct packed
+	{
+		bit [12: 0] UNUSED;
+		bit [ 2: 0] INT;
+		bit [ 9: 0] FRAC;
+		bit [ 5: 0] UNUSED2;
+	} ScrnInc_t;
+	parameter ScrnInc_t SCNINC_NULL = {13'h0000,3'h0,10'h000,6'h00};
+	
+	typedef struct packed
+	{
+		bit [10: 0] INT;
+		bit [ 8: 0] FRAC;
+	} RotCoord_t;
+	parameter bit [31:0] RC_NULL = {16'h0000,16'h0000};
+	parameter bit [31:0] RC_ONE = {16'h0001,16'h0000};
+	
+	function RotCoord_t ScrnStartToRC(ScrnStart_t P);
+		return { {P.INT[12],P.INT[9:0]}, P.FRAC[9:1]};
+	endfunction
+	
+	function RotCoord_t ScrnIncToRC(ScrnInc_t P);
+		return { {{8{P.INT[2]}},P.INT}, P.FRAC[9:1] };
+	endfunction
+	
 	function bit [18:1] SprAddr(input bit [16:3] OFFSY, input CMDSRCA_t CMDSRCA, input bit [2:0] CM);
 		bit [18:1] ADDR;
 

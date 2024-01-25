@@ -21,7 +21,8 @@ module VDP1 (
 	input              DCE_F,
 	input              HTIM_N,
 	input              VTIM_N,
-	output     [15: 0] VOUT,
+	input      [15: 0] VOUTI,
+	output     [15: 0] VOUTO,
 	
 	output reg [18: 1] VRAM_A,
 	output reg [15: 0] VRAM_D,
@@ -91,8 +92,8 @@ module VDP1 (
 	bit          FRAME_START;
 	bit          FRAME_ERASE;
 	bit          VBLANK_ERASE;
-	bit          FRAME_ERASE_HIT;
-	bit          VBLANK_ERASE_HIT;
+	bit          FRAME_ERASE_EN;
+	bit          VBLANK_ERASE_EN;
 	bit          DRAW_TERMINATE;
 	bit          DRAW_END;
 	
@@ -110,10 +111,10 @@ module VDP1 (
 	bit  [15: 0] FB_DISP_Q;
 	bit  [17: 1] FB_ERASE_A;
 //	bit          FRAME;
-	wire         FB_ERASE_WE = (FRAME_ERASE_HIT & DCE_R) | (VBLANK_ERASE_HIT & CE_R);
+	wire         FB_ERASE_WE = (FRAME_ERASE_EN & DCE_R) | (VBLANK_ERASE_EN & CE_R);
 	
-	assign FB0_A  = FB_SEL ? FB_A                                        : (VBLANK_ERASE_HIT ? FB_ERASE_A : FB_DISP_A);
-	assign FB1_A  = FB_SEL ? (VBLANK_ERASE_HIT ? FB_ERASE_A : FB_DISP_A) : FB_A;
+	assign FB0_A  = FB_SEL ? FB_A                                        : (VBLANK_ERASE_EN ? FB_ERASE_A : FB_DISP_A);
+	assign FB1_A  = FB_SEL ? (VBLANK_ERASE_EN ? FB_ERASE_A : FB_DISP_A)  : FB_A;
 	assign FB0_D  = FB_SEL ? FB_D                                        : EWDR;
 	assign FB1_D  = FB_SEL ? EWDR                                        : FB_D;
 	assign FB0_WE = FB_SEL ? FB_WE /*& CE_R*/                            : {2{FB_ERASE_WE}};
@@ -1606,14 +1607,27 @@ module VDP1 (
 `endif
 
 	//FB out
+	ScrnStart_t  RP_Xst;
+	ScrnStart_t  RP_Yst;
+	ScrnInc_t    RP_DXst;
+	ScrnInc_t    RP_DYst;
+	ScrnInc_t    RP_DX;
+	ScrnInc_t    RP_DY;
+	RotCoord_t   RXst,RYst;
+	RotCoord_t   RDX,RDY;
+	RotCoord_t   OUT_RX,OUT_RY;
 	bit          HBL_SKIP;
 	bit  [ 8: 0] OUT_X;
 	bit  [ 8: 0] OUT_Y;
+	bit          FRAME_ERASE_HIT;
 	bit  [ 9: 0] ERASE_X;
 	bit  [ 8: 0] ERASE_Y;
+	bit          VBLANK_ERASE_HIT;
 	always @(posedge CLK or negedge RST_N) begin
-		bit       HTIM_N_OLD;
-		bit       VTIM_N_OLD;
+		bit          HTIM_N_OLD;
+		bit          VTIM_N_OLD;
+		bit  [ 2: 0] RP_POS;
+		bit          RP_FIRST;
 		
 		if (!RST_N) begin
 			OUT_X <= '0;
@@ -1631,11 +1645,64 @@ module VDP1 (
 				HBL_SKIP <= 0;
 			end
 			
-			if (OUT_X < 9'd352 && VTIM_N && DCE_R) begin
-				OUT_X <= OUT_X + 9'd1;
+			if (DCE_R) begin
+				if (RP_POS != 3'd7) RP_POS <= RP_POS + 3'd1;
+			end
+			if (!HTIM_N && HTIM_N_OLD) begin
+				RP_POS <= '0;
+			end
+			if (VTIM_N && !VTIM_N_OLD) begin
+				RP_FIRST <= 1;
 			end
 			if (HTIM_N && !HTIM_N_OLD) begin
+				RP_FIRST <= 0;
+			end
+			
+			if (DCE_F) begin
+				case (RP_POS)
+					3'd0: RP_Xst[31:16] <= VOUTI;	//0x18C/0x1A8
+					3'd1: RP_Yst[31:16] <= VOUTI;	//0x18D/0x1A9
+					3'd2: RP_DXst[31:16] <= VOUTI;//0x18E/0x1AA
+					3'd3: RP_DYst[31:16] <= VOUTI;//0x18F/0x1AB
+					3'd4: RP_DX[31:16] <= VOUTI;	//0x190/0x1AC
+					3'd5: RP_DY[31:16] <= VOUTI;	//0x191/0x1AD
+				endcase
+			end
+			if (DCE_R) begin
+				case (RP_POS)
+					3'd0: RP_Xst[15:0] <= VOUTI;
+					3'd1: RP_Yst[15:0] <= VOUTI;
+					3'd2: RP_DXst[15:0] <= VOUTI;
+					3'd3: RP_DYst[15:0] <= VOUTI;
+					3'd4: RP_DX[15:0] <= VOUTI;
+					3'd5: RP_DY[15:0] <= VOUTI;
+					3'd6: begin
+						RXst <= $signed(RXst) + $signed(ScrnIncToRC(RP_DXst));
+						RYst <= $signed(RYst) + $signed(ScrnIncToRC(RP_DYst));
+						if (RP_FIRST) begin
+							RXst <= ScrnStartToRC(RP_Xst);
+							RYst <= ScrnStartToRC(RP_Yst);
+						end
+					end
+				endcase
+			end
+			
+			if (!HTIM_N) begin
+				RDX <= '0;
+				RDY <= '0;
+			end else if (DCE_F) begin
+				RDX <= $signed(RDX) + $signed(ScrnIncToRC(RP_DX));
+				RDY <= $signed(RDY) + $signed(ScrnIncToRC(RP_DY));
+			end
+			if (DCE_R) begin
+				OUT_RX <= $signed(RXst) + $signed(RDX);
+				OUT_RY <= $signed(RYst) + $signed(RDY);
+			end
+			
+			if (!HTIM_N) begin
 				OUT_X <= '0;
+			end else if (DCE_R) begin
+				if (OUT_X < 9'd352) OUT_X <= OUT_X + 9'd1;
 			end
 			
 			if (HTIM_N && !HTIM_N_OLD && VTIM_N) begin
@@ -1643,6 +1710,9 @@ module VDP1 (
 			end
 			if (HTIM_N && !HTIM_N_OLD && !VTIM_N) begin
 				OUT_Y <= '1;
+			end
+			if (CE_F) begin
+				FRAME_ERASE_HIT <= (OUT_X >= {EWLR.X1,3'b000}) && (OUT_X < {EWRR.X3,3'b000}) && (OUT_Y >= EWLR.Y1) && (OUT_Y <= EWRR.Y3);
 			end
 			
 			
@@ -1653,28 +1723,34 @@ module VDP1 (
 						ERASE_X <= {EWLR.X1,3'b000};
 						ERASE_Y <= ERASE_Y + 9'd1;
 					end
-					FB_ERASE_A <= {ERASE_Y[7:0],ERASE_X[8:0]};
 				end
 			end
 			if (!VTIM_N && VTIM_N_OLD) begin
 				ERASE_X <= {EWLR.X1,3'b000};
 				ERASE_Y <= EWLR.Y1;
 			end
+			if (CE_F) begin
+				VBLANK_ERASE_HIT <= (ERASE_X >= {EWLR.X1,3'b000}) && (ERASE_X < {EWRR.X3,3'b000}) && (ERASE_Y >= EWLR.Y1) && (ERASE_Y <= EWRR.Y3);
+			end
 		end
 	end
 	
-	assign FRAME_ERASE_HIT = (OUT_X >= {EWLR.X1,3'b000}) & (OUT_X < {EWRR.X3,3'b000}) & (OUT_Y >= EWLR.Y1) & (OUT_Y <= EWRR.Y3) & FRAME_ERASE & VTIM_N;
-	assign VBLANK_ERASE_HIT = (ERASE_X >= {EWLR.X1,3'b000}) & (ERASE_X < {EWRR.X3,3'b000}) & (ERASE_Y >= EWLR.Y1) & (ERASE_Y <= EWRR.Y3) & VBLANK_ERASE & ~VTIM_N;
+	assign FRAME_ERASE_EN = FRAME_ERASE_HIT && FRAME_ERASE && VTIM_N;
+	assign VBLANK_ERASE_EN = VBLANK_ERASE_HIT && VBLANK_ERASE && ~VTIM_N;
 	
-	assign FB_DISP_A = TVMR.TVM[1:0] == 2'b11 ? {OUT_Y[8:0],OUT_X[8:1]} : {OUT_Y[7:0],OUT_X[8:0]};
+	assign FB_ERASE_A = {ERASE_Y[7:0],ERASE_X[8:0]};
+	assign FB_DISP_A = TVMR.TVM[1:0] == 2'b10 ? {OUT_RY.INT[7:0],OUT_RX.INT[8:0]} : 
+	                   TVMR.TVM[1:0] == 2'b11 ? {OUT_RY.INT[8:0],OUT_RX.INT[8:1]} : 
+							                          {     OUT_Y[7:0],     OUT_X[8:0]};
 	bit DCLK;
 	always @(posedge CLK) begin
 		if      (DCE_R) DCLK <= 1;
 		else if (DCE_F) DCLK <= 0;
 	end
-	assign VOUT = TVMR.TVM[1:0] == 2'b11 ? (!OUT_X[0] ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
-	              TVMR.TVM[1:0] == 2'b01 ? (DCLK ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
-					  FB_DISP_Q;
+	assign VOUTO = TVMR.TVM[1:0] == 2'b01 ? (DCLK ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
+	               TVMR.TVM[1:0] == 2'b10 ? (OUT_RX.INT[10:9] || OUT_RY.INT[10:8] ? 16'h0000 : FB_DISP_Q) :
+						TVMR.TVM[1:0] == 2'b11 ? (OUT_RX.INT[10:9] || OUT_RY.INT[10:9] ? 16'h0000 : !OUT_X[0] ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
+					   FB_DISP_Q;
 	
 	//VRAM
 	wire CPU_VRAM_REQ = (A[20:19] == 2'b00) & ~AD_N & ~CS_N & ~REQ_N;	//000000-07FFFF
@@ -2090,6 +2166,7 @@ module VDP1 (
 		bit        VTIM_N_OLD;
 		bit        FRAME_ERASECHANGE_PEND;
 		bit        START_DRAW_PEND;
+		bit        VBERASE_PEND;
 		bit        VBE_CHECK;
 		
 		if (!RST_N) begin
@@ -2106,6 +2183,7 @@ module VDP1 (
 			FRAME_ERASE <= 0;
 			VBLANK_ERASE <= 0;
 			DRAW_TERMINATE <= 0;
+			VBERASE_PEND <= 0;
 			VBE_CHECK <= 0;
 			
 			REG_DO <= '0;
@@ -2166,10 +2244,12 @@ module VDP1 (
 				DIL <= FBCR.DIL;
 			end
 			if (VTIM_N && !VTIM_N_OLD) begin
+				FRAME_ERASE <= 0;
 				VBLANK_ERASE <= 0;
 				if (!FBCR.FCM) begin
 					FB_SEL <= ~FB_SEL;
-					FRAME_ERASE <= 1;
+					FRAME_ERASE <= ~TVMR.TVM[1];
+					VBERASE_PEND <= TVMR.TVM[1];
 					EDSR.CEF <= 0;
 					EDSR.BEF <= EDSR.CEF;
 					DIE <= FBCR.DIE;
@@ -2194,12 +2274,11 @@ module VDP1 (
 					FRAMES_DBG <= 8'd0;
 `endif
 				end else if (FRAME_ERASECHANGE_PEND && !FBCR.FCT) begin
-					FRAME_ERASE <= 1;
+					FRAME_ERASE <= ~TVMR.TVM[1];
+					VBERASE_PEND <= TVMR.TVM[1];
 					FRAME_ERASECHANGE_PEND <= 0;
 				end
 //				FRAME <= 1;//~FRAME;
-			end else if (!VTIM_N && VTIM_N_OLD) begin
-				FRAME_ERASE <= 0;
 			end
 			
 			if (!VTIM_N) begin
@@ -2211,6 +2290,10 @@ module VDP1 (
 					if (TVMR.VBE && FBCR.FCT && FBCR.FCM) begin
 						VBLANK_ERASE <= 1;
 					end
+					if (VBERASE_PEND) begin
+						VBLANK_ERASE <= 1;
+					end
+					VBERASE_PEND <= 0;
 				end
 			end
 			

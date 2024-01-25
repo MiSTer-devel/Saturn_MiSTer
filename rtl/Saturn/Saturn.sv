@@ -292,10 +292,11 @@ module Saturn (
 	
 	//VDP1
 	bit  [15:0] VDP1_DO;
-	bit  [15:0] VOUT;
 	
 	//VDP2
 	bit  [15:0] VDP2_DO;
+	bit  [15:0] FBDI;
+	bit  [15:0] FBDO;
 	bit         HTIM_N;
 	bit         VTIM_N;
 	
@@ -697,7 +698,8 @@ module Saturn (
 		.DCE_F(DCE_F),
 		.VTIM_N(VTIM_N),
 		.HTIM_N(HTIM_N),
-		.VOUT(VOUT),
+		.VOUTI(FBDO),
+		.VOUTO(FBDI),
 		
 		.VRAM_A(VDP1_VRAM_A),
 		.VRAM_D(VDP1_VRAM_D),
@@ -753,7 +755,8 @@ module Saturn (
 		.DCE_F(DCE_F),
 		.HTIM_N(HTIM_N),
 		.VTIM_N(VTIM_N),
-		.FBD(VOUT),
+		.FBDI(FBDI),
+		.FBDO(FBDO),
 		
 		.PAL(PAL),
 		
