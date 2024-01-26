@@ -71,7 +71,6 @@ module SCU (
 	output     [ 7:0] DBG_WAIT_CNT,
 	output     [ 7:0] DBG_BBUS_WAIT_CNT,
 	output     [ 7:0] DBG_CBUS_WAIT_CNT,
-	output reg        ADDR_ERR_DBG,
 	output reg        DBG_DMA_TN_ERR,
 	output            DBG_DMA_RADDR_ERR,
 	output            DBG_DMA_WADDR_ERR,
@@ -333,8 +332,8 @@ module SCU (
 	bit         DMA_WRITE_A;
 	bit         DMA_WRITE_B;
 	bit         DMA_WRITE_C;
-	bit         DMA_READ_DSP;
-	bit         DMA_WRITE_DSP;
+//	bit         DMA_READ_DSP;
+//	bit         DMA_WRITE_DSP;
 	
 	bit  [31:0] ABUS_BUF;
 	bit  [31:0] BBUS_BUF;
@@ -476,8 +475,8 @@ module SCU (
 			DMA_WRITE_A <= 0;
 			DMA_WRITE_B <= 0;
 			DMA_WRITE_C <= 0;
-			DMA_READ_DSP <= 0;
-			DMA_WRITE_DSP <= 0;
+//			DMA_READ_DSP <= 0;
+//			DMA_WRITE_DSP <= 0;
 		end else if (!RES_N) begin
 			DSTA <= DSTA_INIT;
 			
@@ -521,8 +520,8 @@ module SCU (
 			DMA_WRITE_A <= 0;
 			DMA_WRITE_B <= 0;
 			DMA_WRITE_C <= 0;
-			DMA_READ_DSP <= 0;
-			DMA_WRITE_DSP <= 0;
+//			DMA_READ_DSP <= 0;
+//			DMA_WRITE_DSP <= 0;
 		end else begin
 			CA_INNER = CPU_CACHE_CA[CPU_CACHE_RPOS];
 			CDI_INNER = CPU_CACHE_CDI[CPU_CACHE_RPOS];
@@ -659,7 +658,7 @@ module SCU (
 						CPU_ABUS_ACT <= 1;
 						ABUS_ST <= ABUS_ACCESS;
 					end
-					else if (DMA_READ_A && DMA_DSP) begin
+					else if (DMA_READ_A && !DMA_RA_ERR && DMA_DSP) begin
 						if (!DSP_DMA_WE) begin
 							ABUS_A1 <= DMA_RA[1];
 							ABUS_DMA_START <= 1;
@@ -668,12 +667,12 @@ module SCU (
 							
 						end
 					end
-					else if (DMA_READ_A && !DMA_DSP && (!CBRLS || !DMA_WRITE_C)) begin
+					else if (DMA_READ_A && !DMA_WA_ERR && !DMA_RA_ERR && !DMA_DSP && (!CBRLS || !DMA_WRITE_C)) begin
 						ABUS_A1 <= DMA_RA[1];
 						ABUS_DMA_START <= 1;
 						ABUS_ST <= ABUS_DMA_READ;
 					end
-					else if (DMA_WRITE_A && !DMA_DSP && (!CBRLS || !DMA_READ_C)) begin
+					else if (DMA_WRITE_A && !DMA_WA_ERR && !DMA_RA_ERR && !DMA_DSP && (!CBRLS || !DMA_READ_C)) begin
 						ABUS_A1 <= DMA_WA[1];
 						ABUS_DMA_START <= 1;
 						ABUS_ST <= ABUS_DMA_WRITE;
@@ -1376,17 +1375,17 @@ module SCU (
 					end
 					else if (DMA_RA[26:20] >= 7'h20 && DMA_RA[26:20] < 7'h59) begin
 						DMA_READ_A <= 1;
-						DMA_WRITE_DSP <= DMA_DSP & ~DSP_DMA_WE;
+//						DMA_WRITE_DSP <= DMA_DSP & ~DSP_DMA_WE;
 						DMA_RA_ERR <= 0;
 					end
 					else if (DMA_RA[26:16] >= 11'h5A0 && DMA_RA[26:16] < 11'h5FE) begin
 						DMA_READ_B <= 1;
-						DMA_WRITE_DSP <= DMA_DSP & ~DSP_DMA_WE;
+//						DMA_WRITE_DSP <= DMA_DSP & ~DSP_DMA_WE;
 						DMA_RA_ERR <= 0;
 					end
 					else if (DMA_RA[26:24] == 3'h6) begin
 						DMA_READ_C <= 1;
-						DMA_WRITE_DSP <= DMA_DSP & ~DSP_DMA_WE;
+//						DMA_WRITE_DSP <= DMA_DSP & ~DSP_DMA_WE;
 						DMA_RA_ERR <= 0;
 					end
 					
@@ -1396,17 +1395,17 @@ module SCU (
 					end
 					else if (DMA_WA[26:20] >= 7'h20 && DMA_WA[26:20] < 7'h59) begin
 						DMA_WRITE_A <= 1;
-						DMA_READ_DSP <= DMA_DSP & DSP_DMA_WE;
+//						DMA_READ_DSP <= DMA_DSP & DSP_DMA_WE;
 						DMA_WA_ERR <= 0;
 					end
 					else if (DMA_WA[26:16] >= 11'h5A0 && DMA_WA[26:16] < 11'h5FE) begin
 						DMA_WRITE_B <= 1;
-						DMA_READ_DSP <= DMA_DSP & DSP_DMA_WE;
+//						DMA_READ_DSP <= DMA_DSP & DSP_DMA_WE;
 						DMA_WA_ERR <= 0;
 					end
 					else if (DMA_WA[26:24] == 3'h6) begin
 						DMA_WRITE_C <= 1;
-						DMA_READ_DSP <= DMA_DSP & DSP_DMA_WE;
+//						DMA_READ_DSP <= DMA_DSP & DSP_DMA_WE;
 						DMA_WA_ERR <= 0;
 					end
 					DMA_RBA <= DMA_RA[1:0];
@@ -1652,8 +1651,8 @@ module SCU (
 						DMA_WRITE_A <= 0;
 						DMA_WRITE_B <= 0;
 						DMA_WRITE_C <= 0;
-						DMA_READ_DSP <= 0;
-						DMA_WRITE_DSP <= 0;
+//						DMA_READ_DSP <= 0;
+//						DMA_WRITE_DSP <= 0;
 						DSTA.DACSA <= 0;
 						DSTA.DACSB <= 0;
 						DSTA.DACSD <= 0;
