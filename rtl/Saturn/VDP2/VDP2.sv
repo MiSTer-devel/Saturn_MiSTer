@@ -170,10 +170,8 @@ module VDP2 (
 	bit  [ 8: 0] H_CNT, V_CNT;
 	bit  [ 8: 0] SCRNX, SCRNY;
 	bit          SCRNX0;
-//	bit  [ 8: 0] WINX;
-//	bit  [ 1: 0] HRES;
-//	bit  [ 1: 0] VRES;
 	bit          DISP;
+	bit  [ 1: 0] LSMD;
 	VRAMAccessPipeline_t VA_PIPE;
 	NBGPipeline_t   BG_PIPE;
 	ScrollData_t NxOFFX[4];
@@ -324,16 +322,13 @@ module VDP2 (
 				ODD <= ~ODD;
 			end
 			
-			if (LAST_DOT && V_CNT >= VBL_START && V_CNT <= NEXT_TO_LAST_LINE) begin
-				HRES <= REGS.TVMD.HRESO[1:0];
-				VRES <= !PAL && REGS.TVMD.VRESO[1] ? 2'b01 : REGS.TVMD.VRESO[1:0];
-				DISP <= REGS.TVMD.DISP;
-			end
+			HRES <= REGS.TVMD.HRESO[1:0];
+			VRES <= !PAL && REGS.TVMD.VRESO[1] ? 2'b01 : REGS.TVMD.VRESO[1:0];
+			LSMD <= REGS.TVMD.LSMD;
+			DISP <= REGS.TVMD.DISP;
 		end
 	end
-	wire DDI = &REGS.TVMD.LSMD;
-//	assign HRES = REGS.TVMD.HRESO[1:0];
-//	assign VRES = REGS.TVMD.VRESO[1:0];
+	wire DDI = &LSMD;//Double-density interlace
 	
 	wire [8:0] HINT_START = !HRES[0] ? 9'h138 : 9'h158;
 	wire [8:0] VINT_HPOS = !HRES[0] ? 9'h15B : 9'h177;
@@ -3201,8 +3196,8 @@ module VDP2 (
 	assign HBL_N = ~HBLANK3;
 	assign VS_N = ~VSYNC;
 	assign HS_N = ~HSYNC;
-	assign FIELD = ODD && REGS.TVMD.LSMD[1];
-	assign INTERLACE = REGS.TVMD.LSMD[1];
+	assign FIELD = ODD && LSMD[1];
+	assign INTERLACE = LSMD[1];
 	
 	
 	//Color RAM
@@ -3738,7 +3733,7 @@ module VDP2 (
 					case ({A[8:1],1'b0})
 						9'h000: REG_DO <= REGS.TVMD & TVMD_MASK;
 						9'h002: REG_DO <= REGS.EXTEN & EXTEN_MASK;
-						9'h004: REG_DO <= {REGS.TVSTAT[15:8], 4'h0, VBLANK|~DISP, HBLANK, ~ODD|~REGS.TVMD.LSMD[1], PAL} & TVSTAT_MASK;
+						9'h004: REG_DO <= {REGS.TVSTAT[15:8], 4'h0, VBLANK|~DISP, HBLANK, ~ODD|~LSMD[1], PAL} & TVSTAT_MASK;
 						9'h006: REG_DO <= REGS.VRSIZE & VRSIZE_MASK;
 						9'h008: REG_DO <= REGS.HCNT & HCNT_MASK;
 						9'h00A: REG_DO <= REGS.VCNT & VCNT_MASK;
@@ -3747,7 +3742,7 @@ module VDP2 (
 					endcase
 					if ({A[8:1],1'b0} == 9'h002 && !REGS.EXTEN.EXLTEN) begin	//EXTEN
 						REGS.HCNT.HCT = {H_CNT,DOTCLK_DIV[1]};
-						REGS.VCNT.VCT = REGS.TVMD.LSMD == 2'b11 ? {V_CNT,ODD} : {1'b0,V_CNT};
+						REGS.VCNT.VCT = LSMD == 2'b11 ? {V_CNT,ODD} : {1'b0,V_CNT};
 						REGS.TVSTAT.EXLTFG <= 1;
 					end
 					if ({A[8:1],1'b0} == 9'h004) begin								//TVSTAT
