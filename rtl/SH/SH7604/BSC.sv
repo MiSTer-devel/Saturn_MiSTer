@@ -147,7 +147,7 @@ module SH7604_BSC
 	bit         BUSY;
 	bit         DBUSY;
 	bit         VBUSY;
-//	bit         VBUS_ACTIVE;
+	bit         VBUS_ACTIVE;
 	bit  [31:0] DAT_BUF;
 	bit  [ 7:0] VEC_BUF;
 	bit   [3:0] NEXT_BA;
@@ -176,7 +176,7 @@ module SH7604_BSC
 			CACK <= 0;
 			DBUSY <= 0;
 			VBUSY <= 0;
-//			VBUS_ACTIVE <= 0;
+			VBUS_ACTIVE <= 0;
 			BUS_STATE <= T0;
 			WAIT_CNT <= '0;
 			NEXT_BA <= '0;
@@ -420,7 +420,7 @@ module SH7604_BSC
 						
 						IS_SDRAM = IsSDRAMArea(IBUS_A[26:25],BCR1); 
 						
-//						VBUS_ACTIVE <= 0;
+						VBUS_ACTIVE <= 0;
 						if (!VBUS_REQ || IBUS_LOCK) begin
 							case (GetAreaSZ(IBUS_A[26:25],BCR1,BCR2,A0_SZ,DRAM_SZ))
 								2'b01: begin 
@@ -509,7 +509,7 @@ module SH7604_BSC
 							NEXT_BA <= 4'b0000;
 							IBUS_WE_SAVE <= '0;
 							IBUS_DI_SAVE <= '0;
-//							VBUS_ACTIVE <= 1;
+							VBUS_ACTIVE <= 1;
 							STATE_NEXT = TV1;
 						end
 					end
@@ -521,9 +521,7 @@ module SH7604_BSC
 			BUS_STATE <= STATE_NEXT;
 		end
 	end
-	
-	assign VBUS_DO = VEC_BUF;
-	assign VBUS_BUSY = VBUSY | ((BUS_RLS | BGR) & VBUS_REQ);
+		
 		
 	bit MST_BUS_RLS;
 	bit SLV_BUS_RLS;
@@ -619,8 +617,11 @@ module SH7604_BSC
 	end
 	
 	assign IBUS_DO = REG_SEL ? REG_DO : DAT_BUF;
-	assign IBUS_BUSY = DBUSY | ((BUS_RLS | (BGR & MASTER) | (~BREQ & ~MASTER)) & DBUS_REQ);
+	assign IBUS_BUSY = DBUSY | ((BUS_RLS | (BGR & MASTER) | (~BREQ & ~MASTER)) & DBUS_REQ) | VBUS_ACTIVE;
 	assign IBUS_ACT = REG_SEL;
+	
+	assign VBUS_DO = VEC_BUF;
+	assign VBUS_BUSY = VBUSY | ((BUS_RLS | BGR) & VBUS_REQ);
 	
 	assign OE_N = 1;
 	assign CE_N = 1;
