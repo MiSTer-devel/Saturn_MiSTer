@@ -467,11 +467,11 @@ module VDP1 (
 		end else if (EN) begin
 			case (CMD.CMDPMOD.CM)
 				3'b000,
-				3'b001: begin TEXT_DX = 9'h001; TEXT_SX <= {2'b00,CMD.CMDSIZE.SX,1'b0}; TEXT_MASK = 2'b00; end
+				3'b001: begin TEXT_DX = 9'h001; TEXT_SX = {2'b00,CMD.CMDSIZE.SX,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b00; end
 				3'b010,
 				3'b011,
-				3'b100: begin TEXT_DX = 9'h002; TEXT_SX <= {1'b0,CMD.CMDSIZE.SX,2'b00}; TEXT_MASK = 2'b01; end
-				default:begin TEXT_DX = 9'h004; TEXT_SX <= {CMD.CMDSIZE.SX,3'b000}; TEXT_MASK = 2'b11; end
+				3'b100: begin TEXT_DX = 9'h002; TEXT_SX = {1'b0,CMD.CMDSIZE.SX,1'b0,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b01; end
+				default:begin TEXT_DX = 9'h004; TEXT_SX = {CMD.CMDSIZE.SX,2'b00,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b11; end
 			endcase
 
 			SYS_CLIP_X1 <= 11'd0 - $signed(LOC_COORD.X);
@@ -551,8 +551,8 @@ module VDP1 (
 			LINE_TOP_OVER = ($signed(LEFT_VERT.Y) < $signed(SYS_CLIP_Y1) && $signed(RIGHT_VERT.Y) < $signed(SYS_CLIP_Y1));
 			LINE_BOTTOM_OVER = ($signed(LEFT_VERT.Y) > $signed(SYS_CLIP_Y2) && $signed(RIGHT_VERT.Y) > $signed(SYS_CLIP_Y2));
 
-			ORIG_WIDTH = {2'b00,CMD.CMDSIZE.SX,3'b000};
-			ORIG_HEIGHT <= {2'b00,CMD.CMDSIZE.SY};
+			ORIG_WIDTH <= {2'b00,CMD.CMDSIZE.SX,3'b000} | ~|CMD.CMDSIZE.SX;
+			ORIG_HEIGHT <= {3'b000,CMD.CMDSIZE.SY} | ~|CMD.CMDSIZE.SY;
 									
 			if (CE_R) DRAW_END <= 0;
 			if (FBD_ST == FBDS_WRITE) DRAW_ENABLE <= 0;
@@ -610,7 +610,7 @@ module VDP1 (
 								
 								4'h2,
 								4'h3: if (CMD_POS == 4'hE) begin	//distored sprite
-									if (&CMD_COORD_LEFT_OVER || &CMD_COORD_RIGHT_OVER || &CMD_COORD_TOP_OVER || &CMD_COORD_BOTTOM_OVER || CMD_TEXT_SIZE_OVER) begin
+									if (&CMD_COORD_LEFT_OVER || &CMD_COORD_RIGHT_OVER || &CMD_COORD_TOP_OVER || &CMD_COORD_BOTTOM_OVER) begin
 										CMD_ST <= CMDS_END;
 									end else if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
@@ -754,14 +754,14 @@ module VDP1 (
 				CMDS_NSPR_START: begin
 					LEFT_VERT.X <= CMD.CMDXA.COORD;
 					LEFT_VERT.Y <= CMD.CMDYA.COORD;
-					RIGHT_VERT.X <= CMD.CMDXA.COORD + {2'b00,CMD.CMDSIZE.SX,3'b000} - 11'd1;
+					RIGHT_VERT.X <= CMD.CMDXA.COORD + ORIG_WIDTH - 11'd1;
 					RIGHT_VERT.Y <= CMD.CMDYA.COORD;
-					BOTTOM_VERT.Y <= CMD.CMDYA.COORD + {3'b000,CMD.CMDSIZE.SY} - 11'd1;
+					BOTTOM_VERT.Y <= CMD.CMDYA.COORD + ORIG_HEIGHT - 11'd1;
 					TEXT_X <= '0;
 					TEXT_Y <= '0;
 					DIR[1] <= 0;
-					ROW_WIDTH <= {2'b00,CMD.CMDSIZE.SX,3'b000};
-					COL_HEIGHT <= {3'b000,CMD.CMDSIZE.SY};
+					ROW_WIDTH <= ORIG_WIDTH;
+					COL_HEIGHT <= ORIG_HEIGHT;
 					COL_DIRY <= 0;
 					COL_D <= '0;
 					SPR_COL_ENLARGE <= 0;
@@ -776,7 +776,7 @@ module VDP1 (
 //						SPR_COL_ENLARGE <= 0;
 //						COL_D <= {2'b00,COL_HEIGHT[10:1]};
 //					end
-					SPR_OFFSY <= TEXT_DIRY ? (CMD.CMDSIZE.SY - 8'd1) * CMD.CMDSIZE.SX : '0;
+					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT[7:0] - 8'd1) * ORIG_WIDTH[8:3] : '0;
 					GRD_CALC_STEP <= '0;
 					CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_LEFT : CMDS_NSPR_CALCX;
 				end
@@ -844,7 +844,7 @@ module VDP1 (
 						SPR_COL_ENLARGE <= 0;
 						COL_D <= {2'b00,COL_HEIGHT[10:1]};
 					end
-					SPR_OFFSY <= TEXT_DIRY ? (CMD.CMDSIZE.SY - 8'd1) * CMD.CMDSIZE.SX : '0;
+					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT[7:0] - 8'd1) * ORIG_WIDTH[8:3] : '0;
 					GRD_CALC_STEP <= '0;
 					CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_LEFT : CMDS_SSPR_CALCX;
 				end
@@ -898,7 +898,7 @@ module VDP1 (
 				end
 				
 				CMDS_POLYGON_CALCTDY: begin
-					SPR_OFFSY <= TEXT_DIRY ? (CMD.CMDSIZE.SY - 8'd1) * CMD.CMDSIZE.SX : '0;
+					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT[7:0] - 8'd1) * ORIG_WIDTH[8:3] : '0;
 					if (ORIG_HEIGHT <= COL_HEIGHT) begin
 						SPR_COL_ENLARGE <= 1;
 						COL_D <= '0;//{1'b0,ORIG_HEIGHT};
@@ -1255,7 +1255,7 @@ module VDP1 (
 					TEXT_X <= '0;
 					if (TEXTY_READ_STEP) begin
 						TEXT_Y <= TEXT_Y + 8'd1;
-						SPR_OFFSY <= TEXT_DIRY ? SPR_OFFSY - CMD.CMDSIZE.SX : SPR_OFFSY + CMD.CMDSIZE.SX;
+						SPR_OFFSY <= TEXT_DIRY ? SPR_OFFSY - ORIG_WIDTH[8:3] : SPR_OFFSY + ORIG_WIDTH[8:3];
 					end
 					
 					if (CMD.CMDCTRL.COMM == 4'h0 || CMD.CMDCTRL.COMM == 4'h1) begin
@@ -2383,7 +2383,7 @@ module VDP1_PAT_FIFO (
 		altdpram_component.wrcontrol_aclr = "OFF",
 		altdpram_component.wrcontrol_reg = "INCLOCK";
 		
-	assign Q = !AMOUNT ? '1 : sub_wire0;
+	assign Q = sub_wire0;
 
 endmodule
 
