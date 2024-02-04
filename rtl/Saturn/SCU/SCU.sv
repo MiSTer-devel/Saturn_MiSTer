@@ -586,8 +586,8 @@ module SCU (
 				if (DMA_FACT[0] && DEN[0].EN && !DMA_PEND[0]) begin DMA_PEND[0] <= 1; DSTA.D0WT <= 1; end
 				if (DMA_FACT[1] && DEN[1].EN && !DMA_PEND[1]) begin DMA_PEND[1] <= 1; DSTA.D1WT <= 1; end
 				if (DMA_FACT[2] && DEN[2].EN && !DMA_PEND[2]) begin DMA_PEND[2] <= 1; DSTA.D2WT <= 1; end
-				DSP_DMA_RUN_OLD <= DSP_DMA_REQ;
-				if (DSP_DMA_REQ && !DSP_DMA_RUN_OLD) begin DMA_PEND[3] <= 1; DSTA.DDWT <= 1; end
+				DSP_DMA_RUN_OLD <= DSP_DMA_RUN;
+				if (DSP_DMA_RUN && !DSP_DMA_RUN_OLD) begin DMA_PEND[3] <= 1; DSTA.DDWT <= 1; end
 				
 				DMA_UPDATE <= 0;
 				DMA_INT_PEND <= '{3{0}};
@@ -1693,7 +1693,7 @@ module SCU (
 					endcase
 					DMA_RBA <= '0;
 				end
-				if ((ABUS_READ_DONE || BBUS_READ_DONE || (CBUS_READ_DONE && !DMA_IND)) && DMA_DSP) begin
+				if ((ABUS_READ_DONE || BBUS_READ_DONE || CBUS_READ_DONE) && DMA_DSP) begin
 					{DMA_BUF[0],DMA_BUF[1],DMA_BUF[2],DMA_BUF[3]} <= RD_DATA;
 					
 					DSP_DMA_ACK <= 1;

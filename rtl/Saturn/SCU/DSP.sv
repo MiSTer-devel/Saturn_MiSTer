@@ -324,7 +324,15 @@ module SCU_DSP (
 				
 				if (DECI.D1BUS.TOPW) begin
 					TOP <= D1BUS[7:0];
+				end	
+				
+				if (DECI.DMA.PRGW) begin
+					PC <= '0;
 				end
+			end
+			
+			if (DMA_CE && CE_R) begin
+				if (DMAI.PRGW) PC <= PC + 6'd1;
 			end
 			
 			if (A == 2'b00 && WE && DI[15] && CE_R) begin
@@ -333,6 +341,7 @@ module SCU_DSP (
 		end
 	end
 	
+	wire [ 7: 0] TN0_NEXT = TN0 - 8'd1;
 	always @(posedge CLK or negedge RST_N) begin
 		bit [7:0] CNT_VAL;
 		bit       DMA_END_OLD;
@@ -373,6 +382,7 @@ module SCU_DSP (
 				DMA_END_PEND <= 0;
 				if (DMA_END_PEND) begin
 					T0 <= 0;
+					DMAI <= '0;
 				end
 			end
 			
@@ -385,8 +395,8 @@ module SCU_DSP (
 			if (CE_R) begin
 				if (DMA_CE) begin
 					DMA_REQ <= 0;
-					TN0 <= TN0 - 8'd1;
-					if (TN0 > 8'd1) begin
+					TN0 <= TN0_NEXT;
+					if (TN0_NEXT != 8'd0) begin
 						DMA_REQ <= 1;
 					end
 					
@@ -400,7 +410,7 @@ module SCU_DSP (
 	assign DMA_DO = D0BUSO;
 	assign DMA_WE = DMAI.DIR;
 	assign DMA_RUN = T0;
-	assign DMA_LAST = (TN0 == 8'd1);
+	assign DMA_LAST = (TN0_NEXT == 8'd0);
 	
 	assign DSO = D1BUS;
 	assign RA0W = DECI.D1BUS.RA0W & RUN & CE;
@@ -528,9 +538,9 @@ module SCU_DSP (
 	assign IRQ = E;
 	
 	//PRG RAM
-	assign PRG_RAM_ADDR = RUN ? PC : PRG_TRANS_ADDR;
-	assign PRG_RAM_D = DI;
-	assign PRG_RAM_WE = !RUN && PRG_TRANS_WE;
+	assign PRG_RAM_ADDR = T0 || RUN ? PC : PRG_TRANS_ADDR;
+	assign PRG_RAM_D = T0 ? D0BUSI : DI;
+	assign PRG_RAM_WE = T0 ? DMAI.PRGW & DMA_CE & CE_R : !RUN && PRG_TRANS_WE;
 	DSP_PRG_RAM #(8,32," ","prg.txt") PRG_RAM(CLK, PRG_RAM_ADDR, PRG_RAM_D, PRG_RAM_WE & CE_R, PRG_RAM_Q);
 
 	
