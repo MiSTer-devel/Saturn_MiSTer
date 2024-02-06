@@ -21,9 +21,7 @@ Known issues:
 - Space Jam - freeze in demo
 - Wing Arms - minor graphic gliches
 - Gouketsuji Ichizoku 3 (JP) - Groove on Fight - minor graphic gliches
-- Grandia (JP) - graphic gliches in the beginning
 - J. League Jikkyou Honoo no Striker (JP) - graphic gliches
-- Shienryu (JP) - no sprite layer rotation mode is implemented
 - Tenchi Muyou! Rensa Hitsuyou (JP) - graphic gliches (VDP2 screen)
 - Thunder Force V (JP) - graphic gliches (VDP2 screen in hires mode)
 - X-Men vs. Street Fighter (JP) - freeze
