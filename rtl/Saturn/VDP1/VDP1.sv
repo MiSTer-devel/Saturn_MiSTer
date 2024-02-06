@@ -1516,9 +1516,15 @@ module VDP1 (
 							DRAW_PAT <= PAT;
 							DRAW_GHCOLOR <= LINE_GHCOLOR;
 							
-							FB_DRAW_PEND <= ~CMD.CMDPMOD.CCB[0] && LINE_DRAW_STEP;
-							FB_READ_PEND <= CMD.CMDPMOD.CCB[0] && LINE_DRAW_STEP;
-							FBD_ST <= CMD.CMDPMOD.CCB[0] && LINE_DRAW_STEP ? FBDS_READ : FBDS_WRITE;
+							if (LINE_DRAW_STEP) begin
+								if (CMD.CMDPMOD.CCB[0] || CMD.CMDPMOD.MON) begin
+									FB_READ_PEND <= 1;
+									FBD_ST <= FBDS_READ;
+								end else begin
+									FB_DRAW_PEND <= 1;
+									FBD_ST <= FBDS_WRITE;
+								end
+							end
 						end
 						PAT_WORD_NEXT <= TEXT_READ_STEP && ((TEXT_X[1:0] | TEXT_MASK) == 2'b11);
 					end
@@ -1616,7 +1622,6 @@ module VDP1 (
 	RotCoord_t   RXst,RYst;
 	RotCoord_t   RDX,RDY;
 	RotCoord_t   OUT_RX,OUT_RY;
-	bit          HBL_SKIP;
 	bit  [ 8: 0] OUT_X;
 	bit  [ 8: 0] OUT_Y;
 	bit          FRAME_ERASE_HIT;
@@ -1632,18 +1637,10 @@ module VDP1 (
 		if (!RST_N) begin
 			OUT_X <= '0;
 			OUT_Y <= '0;
-			HBL_SKIP <= 0;
 		end
 		else begin
 			HTIM_N_OLD <= HTIM_N;
 			VTIM_N_OLD <= VTIM_N;
-			
-			if (!VTIM_N && VTIM_N_OLD) begin
-				HBL_SKIP <= 1;
-			end
-			if (!HTIM_N && HTIM_N_OLD && HBL_SKIP) begin
-				HBL_SKIP <= 0;
-			end
 			
 			if (DCE_R) begin
 				if (RP_POS != 3'd7) RP_POS <= RP_POS + 3'd1;
@@ -2164,10 +2161,11 @@ module VDP1 (
 	always @(posedge CLK or negedge RST_N) begin
 		bit        HTIM_N_OLD;
 		bit        VTIM_N_OLD;
-		bit        FRAME_ERASECHANGE_PEND;
+		bit        VBI_HBL_SKIP,VBO_HBL_SKIP;
+		bit        FRAME_CHANGE;
+		bit        MANUAL_ERASECHANGE_PEND;
 		bit        START_DRAW_PEND;
 		bit        VBERASE_PEND;
-		bit        VBE_CHECK;
 		
 		if (!RST_N) begin
 			TVMR <= '0;
@@ -2179,12 +2177,11 @@ module VDP1 (
 			EDSR <= '0;
 			IRQ_N <= 1;
 			
-			FRAME_ERASECHANGE_PEND <= 0;
+			MANUAL_ERASECHANGE_PEND <= 0;
 			FRAME_ERASE <= 0;
 			VBLANK_ERASE <= 0;
 			DRAW_TERMINATE <= 0;
 			VBERASE_PEND <= 0;
-			VBE_CHECK <= 0;
 			
 			REG_DO <= '0;
 		end else if (!RES_N) begin
@@ -2203,7 +2200,7 @@ module VDP1 (
 						5'h0A: EWRR <= DI & EWRR_MASK;
 						default:;
 					endcase
-					if (A[5:1] == 5'h02>>1 && DI[1]) FRAME_ERASECHANGE_PEND <= 1;
+					if (A[5:1] == 5'h02>>1 && DI[1]) MANUAL_ERASECHANGE_PEND <= 1;
 					if (A[5:1] == 5'h04>>1 && DI[1:0] == 2'b01) begin 
 						START_DRAW_PEND <= 1; 
 `ifdef DEBUG
@@ -2222,13 +2219,13 @@ module VDP1 (
 				end
 			end
 			
-			HTIM_N_OLD <= HTIM_N;
-			VTIM_N_OLD <= VTIM_N;
 `ifdef DEBUG
 			if (VTIM_N && !VTIM_N_OLD) begin
 				FRAMES_DBG <= FRAMES_DBG + 8'd1;
 			end
 `endif
+			
+			if (!IRQ_N && CE_R) IRQ_N <= 1;
 			
 			if (DRAW_END) begin
 				EDSR.CEF <= 1;
@@ -2243,9 +2240,8 @@ module VDP1 (
 				DIE <= FBCR.DIE;
 				DIL <= FBCR.DIL;
 			end
-			if (VTIM_N && !VTIM_N_OLD) begin
+			if (FRAME_CHANGE) begin
 				FRAME_ERASE <= 0;
-				VBLANK_ERASE <= 0;
 				if (!FBCR.FCM) begin
 					FB_SEL <= ~FB_SEL;
 					FRAME_ERASE <= ~TVMR.TVM[1];
@@ -2260,7 +2256,7 @@ module VDP1 (
 `ifdef DEBUG
 					FRAMES_DBG <= 8'd0;
 `endif
-				end else if (FRAME_ERASECHANGE_PEND && FBCR.FCT) begin
+				end else if (MANUAL_ERASECHANGE_PEND && FBCR.FCT) begin
 					FB_SEL <= ~FB_SEL;
 					EDSR.CEF <= 0;
 					EDSR.BEF <= EDSR.CEF;
@@ -2269,35 +2265,50 @@ module VDP1 (
 					if (PTMR.PTM[1]) begin
 						FRAME_START <= 1;
 					end
-					FRAME_ERASECHANGE_PEND <= 0;
+					MANUAL_ERASECHANGE_PEND <= 0;
 `ifdef DEBUG
 					FRAMES_DBG <= 8'd0;
 `endif
-				end else if (FRAME_ERASECHANGE_PEND && !FBCR.FCT) begin
+				end else if (MANUAL_ERASECHANGE_PEND && !FBCR.FCT) begin
 					FRAME_ERASE <= ~TVMR.TVM[1];
 					VBERASE_PEND <= TVMR.TVM[1];
-					FRAME_ERASECHANGE_PEND <= 0;
+					MANUAL_ERASECHANGE_PEND <= 0;
 				end
 //				FRAME <= 1;//~FRAME;
 			end
 			
-			if (!VTIM_N) begin
-				if (!HTIM_N && HTIM_N_OLD && HBL_SKIP) begin
-					VBE_CHECK <= 1;
+			FRAME_CHANGE <= 0;
+			if (DCE_R) begin
+				HTIM_N_OLD <= HTIM_N;
+				VTIM_N_OLD <= VTIM_N;
+				
+				if (VTIM_N && !VTIM_N_OLD) begin
+					VBO_HBL_SKIP <= 1;
 				end
-				if (!HTIM_N && HTIM_N_OLD && !HBL_SKIP && VBE_CHECK) begin
-					VBE_CHECK <= 0;
-					if (TVMR.VBE && FBCR.FCT && FBCR.FCM) begin
-						VBLANK_ERASE <= 1;
+				if (VTIM_N && !HTIM_N && HTIM_N_OLD && VBO_HBL_SKIP) begin
+					VBO_HBL_SKIP <= 0;
+					FRAME_CHANGE <= 1;
+				end
+				
+				if (!VTIM_N && VTIM_N_OLD) begin
+					VBI_HBL_SKIP <= 1;
+				end
+				if (!VTIM_N) begin
+					if (!HTIM_N && HTIM_N_OLD && VBI_HBL_SKIP) begin
+						VBI_HBL_SKIP <= 0;
+						if (TVMR.VBE && FBCR.FCT && FBCR.FCM) begin
+							VBLANK_ERASE <= 1;
+						end
+						if (VBERASE_PEND) begin
+							VBLANK_ERASE <= 1;
+						end
+						VBERASE_PEND <= 0;
 					end
-					if (VBERASE_PEND) begin
-						VBLANK_ERASE <= 1;
-					end
-					VBERASE_PEND <= 0;
+				end
+				if (VTIM_N) begin
+					VBLANK_ERASE <= 0;
 				end
 			end
-			
-			if (!IRQ_N && CE_R) IRQ_N <= 1;
 		end
 	end
 	

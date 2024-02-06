@@ -376,7 +376,7 @@ module VDP2 (
 			VTIM <= 1;
 		end
 		else if (DOT_CE_R) begin
-			if (H_CNT == HTIM_START) begin
+			if (H_CNT == HTIM_START - 1) begin
 				HTIM <= 1;
 			end else if (H_CNT == HTIM_END) begin
 				HTIM <= 0;

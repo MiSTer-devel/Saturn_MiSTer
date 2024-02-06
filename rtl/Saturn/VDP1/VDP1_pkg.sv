@@ -340,7 +340,7 @@ package VDP1_PKG;
 		endcase
 		S = ColorAdd(A,B);
 		
-		return {MON|MSB,S};
+		return MON ? {MSB,BACK[14:0]} : {MSB,S};
 	endfunction
 
 	function bit [10:0] Abs(input bit [11:0] C);
