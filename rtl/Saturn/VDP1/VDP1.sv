@@ -1473,7 +1473,8 @@ module VDP1 (
 		FBDS_READ,
 		FBDS_READWAIT,
 		FBDS_READBACK,
-		FBDS_WRITE
+		FBDS_WRITE,
+		FBDS_SKIP
 	} FBDrawState_t;
 	FBDrawState_t FBD_ST;
 	
@@ -1525,6 +1526,9 @@ module VDP1 (
 									FBD_ST <= FBDS_WRITE;
 								end
 							end
+							else begin
+								FBD_ST <= FBDS_SKIP;
+							end
 						end
 						PAT_WORD_NEXT <= TEXT_READ_STEP && ((TEXT_X[1:0] | TEXT_MASK) == 2'b11);
 					end
@@ -1552,6 +1556,10 @@ module VDP1 (
 						FB_DRAW_PEND <= 0;
 						FBD_ST <= FBDS_IDLE;
 					end
+				end
+				
+				FBDS_SKIP: begin
+					FBD_ST <= FBDS_IDLE;
 				end
 			endcase
 		end
