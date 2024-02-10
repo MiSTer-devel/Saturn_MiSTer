@@ -948,7 +948,6 @@ module VDP2 (
 	bit          VRAM_WLOCK;
 	always @(posedge CLK or negedge RST_N) begin
 		bit CS_N_OLD;
-//		bit VRAM_WRITE_END;
 		
 		if (!RST_N) begin
 			VRAMA0_A <= '0;
@@ -1364,6 +1363,8 @@ module VDP2 (
 				VRAM_WRDY <= 1;
 			end
 			
+			CS_N_OLD <= CS_N;
+			
 			//Write single
 			if (VRAM_REQ && !WE_N && !DTEN_N && !BURST) begin
 				case (A[2:1])
@@ -1392,7 +1393,10 @@ module VDP2 (
 						VRAM_WRITE_PEND <= 1;
 					end
 				endcase
-				VRAM_WRDY <= 0;
+			end
+			
+			if (CS_N && !CS_N_OLD && !BURST) begin
+				if (VRAM_WE) VRAM_WRDY <= 0;
 			end
 			
 			//Write burst
@@ -1425,7 +1429,6 @@ module VDP2 (
 				endcase
 			end
 			
-			CS_N_OLD <= CS_N;
 			if (CS_N && !CS_N_OLD) begin
 				VRAM_WLOCK <= ~FIFO_EMPTY;
 			end
@@ -1919,32 +1922,32 @@ module VDP2 (
 		end
 		else begin
 			if (DOT_CE_R) begin
-				if (H_CNT == HTIM_START + 0)
+				if (H_CNT == HTIM_START - 1 + 0)
 					FBDO <= RP_Xst[31:16];
-				else if (H_CNT == HTIM_START + 1)
+				else if (H_CNT == HTIM_START - 1 + 1)
 					FBDO <= RP_Yst[31:16];
-				else if (H_CNT == HTIM_START + 2)
+				else if (H_CNT == HTIM_START - 1 + 2)
 					FBDO <= RP_DXst[31:16];
-				else if (H_CNT == HTIM_START + 3)
+				else if (H_CNT == HTIM_START - 1 + 3)
 					FBDO <= RP_DYst[31:16];
-				else if (H_CNT == HTIM_START + 4)
+				else if (H_CNT == HTIM_START - 1 + 4)
 					FBDO <= RP_DX[31:16];
-				else if (H_CNT == HTIM_START + 5)
+				else if (H_CNT == HTIM_START - 1 + 5)
 					FBDO <= RP_DY[31:16];
 			end
 			
 			if (DOT_CE_F) begin
-				if (H_CNT == HTIM_START + 1 + 0)
+				if (H_CNT == HTIM_START + 0)
 					FBDO <= RP_Xst[15:0];
-				else if (H_CNT == HTIM_START + 1 + 1)
+				else if (H_CNT == HTIM_START + 1)
 					FBDO <= RP_Yst[15:0];
-				else if (H_CNT == HTIM_START + 1 + 2)
+				else if (H_CNT == HTIM_START + 2)
 					FBDO <= RP_DXst[15:0];
-				else if (H_CNT == HTIM_START + 1 + 3)
+				else if (H_CNT == HTIM_START + 3)
 					FBDO <= RP_DYst[15:0];
-				else if (H_CNT == HTIM_START + 1 + 4)
+				else if (H_CNT == HTIM_START + 4)
 					FBDO <= RP_DX[15:0];
-				else if (H_CNT == HTIM_START + 1 + 5)
+				else if (H_CNT == HTIM_START + 5)
 					FBDO <= RP_DY[15:0];
 			end
 		end
