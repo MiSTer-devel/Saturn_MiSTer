@@ -1024,17 +1024,10 @@ module emu
 		.mem4_busy(ddr_busy[4]                                ),
 	
 		//VDP1 FB (rest)
-//`ifdef MISTER_DUAL_SDRAM
-//		.mem5_addr('0                                         ),
-//		.mem5_din ('0                                         ),
-//		.mem5_wr  ('0                                         ),
-//		.mem5_rd  (0                                          ),
-//`else
-		.mem5_addr({ 2'b00,VDP1_A}                            ),
+		.mem5_addr({ 7'b0001001,VDP1_A}                       ),
 		.mem5_din ({16'h0000,VDP1_D}                          ),
 		.mem5_wr  ({2'b00,VDP1_WE}                            ),
 		.mem5_rd  (VDP1_RD                                    ),
-//`endif
 		.mem5_dout(ddr_do[5]                                  ),
 		.mem5_16b (1                                          ),
 		.mem5_busy(ddr_busy[5]                                ),
@@ -1186,7 +1179,7 @@ module emu
 	assign VDP1_FB1_Q = !FB1_EXT_SEL ? FB1_Q : FB1_EXT_Q;
 
 //`ifndef MISTER_DUAL_SDRAM
-	bit [22:1] VDP1_A;
+	bit [18:1] VDP1_A;
 	bit [15:0] VDP1_D;
 	bit [ 1:0] VDP1_WE;
 	bit        VDP1_RD;
@@ -1235,13 +1228,13 @@ module emu
 			case (vdp1_state)
 				2'd0: begin
 					if ((VDP1_FB0_RD && FB0_EXT_SEL) || VDP1_FB0_RPEND) begin
-						VDP1_A <= {4'b1010,1'b0,FB0_EXT_A};
+						VDP1_A <= {1'b0,FB0_EXT_A};
 						VDP1_RD <= 1;
 						VDP1_FB0_RPEND <= 0; 
 						vdp1_state <= 2'd1;
 					end else if (VDP1_FB0_WPEND && !VDP1_WE) begin
 						if (!ddr_busy[5]) begin
-							VDP1_A <= {4'b1010,1'b0,FB0_EXT_A};
+							VDP1_A <= {1'b0,FB0_EXT_A};
 							VDP1_D <= VDP1_FB0_D;
 							VDP1_WE <= VDP1_FB0_WPEND;
 							VDP1_FB0_WPEND <= '0;
@@ -1249,13 +1242,13 @@ module emu
 							vdp1_state <= 2'd0;
 						end
 					end else if ((VDP1_FB1_RD && FB1_EXT_SEL) || VDP1_FB1_RPEND) begin
-						VDP1_A <= {4'b1100,1'b0,FB1_EXT_A};
+						VDP1_A <= {1'b1,FB1_EXT_A};
 						VDP1_RD <= 1;
 						VDP1_FB1_RPEND <= 0; 
 						vdp1_state <= 2'd2;
 					end else if (VDP1_FB1_WPEND && !VDP1_WE) begin
 						if (!ddr_busy[5]) begin
-							VDP1_A <= {4'b1100,1'b0,FB1_EXT_A};
+							VDP1_A <= {1'b1,FB1_EXT_A};
 							VDP1_D <= VDP1_FB1_D;
 							VDP1_WE <= VDP1_FB1_WPEND;
 							VDP1_FB1_WPEND <= '0;
