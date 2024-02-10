@@ -355,7 +355,8 @@ module SH_core
 	wire BP_A_WBEXB = (PIPE.EX.DI.RA.N == PIPE.WB2.DI.RB.N) & PIPE.EX.DI.RA.R & PIPE.WB2.DI.RB.W;  
 	wire BP_B_WBEXA = (PIPE.EX.DI.RB.N == PIPE.WB2.DI.RA.N) & PIPE.EX.DI.RB.R & PIPE.WB2.DI.RA.W;
 	wire BP_B_WBEXB = (PIPE.EX.DI.RB.N == PIPE.WB2.DI.RB.N) & PIPE.EX.DI.RB.R & PIPE.WB2.DI.RB.W;
-	wire BP_C_WBEX  = (5'd0            == PIPE.WB2.DI.RA.N) & PIPE.EX.DI.R0R  & PIPE.WB2.DI.RA.W;
+	wire BP_C_WBEXA = (5'd0            == PIPE.WB2.DI.RA.N) & PIPE.EX.DI.R0R  & PIPE.WB2.DI.RA.W;
+	wire BP_C_WBEXB = (5'd0            == PIPE.WB2.DI.RB.N) & PIPE.EX.DI.R0R  & PIPE.WB2.DI.RB.W;
 	
 	wire BP_A_MALD = (PIPE.EX.DI.RA.N == PIPE.MA.DI.RA.N)  & PIPE.EX.DI.RA.R & PIPE.MA.DI.RA.W & ((PIPE.MA.DI.MEM.R & !PIPE.MA.DI.MAC.W) | (PIPE.MA.DI.MAC.R & !PIPE.MA.DI.MEM.W));
 	wire BP_B_MALD = (PIPE.EX.DI.RB.N == PIPE.MA.DI.RA.N)  & PIPE.EX.DI.RB.R & PIPE.MA.DI.RA.W & ((PIPE.MA.DI.MEM.R & !PIPE.MA.DI.MAC.W) | (PIPE.MA.DI.MAC.R & !PIPE.MA.DI.MEM.W));
@@ -470,8 +471,11 @@ module SH_core
 		else if (BP_C_MAEX) begin
 			BP_C = PIPE.WB.RES;
 		end
-		else if (BP_C_WBEX) begin
+		else if (BP_C_WBEXA) begin
 			BP_C = PIPE.WB2.RESA;
+		end
+		else if (BP_C_WBEXB) begin
+			BP_C = PIPE.WB2.RESB;
 		end
 		else begin
 			BP_C = PIPE.EX.R0;
