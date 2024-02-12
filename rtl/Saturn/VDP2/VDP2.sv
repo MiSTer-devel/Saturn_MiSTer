@@ -947,7 +947,7 @@ module VDP2 (
 	bit          VRAM_WRDY;
 	bit          VRAM_WLOCK;
 	always @(posedge CLK or negedge RST_N) begin
-		bit CS_N_OLD;
+		bit DTEN_N_OLD,CS_N_OLD;
 		
 		if (!RST_N) begin
 			VRAMA0_A <= '0;
@@ -1363,8 +1363,6 @@ module VDP2 (
 				VRAM_WRDY <= 1;
 			end
 			
-			CS_N_OLD <= CS_N;
-			
 			//Write single
 			if (VRAM_REQ && !WE_N && !DTEN_N && !BURST) begin
 				case (A[2:1])
@@ -1395,7 +1393,8 @@ module VDP2 (
 				endcase
 			end
 			
-			if (CS_N && !CS_N_OLD && !BURST) begin
+			DTEN_N_OLD <= DTEN_N;
+			if (DTEN_N && !DTEN_N_OLD && !BURST) begin
 				if (VRAM_WE) VRAM_WRDY <= 0;
 			end
 			
@@ -1429,6 +1428,7 @@ module VDP2 (
 				endcase
 			end
 			
+			CS_N_OLD <= CS_N;
 			if (CS_N && !CS_N_OLD) begin
 				VRAM_WLOCK <= ~FIFO_EMPTY;
 			end
@@ -2829,12 +2829,12 @@ module VDP2 (
 			// synopsys translate_on
 		end
 		else if (DOT_CE_R || (DOT_CE_F & HRES[1])) begin
-			SON  =                                                                           ~SDOT.TP  & (~SDOT.SD | ~SCRN_EN[7])        & SCRN_EN[5] & ~(SW_EN     & SCRN_EN[6]);
-			R0ON = (               RSxREG[0].ON) &                                           ~R0DOT.TP &                                   SCRN_EN[4] & ~(RxW_EN[0] & SCRN_EN[6]);
-			N0ON = (NSxREG[0].ON | RSxREG[1].ON) &                                           ~N0DOT.TP &                                   SCRN_EN[0] & ~(NxW_EN[0] & SCRN_EN[6]);
-			N1ON = (NSxREG[1].ON               ) & ~NSxREG[0].CHCN[2] &                      ~N1DOT.TP &                                   SCRN_EN[1] & ~(NxW_EN[1] & SCRN_EN[6]);
-			N2ON = (NSxREG[2].ON               ) & ~NSxREG[0].CHCN[2] & ~NSxREG[0].CHCN[1] & ~N2DOT.TP &                                   SCRN_EN[2] & ~(NxW_EN[2] & SCRN_EN[6]);
-			N3ON = (NSxREG[3].ON               ) & ~NSxREG[0].CHCN[2] & ~NSxREG[1].CHCN[1] & ~N3DOT.TP &                                   SCRN_EN[3] & ~(NxW_EN[3] & SCRN_EN[6]);
+			SON  =                                                                           ~SDOT.TP  & SCRN_EN[5] & ~(SW_EN     & SCRN_EN[6]);
+			R0ON = (               RSxREG[0].ON) &                                           ~R0DOT.TP & SCRN_EN[4] & ~(RxW_EN[0] & SCRN_EN[6]);
+			N0ON = (NSxREG[0].ON | RSxREG[1].ON) &                                           ~N0DOT.TP & SCRN_EN[0] & ~(NxW_EN[0] & SCRN_EN[6]);
+			N1ON = (NSxREG[1].ON               ) & ~NSxREG[0].CHCN[2] &                      ~N1DOT.TP & SCRN_EN[1] & ~(NxW_EN[1] & SCRN_EN[6]);
+			N2ON = (NSxREG[2].ON               ) & ~NSxREG[0].CHCN[2] & ~NSxREG[0].CHCN[1] & ~N2DOT.TP & SCRN_EN[2] & ~(NxW_EN[2] & SCRN_EN[6]);
+			N3ON = (NSxREG[3].ON               ) & ~NSxREG[0].CHCN[2] & ~NSxREG[1].CHCN[1] & ~N3DOT.TP & SCRN_EN[3] & ~(NxW_EN[3] & SCRN_EN[6]);
 			
 			SCAOS = REGS.CRAOFB.SPCAOS;
 			R0CAOS = REGS.CRAOFB.R0CAOS;
