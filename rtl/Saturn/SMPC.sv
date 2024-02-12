@@ -205,7 +205,7 @@ module SMPC (
 		bit        INTBACK_PERI;
 		bit        INTBACK_OPTIM;
 		bit        COMREG_SET;
-		bit        CONT;
+		bit        BREAK,CONT;
 		
 		if (!RST_N) begin
 			COMREG <= '0;
@@ -238,7 +238,8 @@ module SMPC (
 			COMM_ST <= CS_IDLE;
 			SRES_EXEC <= 0;
 			INTBACK_EXEC <= 0;
-			INTBACK_PERI <= 0;	  
+			INTBACK_PERI <= 0;
+			BREAK <= 0;
 			CONT <= 0;
 			INTBACK_BREAK_PEND <= 0;
 			VBLANK_PEND <= 0;
@@ -258,6 +259,12 @@ module SMPC (
 			SR <= '0;
 			RESD <= 1;
 			STE <= TIME_SET;/////////////////
+			
+			COMM_ST <= CS_IDLE;
+			INTBACK_EXEC <= 0;
+			INTBACK_PERI <= 0;
+			BREAK <= 0;
+			CONT <= 0;
 			INTBACK_BREAK_PEND <= 0;
 			VBLANK_PEND <= 0;
 		end else begin
@@ -291,11 +298,11 @@ module SMPC (
 							NEXT_COMM_ST <= CS_INTBACK_BREAK;
 							COMM_ST <= CS_WAIT;
 						end 
-						else if (INTBACK_PERI && ((!INTBACK_WAIT_CNT && INTBACK_OPTIM) || !INTBACK_OPTIM) && !SRES_EXEC) begin
-							INTBACK_PERI <= 0;
+						else if (INTBACK_PERI && ((!INTBACK_WAIT_CNT && INTBACK_OPTIM) || !INTBACK_OPTIM) && IRQV_N && !SRES_EXEC) begin
 							OREG_CNT <= '0;
-							COMM_ST <= CS_INTBACK_PERI;
-							INPUT_ACT <= 1;
+							WAIT_CNT <= 20'd70;
+							NEXT_COMM_ST <= CS_INTBACK_PERI;
+							COMM_ST <= CS_WAIT;
 						end 
 						else if (COMREG_SET && !SRES_EXEC) begin
 							COMREG_SET <= 0;
@@ -309,7 +316,10 @@ module SMPC (
 					end
 					
 					CS_WAIT: begin
-						if (!WAIT_CNT) COMM_ST <= NEXT_COMM_ST;
+						if (!WAIT_CNT) begin
+							if (NEXT_COMM_ST == CS_INTBACK_PERI) INPUT_ACT <= 1;
+							COMM_ST <= NEXT_COMM_ST;
+						end
 					end
 					
 					CS_COMMAND: begin
@@ -396,8 +406,7 @@ module SMPC (
 										INTBACK_PERI <= 1;
 										INTBACK_OPTIM <= ~IREG[1][1];
 										CONT <= 0;
-//										SR[7:5] <= 3'b010;
-										COMM_ST <= CS_END;
+										COMM_ST <= CS_IDLE;
 									end
 								end else begin
 									COMM_ST <= CS_END;
@@ -624,8 +633,13 @@ module SMPC (
 							OREG_RAM_WA <= OREG_CNT;
 							OREG_RAM_D <= COMREG;
 							OREG_RAM_WE <= 1;
+							INTBACK_EXEC <= 0;
+							INTBACK_PERI <= 0;
 							SR[7:5] <= {1'b1,1'b1,1'b0};
+							SF <= 0;
 							MIRQ_N <= 0;
+							//if (BREAK) INTBACK_BREAK_PEND <= 1;//TODO
+							BREAK <= 0;
 							COMM_ST <= CS_IDLE;
 						end
 					end
@@ -724,7 +738,7 @@ module SMPC (
 					7'h01: begin 
 						if (INTBACK_EXEC) begin
 							if (DI[6]) begin
-								INTBACK_BREAK_PEND <= 1;
+								BREAK <= 1;
 							end else if (CONT != DI[7]) begin
 								INTBACK_PERI <= 1;
 								SF <= 1;
