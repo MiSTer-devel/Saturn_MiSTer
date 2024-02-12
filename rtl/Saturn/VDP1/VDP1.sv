@@ -656,6 +656,11 @@ module VDP1 (
 								4'h9: begin	
 									if (CMD_POS == 4'hA) SYS_CLIP.X2 <= {1'b0,VRAM_DATA[9:0]};
 									if (CMD_POS == 4'hB) SYS_CLIP.Y2 <= {2'b00,VRAM_DATA[8:0]};
+									//TODO: check on original hw
+									if (CMD_POS == 4'h6) USR_CLIP.X1 <= '0; 
+									if (CMD_POS == 4'h7) USR_CLIP.Y1 <= '0; 
+									if (CMD_POS == 4'hA) USR_CLIP.X2 <= {1'b0,VRAM_DATA[9:0]};
+									if (CMD_POS == 4'hB) USR_CLIP.Y2 <= {2'b00,VRAM_DATA[8:0]};
 									if (CMD_POS == 4'hE) CMD_ST <= CMDS_END;
 								end
 								
@@ -1598,7 +1603,7 @@ module VDP1 (
 			TP = 0;
 			EC = 0;
 		end
-		CALC_C = !TVMR.TVM[0] ? ColorCalc(ORIG_C, DRAW_BACK_C, DRAW_GHCOLOR, CMD.CMDPMOD.CCB, CMD.CMDPMOD.MON) : ORIG_C;
+		CALC_C = CMD.CMDPMOD.MON ? {1'b1,DRAW_BACK_C[14:0]} : !TVMR.TVM[0] ? ColorCalc(ORIG_C, DRAW_BACK_C, DRAW_GHCOLOR, CMD.CMDPMOD.CCB) : ORIG_C;
 			
 		SCLIP = !DRAW_X[10] && DRAW_X[9:0] <= SYS_CLIP.X2[9:0] && !DRAW_Y[10] && !DRAW_Y[9] && DRAW_Y[8:0] <= SYS_CLIP.Y2[8:0];
 		UCLIP = !DRAW_X[10] && DRAW_X[9:0] >= USR_CLIP.X1[9:0] && DRAW_X[9:0] <= USR_CLIP.X2[9:0] && !DRAW_Y[10] && !DRAW_Y[9] && DRAW_Y[8:0] >= USR_CLIP.Y1[8:0] && DRAW_Y[8:0] <= USR_CLIP.Y2[8:0];

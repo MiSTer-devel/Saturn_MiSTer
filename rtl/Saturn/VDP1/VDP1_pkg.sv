@@ -311,7 +311,7 @@ package VDP1_PKG;
 		return CR;
 	endfunction
 	
-	function bit [15:0] ColorCalc(input bit [15:0] ORIG, input bit [15:0] BACK, input bit [14:0] CG, input bit [2:0] CCB, input bit MON);
+	function bit [15:0] ColorCalc(input bit [15:0] ORIG, input bit [15:0] BACK, input bit [14:0] CG, input bit [2:0] CCB);
 		RGB_t      GOUR;
 		RGB_t      ORIG_HALF,ORIG_ONE;
 		RGB_t      GOUR_HALF,GOUR_ONE;
@@ -340,7 +340,7 @@ package VDP1_PKG;
 		endcase
 		S = ColorAdd(A,B);
 		
-		return MON ? {MSB,BACK[14:0]} : {MSB,S};
+		return {MSB,S};
 	endfunction
 
 	function bit [10:0] Abs(input bit [11:0] C);
