@@ -26,6 +26,8 @@ module SH7604_DIVU (
 	DVDNT_t     DVDNTL;
 	DVDNT_t     DVDNTH;
 	DVCR_t      DVCR;
+	DVDNT_t     DVDNTL2;
+	DVDNT_t     DVDNTH2;
 	VCRDIV_t    VCRDIV;
 	bit         BUSY;
 	
@@ -157,6 +159,8 @@ module SH7604_DIVU (
 					end
 					5'h10: DVDNTH <= IBUS_DI & DVDNT_WMASK;
 					5'h14: DVDNTL <= IBUS_DI & DVDNT_WMASK;
+					5'h18: DVDNTH2 <= IBUS_DI & DVDNT_WMASK;
+					5'h1C: DVDNTL2 <= IBUS_DI & DVDNT_WMASK;
 					default:;
 				endcase
 			end
@@ -165,6 +169,8 @@ module SH7604_DIVU (
 				DVCR.OVF = OVF;
 				DVDNTL <= !OVF || DVCR.OVFIE ? Q : {DVDNTH[31]^DVSR[31],{31{~(DVDNTH[31]^DVSR[31])}}};
 				DVDNTH <= R[31:0];
+				DVDNTL2 <= !OVF || DVCR.OVFIE ? Q : {DVDNTH[31]^DVSR[31],{31{~(DVDNTH[31]^DVSR[31])}}};
+				DVDNTH2 <= R[31:0];
 			end
 		end
 	end
@@ -187,8 +193,8 @@ module SH7604_DIVU (
 					5'h0C: REG_DO <= {16'h0000,VCRDIV} & VCRDIV_RMASK;
 					5'h10: REG_DO <= DVDNTH & DVDNT_RMASK;
 					5'h14: REG_DO <= DVDNTL & DVDNT_RMASK;
-					5'h18: REG_DO <= DVDNTH & DVDNT_RMASK;
-					5'h1C: REG_DO <= DVDNTL & DVDNT_RMASK;
+					5'h18: REG_DO <= DVDNTH2 & DVDNT_RMASK;
+					5'h1C: REG_DO <= DVDNTL2 & DVDNT_RMASK;
 					default:REG_DO <= '0;
 				endcase
 			end
