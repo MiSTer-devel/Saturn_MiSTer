@@ -102,10 +102,6 @@ module SH7604 (
 	
 	bit        SLEEP;
 	
-	bit  [3:0] VBUS_A;
-	bit  [7:0] VBUS_DO;
-	bit        VBUS_REQ;
-	bit        VBUS_BUSY;
 	
 	//CACHE
 	bit [31:0] CACHE_DI;
@@ -115,7 +111,9 @@ module SH7604 (
 	
 	//BSC
 	bit [31:0] BSC_DO;
-	bit        BSC_BUSY;
+	bit        BSC_DBUS_BUSY;
+	bit        BSC_VBUS_BUSY;
+	bit        BSC_EBUS_END;
 	bit        BSC_ACK;
 	
 	//DMAC
@@ -131,6 +129,9 @@ module SH7604 (
 	bit [31:0] INTC_DO;
 	bit        INTC_ACT;
 	bit        INTC_BUSY;
+	bit  [3:0] VBUS_A;
+	bit  [7:0] VBUS_DO;
+	bit        VBUS_REQ;
 	
 	//MULT
 	bit  [1:0] MAC_SEL;
@@ -388,7 +389,9 @@ module SH7604 (
 		.DBUS_REQ(DBUS_REQ),
 		.DBUS_BURST(DBUS_BURST),
 		.DBUS_LOCK(DBUS_LOCK),
-		.DBUS_WAIT(BSC_BUSY),
+		.DBUS_WAIT(BSC_DBUS_BUSY),
+		
+		.EBUS_END(BSC_EBUS_END),
 		
 		.BSC_ACK(BSC_ACK),
 		
@@ -442,21 +445,23 @@ module SH7604 (
 		.BGR_N(BGR_N),
 		.MD(MD),
 		
-		.IBUS_A(DBUS_A),
-		.IBUS_DI(DBUS_DO),
-		.IBUS_DO(BSC_DO),
-		.IBUS_BA(DBUS_BA),
-		.IBUS_WE(DBUS_WE),
-		.IBUS_REQ(DBUS_REQ),
-		.IBUS_BURST(DBUS_BURST),
-		.IBUS_LOCK(DBUS_LOCK),
-		.IBUS_BUSY(BSC_BUSY),
-		.IBUS_ACT(),
+		.DBUS_A(DBUS_A),
+		.DBUS_DI(DBUS_DO),
+		.DBUS_DO(BSC_DO),
+		.DBUS_BA(DBUS_BA),
+		.DBUS_WE(DBUS_WE),
+		.DBUS_REQ(DBUS_REQ),
+		.DBUS_BURST(DBUS_BURST),
+		.DBUS_LOCK(DBUS_LOCK),
+		.DBUS_BUSY(BSC_DBUS_BUSY),
+		.DBUS_ACT(),
 		
 		.VBUS_A(VBUS_A),
 		.VBUS_DO(VBUS_DO),
 		.VBUS_REQ(VBUS_REQ),
-		.VBUS_BUSY(VBUS_BUSY),
+		.VBUS_BUSY(BSC_VBUS_BUSY),
+		
+		.EBUS_END(BSC_EBUS_END),
 		
 		.IRQ(),
 		
@@ -521,7 +526,7 @@ module SH7604 (
 		.VBUS_A(VBUS_A),
 		.VBUS_DI(VBUS_DO),
 		.VBUS_REQ(VBUS_REQ),
-		.VBUS_WAIT(VBUS_BUSY)
+		.VBUS_WAIT(BSC_VBUS_BUSY)
 	);
 	
 	SH7604_DIVU divu

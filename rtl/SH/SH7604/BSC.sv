@@ -28,21 +28,23 @@ module SH7604_BSC
 	output reg        IVECF_N,
 	input       [5:0] MD,
 	
-	input      [31:0] IBUS_A,
-	input      [31:0] IBUS_DI,
-	output     [31:0] IBUS_DO,
-	input       [3:0] IBUS_BA,
-	input             IBUS_WE,
-	input             IBUS_REQ,
-	input             IBUS_BURST,
-	input             IBUS_LOCK,
-	output            IBUS_BUSY,
-	output            IBUS_ACT,
+	input      [31:0] DBUS_A,
+	input      [31:0] DBUS_DI,
+	output     [31:0] DBUS_DO,
+	input       [3:0] DBUS_BA,
+	input             DBUS_WE,
+	input             DBUS_REQ,
+	input             DBUS_BURST,
+	input             DBUS_LOCK,
+	output            DBUS_BUSY,
+	output            DBUS_ACT,
 	
 	input       [3:0] VBUS_A,
 	output      [7:0] VBUS_DO,
 	input             VBUS_REQ,
 	output            VBUS_BUSY,
+	
+	output            EBUS_END,
 	
 	output            IRQ,
 	
@@ -141,8 +143,8 @@ module SH7604_BSC
 	} BusState_t;
 	BusState_t BUS_STATE;
 	
-	wire DBUS_REQ = IBUS_A[31:27] ==? 5'b00?00 & IBUS_REQ; 
-	wire BUS_ACCESS_REQ = DBUS_REQ | VBUS_REQ; 
+	wire DBUS_SEL = (DBUS_A[31:27] ==? 5'b00?00) && DBUS_REQ; 
+	wire BUS_SEL = DBUS_SEL | VBUS_REQ; 
 	
 	bit         BUSY;
 	bit         DBUSY;
@@ -156,8 +158,8 @@ module SH7604_BSC
 	always @(posedge CLK or negedge RST_N) begin
 		BusState_t STATE_NEXT;
 		bit  [2:0] WAIT_CNT;
-		bit [31:0] IBUS_DI_SAVE;
-		bit        IBUS_WE_SAVE;
+		bit [31:0] DBUS_DI_SAVE;
+		bit        DBUS_WE_SAVE;
 		bit  [1:0] AREA_SZ;
 		bit        IS_SDRAM;
 		bit        BURST_LAST;
@@ -350,7 +352,7 @@ module SH7604_BSC
 			
 			if (CE_R) begin
 				if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TD || BUS_STATE == TV2) begin
-					if (DBUS_REQ && !BUS_RLS && !BUSY && (BURST_CNT[0] || !BURST_EN)) begin
+					if (DBUS_SEL && !BUS_RLS && !BUSY && (BURST_CNT[0] || !BURST_EN)) begin
 						BUSY <= 1;
 						DBUSY <= 1;
 					end
@@ -366,18 +368,18 @@ module SH7604_BSC
 								A[3:0] <= A[3:0] + 4'd1; 
 								case (A[1:0] + 2'd1)
 									2'b01: begin 
-										DO <= {24'h000000,IBUS_DI_SAVE[23:16]};
-										WE_N <= ~{3'b000,IBUS_WE_SAVE & NEXT_BA[2]};
+										DO <= {24'h000000,DBUS_DI_SAVE[23:16]};
+										WE_N <= ~{3'b000,DBUS_WE_SAVE & NEXT_BA[2]};
 										NEXT_BA <= {2'b00,NEXT_BA[1:0]};
 									end
 									2'b10: begin 
-										DO <= {24'h000000,IBUS_DI_SAVE[15: 8]}; 
-										WE_N <= ~{3'b000,IBUS_WE_SAVE & NEXT_BA[1]};
+										DO <= {24'h000000,DBUS_DI_SAVE[15: 8]}; 
+										WE_N <= ~{3'b000,DBUS_WE_SAVE & NEXT_BA[1]};
 										NEXT_BA <= {3'b000,NEXT_BA[0]};
 									end
 									2'b11: begin 
-										DO <= {24'h000000,IBUS_DI_SAVE[ 7: 0]};
-										WE_N <= ~{3'b000,IBUS_WE_SAVE & NEXT_BA[0]}; 
+										DO <= {24'h000000,DBUS_DI_SAVE[ 7: 0]};
+										WE_N <= ~{3'b000,DBUS_WE_SAVE & NEXT_BA[0]}; 
 										NEXT_BA <= 4'b0000;
 									end
 									default: begin //shouldn't happen
@@ -390,8 +392,8 @@ module SH7604_BSC
 								A[3:0] <= A[3:0] + 4'd2; 
 								case (A[1])
 									1'b0: begin 
-										DO <= {16'h0000,IBUS_DI_SAVE[15: 0]};
-										WE_N <= ~({2'b00,IBUS_WE_SAVE,IBUS_WE_SAVE} & {2'b00,NEXT_BA[1:0]}); 
+										DO <= {16'h0000,DBUS_DI_SAVE[15: 0]};
+										WE_N <= ~({2'b00,DBUS_WE_SAVE,DBUS_WE_SAVE} & {2'b00,NEXT_BA[1:0]}); 
 										NEXT_BA <= 4'b0000;
 									end
 									1'b1: begin 
@@ -409,66 +411,66 @@ module SH7604_BSC
 							default: ;
 						endcase
 						BS_N <= 0;
-						RD_N <= IBUS_WE_SAVE;
+						RD_N <= DBUS_WE_SAVE;
 						CACK <= 1;
 						STATE_NEXT = IS_SDRAM ? (BURST_EN ? TD : TRC) : T1;
 					end
-					else if (BUS_ACCESS_REQ && !BUS_RLS && ((!BGR && MASTER) || (BREQ && !MASTER))) begin
+					else if (BUS_SEL && !BUS_RLS && ((!BGR && MASTER) || (BREQ && !MASTER))) begin
 						BUSY <= 1;
-						DBUSY <= DBUS_REQ;
+						DBUSY <= DBUS_SEL;
 						VBUSY <= VBUS_REQ;
 						
-						IS_SDRAM = IsSDRAMArea(IBUS_A[26:25],BCR1); 
+						IS_SDRAM = IsSDRAMArea(DBUS_A[26:25],BCR1); 
 						
 						VBUS_ACTIVE <= 0;
-						if (!VBUS_REQ || IBUS_LOCK) begin
-							case (GetAreaSZ(IBUS_A[26:25],BCR1,BCR2,A0_SZ,DRAM_SZ))
+						if (!VBUS_REQ || DBUS_LOCK) begin
+							case (GetAreaSZ(DBUS_A[26:25],BCR1,BCR2,A0_SZ,DRAM_SZ))
 								2'b01: begin 
-									case (IBUS_A[1:0])
+									case (DBUS_A[1:0])
 										2'b00: begin 
-											DO <= {24'h000000,IBUS_DI[31:24]}; 
-											WE_N <= ~{3'b000,IBUS_WE & IBUS_BA[3]};
-											NEXT_BA <= {1'b0,IBUS_BA[2:0]};
+											DO <= {24'h000000,DBUS_DI[31:24]}; 
+											WE_N <= ~{3'b000,DBUS_WE & DBUS_BA[3]};
+											NEXT_BA <= {1'b0,DBUS_BA[2:0]};
 										end
 										2'b01: begin 
-											DO <= {24'h000000,IBUS_DI[23:16]};
-											WE_N <= ~{3'b000,IBUS_WE & IBUS_BA[2]};
-											NEXT_BA <= {2'b00,IBUS_BA[1:0]};
+											DO <= {24'h000000,DBUS_DI[23:16]};
+											WE_N <= ~{3'b000,DBUS_WE & DBUS_BA[2]};
+											NEXT_BA <= {2'b00,DBUS_BA[1:0]};
 										end
 										2'b10: begin 
-											DO <= {24'h000000,IBUS_DI[15: 8]}; 
-											WE_N <= ~{3'b000,IBUS_WE & IBUS_BA[1]};
-											NEXT_BA <= {3'b000,IBUS_BA[0]};
+											DO <= {24'h000000,DBUS_DI[15: 8]}; 
+											WE_N <= ~{3'b000,DBUS_WE & DBUS_BA[1]};
+											NEXT_BA <= {3'b000,DBUS_BA[0]};
 										end
 										2'b11: begin 
-											DO <= {24'h000000,IBUS_DI[ 7: 0]};
-											WE_N <= ~{3'b000,IBUS_WE & IBUS_BA[0]}; 
+											DO <= {24'h000000,DBUS_DI[ 7: 0]};
+											WE_N <= ~{3'b000,DBUS_WE & DBUS_BA[0]}; 
 											NEXT_BA <= 4'b0000;
 										end
 									endcase
 								end
 								2'b10: begin 
-									case (IBUS_A[1])
+									case (DBUS_A[1])
 										1'b0: begin 
-											DO <= {16'h0000,IBUS_DI[31:16]}; 
-											WE_N <= ~{2'b00,{2{IBUS_WE}} & IBUS_BA[3:2]};
-											NEXT_BA <= {2'b00,IBUS_BA[1:0]};
+											DO <= {16'h0000,DBUS_DI[31:16]}; 
+											WE_N <= ~{2'b00,{2{DBUS_WE}} & DBUS_BA[3:2]};
+											NEXT_BA <= {2'b00,DBUS_BA[1:0]};
 										end
 										1'b1: begin 
-											DO <= {16'h0000,IBUS_DI[15: 0]}; 
-											WE_N <= ~{2'b00,{2{IBUS_WE}} & IBUS_BA[1:0]};
+											DO <= {16'h0000,DBUS_DI[15: 0]}; 
+											WE_N <= ~{2'b00,{2{DBUS_WE}} & DBUS_BA[1:0]};
 											NEXT_BA <= 4'b0000;
 										end
 									endcase
 								end
 								2'b11: begin 
-									DO <= IBUS_DI; 
-									WE_N <= ~({IBUS_WE,IBUS_WE,IBUS_WE,IBUS_WE} & IBUS_BA);
+									DO <= DBUS_DI; 
+									WE_N <= ~({DBUS_WE,DBUS_WE,DBUS_WE,DBUS_WE} & DBUS_BA);
 									NEXT_BA <= 4'b0000;
 								end
 								default:; 
 							endcase
-							if (IBUS_BURST && IS_SDRAM && !IBUS_WE) begin
+							if (DBUS_BURST && IS_SDRAM && !DBUS_WE) begin
 								if (!BURST_EN || BURST_LAST) begin
 									BURST_CNT <= 3'd0;
 									BURST_EN <= 1;
@@ -477,18 +479,18 @@ module SH7604_BSC
 								BURST_CNT <= 3'd0;
 								BURST_EN <= 0;
 							end
-							A <= IBUS_A[26:0];
-							CS0_N <= ~(IBUS_A[26:25] == 2'b00);
-							CS1_N <= ~(IBUS_A[26:25] == 2'b01);
-							CS2_N <= ~(IBUS_A[26:25] == 2'b10);
-							CS3_N <= ~(IBUS_A[26:25] == 2'b11);
+							A <= DBUS_A[26:0];
+							CS0_N <= ~(DBUS_A[26:25] == 2'b00);
+							CS1_N <= ~(DBUS_A[26:25] == 2'b01);
+							CS2_N <= ~(DBUS_A[26:25] == 2'b10);
+							CS3_N <= ~(DBUS_A[26:25] == 2'b11);
 							BS_N <= 0;
-							RD_WR_N <= ~IBUS_WE;
-							RD_N <= IBUS_WE;
+							RD_WR_N <= ~DBUS_WE;
+							RD_N <= DBUS_WE;
 							CACK <= 1;
 							
-							IBUS_WE_SAVE <= IBUS_WE;
-							IBUS_DI_SAVE <= IBUS_DI; 
+							DBUS_WE_SAVE <= DBUS_WE;
+							DBUS_DI_SAVE <= DBUS_DI; 
 							if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TD) begin
 								STATE_NEXT = IS_SDRAM ? TRC : T1;
 							end
@@ -507,33 +509,35 @@ module SH7604_BSC
 							CACK <= 0;
 							
 							NEXT_BA <= 4'b0000;
-							IBUS_WE_SAVE <= '0;
-							IBUS_DI_SAVE <= '0;
+							DBUS_WE_SAVE <= '0;
+							DBUS_DI_SAVE <= '0;
 							VBUS_ACTIVE <= 1;
 							STATE_NEXT = TV1;
 						end
 					end
 				end
-				else if ((BUS_STATE == T1 || BUS_STATE == TW || BUS_STATE == TRC) && BUS_ACCESS_REQ && !BUS_RLS) begin
+				else if ((BUS_STATE == T1 || BUS_STATE == TW || BUS_STATE == TRC) && BUS_SEL && !BUS_RLS) begin
 					if (!VBUSY && VBUS_REQ) VBUSY <= 1;
 				end
 			end
 			BUS_STATE <= STATE_NEXT;
 		end
 	end
-		
+	
 		
 	bit MST_BUS_RLS;
 	bit SLV_BUS_RLS;
+	bit MST_RLS_END;
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
 			BREQ <= 0;
 			BGR <= 0;
 			MST_BUS_RLS <= 0;
 			SLV_BUS_RLS <= 1;
+			MST_RLS_END <= 0;
 		end else if (CE_F) begin
 			if (MASTER) begin
-				if (BRLS && !BGR  && (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TD || BUS_STATE == TV2) && !BUSY && !IBUS_LOCK && !MST_BUS_RLS) begin
+				if (BRLS && !BGR && (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TD || BUS_STATE == TV2) && !BUSY && !DBUS_LOCK && !MST_BUS_RLS) begin
 					BGR <= 1;
 				end
 				else if (BRLS && BGR && !MST_BUS_RLS) begin
@@ -545,19 +549,30 @@ module SH7604_BSC
 				end
 			end
 			else begin
-				if (BUS_ACCESS_REQ && !BREQ && SLV_BUS_RLS) begin
+				if (BUS_SEL && !BREQ && SLV_BUS_RLS) begin
 					BREQ <= 1;
 				end
 				else if (BREQ && BACK && SLV_BUS_RLS) begin
 					SLV_BUS_RLS <= 0;
 				end
-				else if ((BREQ && (BUS_STATE == T2 || BUS_STATE == TD || BUS_STATE == TV2) && !BUSY && !IBUS_LOCK && !SLV_BUS_RLS) || 
+				else if ((BREQ && (BUS_STATE == T2 || BUS_STATE == TD || BUS_STATE == TV2) && !BUSY && !DBUS_LOCK && !SLV_BUS_RLS) || 
 				         (BREQ && BUS_STATE == T0 && !BUSY && !RES_N && !SLV_BUS_RLS)) begin
 					BREQ <= 0;
 				end
 				else if (!BREQ && !SLV_BUS_RLS ) begin
 					SLV_BUS_RLS <= 1;
 				end
+			end
+		end
+		else if (CE_R) begin
+			MST_RLS_END <= 0;
+			if (MASTER) begin
+				if (!BRLS && MST_BUS_RLS) begin
+					MST_RLS_END <= 1;
+				end
+			end
+			else begin
+				
 			end
 		end
 	end
@@ -567,7 +582,7 @@ module SH7604_BSC
 	
 		
 	//Registers
-	wire REG_SEL = (IBUS_A >= 32'hFFFFFFE0);
+	wire REG_SEL = (DBUS_A >= 32'hFFFFFFE0);
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
 			BCR1  <= BCR1_INIT;
@@ -579,15 +594,15 @@ module SH7604_BSC
 			RTCOR <= RTCOR_INIT;
 		end
 		else if (CE_R) begin
-			if (REG_SEL && IBUS_DI[31:16] == 16'hA55A && IBUS_WE && IBUS_REQ) begin
-				case ({IBUS_A[4:2],2'b00})
-					5'h00: BCR1  <= IBUS_DI[15:0] & BCR1_WMASK;
-					5'h04: BCR2  <= IBUS_DI[15:0] & BCR2_WMASK;
-					5'h08: WCR   <= IBUS_DI[15:0] & WCR_WMASK;
-					5'h0C: MCR   <= IBUS_DI[15:0] & MCR_WMASK;
-					5'h10: RTCSR <= IBUS_DI[15:0] & RTCSR_WMASK;
-					5'h14: RTCNT <= IBUS_DI[7:0]  & RTCNT_WMASK;
-					5'h18: RTCOR <= IBUS_DI[7:0]  & RTCOR_WMASK;
+			if (REG_SEL && DBUS_DI[31:16] == 16'hA55A && DBUS_WE && DBUS_REQ) begin
+				case ({DBUS_A[4:2],2'b00})
+					5'h00: BCR1  <= DBUS_DI[15:0] & BCR1_WMASK;
+					5'h04: BCR2  <= DBUS_DI[15:0] & BCR2_WMASK;
+					5'h08: WCR   <= DBUS_DI[15:0] & WCR_WMASK;
+					5'h0C: MCR   <= DBUS_DI[15:0] & MCR_WMASK;
+					5'h10: RTCSR <= DBUS_DI[15:0] & RTCSR_WMASK;
+					5'h14: RTCNT <= DBUS_DI[7:0]  & RTCNT_WMASK;
+					5'h18: RTCOR <= DBUS_DI[7:0]  & RTCOR_WMASK;
 					default:;
 				endcase
 			end
@@ -600,9 +615,9 @@ module SH7604_BSC
 			REG_DO <= '0;
 		end
 		else if (CE_F) begin
-			if (REG_SEL && !IBUS_WE && IBUS_REQ) begin
+			if (REG_SEL && !DBUS_WE && DBUS_REQ) begin
 				REG_DO[31:16] <= 16'h0000;
-				case ({IBUS_A[4:2],2'b00})
+				case ({DBUS_A[4:2],2'b00})
 					5'h00: REG_DO[15:0] <= {MD[5],BCR1[14:0]} & BCR1_RMASK;
 					5'h04: REG_DO[15:0] <= BCR2 & BCR2_RMASK;
 					5'h08: REG_DO[15:0] <= WCR & WCR_RMASK;
@@ -616,9 +631,11 @@ module SH7604_BSC
 		end
 	end
 	
-	assign IBUS_DO = REG_SEL ? REG_DO : DAT_BUF;
-	assign IBUS_BUSY = DBUSY | ((BUS_RLS | (BGR & MASTER) | (~BREQ & ~MASTER)) & DBUS_REQ) | VBUS_ACTIVE;
-	assign IBUS_ACT = REG_SEL;
+	assign EBUS_END = MST_RLS_END;
+	
+	assign DBUS_DO = REG_SEL ? REG_DO : DAT_BUF;
+	assign DBUS_BUSY = DBUSY | ((BUS_RLS | (BGR & MASTER) | (~BREQ & ~MASTER)) & DBUS_SEL) | VBUS_ACTIVE;
+	assign DBUS_ACT = REG_SEL;
 	
 	assign VBUS_DO = VEC_BUF;
 	assign VBUS_BUSY = VBUSY | ((BUS_RLS | BGR) & VBUS_REQ);

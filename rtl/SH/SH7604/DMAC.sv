@@ -37,13 +37,14 @@ module SH7604_DMAC (
 	output            DBUS_BURST,
 	input             DBUS_WAIT,
 	
+	input             EBUS_END,
+	
 	input             BSC_ACK,
 	
 	output            DMAC0_IRQ,
 	output      [7:0] DMAC0_VEC,
 	output            DMAC1_IRQ,
 	output      [7:0] DMAC1_VEC
-	
 );
 
 	import SH7604_PKG::*;
@@ -214,7 +215,7 @@ module SH7604_DMAC (
 			CH_REQ_CLR[0] <= 0;
 			CH_REQ_CLR[1] <= 0;
 			DMA_REQ_CLR <= 0;
-			if (DMA_REQ && !DMA_RD && !DMA_WR && !DBUS_WAIT && !IBUS_LOCK && CE_F) begin
+			if (DMA_REQ && !DMA_RD && !DMA_WR && (!DBUS_WAIT || EBUS_END) && !IBUS_LOCK && CE_F) begin
 				if (!CHCR[DMA_CH].TA || (CHCR[DMA_CH].TA && !CHCR[DMA_CH].AM)) begin
 					DMA_RD <= 1;
 					LW_CNT <= &CHCR[DMA_CH].TS ? 2'd3 : 2'd0;
@@ -378,7 +379,6 @@ module SH7604_DMAC (
 	assign DMAC0_VEC = VCRDMA0.VC;
 	assign DMAC1_IRQ = CHCR[1].TE & CHCR[1].IE;
 	assign DMAC1_VEC = VCRDMA1.VC;
-	
 	
 	//Registers
 	always @(posedge CLK or negedge RST_N) begin
