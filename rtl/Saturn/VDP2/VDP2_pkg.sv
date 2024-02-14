@@ -2262,7 +2262,7 @@ package VDP2_PKG;
 		
 		MSD = MSB & ~TP &          ~SPCTL.SPWINEN;
 		TSD = MSB &  TP & TPSDSL & ~SPCTL.SPWINEN;
-		PAL_TP = (~DATA[15] & TP) | NSD | TSD;
+		PAL_TP = TP | NSD | TSD;
 		
 		if (SPCTL.SPCLMD && DATA[15])
 			SDD = {1'b0, RGB_TP, 1'b0,        1'b0, 3'h0, 3'h0,        RGB888};
