@@ -2306,7 +2306,7 @@ module VDP1 (
 					VBI_HBL_SKIP <= 1;
 				end
 				if (!VTIM_N) begin
-					if (HTIM_N && !HTIM_N_OLD && VBI_HBL_SKIP) begin
+					if (!HTIM_N && HTIM_N_OLD && VBI_HBL_SKIP) begin
 						VBI_HBL_SKIP <= 0;
 						if (TVMR.VBE && FBCR.FCT && FBCR.FCM) begin
 							VBLANK_ERASE <= 1;
