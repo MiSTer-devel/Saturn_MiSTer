@@ -637,48 +637,48 @@ module VDP2 (
 		RDBSB0 = REGS.RAMCTL.RDBSB0;
 		RDBSB1 = REGS.RAMCTL.VRBMD ? REGS.RAMCTL.RDBSB1 : REGS.RAMCTL.RDBSB0;
 			
-		VA_PIPE[0].NxA0PN[0] = VCPA0 == VCP_N0PN                  & NBG_FETCH  & NSxREG[0].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1PN[0] = VCPA1 == VCP_N0PN                  & NBG_FETCH  & NSxREG[0].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0PN[0] = VCPB0 == VCP_N0PN                  & NBG_FETCH  & NSxREG[0].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1PN[0] = VCPB1 == VCP_N0PN                  & NBG_FETCH  & NSxREG[0].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxA0PN[1] = VCPA0 == VCP_N1PN                  & NBG_FETCH  & NSxREG[1].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1PN[1] = VCPA1 == VCP_N1PN                  & NBG_FETCH  & NSxREG[1].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0PN[1] = VCPB0 == VCP_N1PN                  & NBG_FETCH  & NSxREG[1].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1PN[1] = VCPB1 == VCP_N1PN                  & NBG_FETCH  & NSxREG[1].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxA0PN[2] = VCPA0 == VCP_N2PN                  & NBG_FETCH  & NSxREG[2].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1PN[2] = VCPA1 == VCP_N2PN                  & NBG_FETCH  & NSxREG[2].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0PN[2] = VCPB0 == VCP_N2PN                  & NBG_FETCH  & NSxREG[2].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1PN[2] = VCPB1 == VCP_N2PN                  & NBG_FETCH  & NSxREG[2].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxA0PN[3] = VCPA0 == VCP_N3PN                  & NBG_FETCH  & NSxREG[3].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1PN[3] = VCPA1 == VCP_N3PN                  & NBG_FETCH  & NSxREG[3].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0PN[3] = VCPB0 == VCP_N3PN                  & NBG_FETCH  & NSxREG[3].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1PN[3] = VCPB1 == VCP_N3PN                  & NBG_FETCH  & NSxREG[3].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0PN[0] = VCPA0 == VCP_N0PN                  & NBG_FETCH  & NSxREG[0].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1PN[0] = VCPA1 == VCP_N0PN                  & NBG_FETCH  & NSxREG[0].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0PN[0] = VCPB0 == VCP_N0PN                  & NBG_FETCH  & NSxREG[0].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1PN[0] = VCPB1 == VCP_N0PN                  & NBG_FETCH  & NSxREG[0].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0PN[1] = VCPA0 == VCP_N1PN                  & NBG_FETCH  & NSxREG[1].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1PN[1] = VCPA1 == VCP_N1PN                  & NBG_FETCH  & NSxREG[1].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0PN[1] = VCPB0 == VCP_N1PN                  & NBG_FETCH  & NSxREG[1].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1PN[1] = VCPB1 == VCP_N1PN                  & NBG_FETCH  & NSxREG[1].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0PN[2] = VCPA0 == VCP_N2PN                  & NBG_FETCH  & NSxREG[2].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1PN[2] = VCPA1 == VCP_N2PN                  & NBG_FETCH  & NSxREG[2].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0PN[2] = VCPB0 == VCP_N2PN                  & NBG_FETCH  & NSxREG[2].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1PN[2] = VCPB1 == VCP_N2PN                  & NBG_FETCH  & NSxREG[2].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0PN[3] = VCPA0 == VCP_N3PN                  & NBG_FETCH  & NSxREG[3].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1PN[3] = VCPA1 == VCP_N3PN                  & NBG_FETCH  & NSxREG[3].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0PN[3] = VCPB0 == VCP_N3PN                  & NBG_FETCH  & NSxREG[3].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1PN[3] = VCPB1 == VCP_N3PN                  & NBG_FETCH  & NSxREG[3].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
 		
-		VA_PIPE[0].NxA0CH[0] = VCPA0 == VCP_N0CH                  & NCH_FETCH  & NSxREG[0].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1CH[0] = VCPA1 == VCP_N0CH                  & NCH_FETCH  & NSxREG[0].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0CH[0] = VCPB0 == VCP_N0CH                  & NCH_FETCH  & NSxREG[0].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1CH[0] = VCPB1 == VCP_N0CH                  & NCH_FETCH  & NSxREG[0].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxA0CH[1] = VCPA0 == VCP_N1CH                  & NCH_FETCH  & NSxREG[1].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1CH[1] = VCPA1 == VCP_N1CH                  & NCH_FETCH  & NSxREG[1].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0CH[1] = VCPB0 == VCP_N1CH                  & NCH_FETCH  & NSxREG[1].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1CH[1] = VCPB1 == VCP_N1CH                  & NCH_FETCH  & NSxREG[1].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxA0CH[2] = VCPA0 == VCP_N2CH                  & NCH_FETCH  & NSxREG[2].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1CH[2] = VCPA1 == VCP_N2CH                  & NCH_FETCH  & NSxREG[2].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0CH[2] = VCPB0 == VCP_N2CH                  & NCH_FETCH  & NSxREG[2].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1CH[2] = VCPB1 == VCP_N2CH                  & NCH_FETCH  & NSxREG[2].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxA0CH[3] = VCPA0 == VCP_N3CH                  & NCH_FETCH  & NSxREG[3].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1CH[3] = VCPA1 == VCP_N3CH                  & NCH_FETCH  & NSxREG[3].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0CH[3] = VCPB0 == VCP_N3CH                  & NCH_FETCH  & NSxREG[3].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1CH[3] = VCPB1 == VCP_N3CH                  & NCH_FETCH  & NSxREG[3].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0CH[0] = VCPA0 == VCP_N0CH                  & NCH_FETCH  & NSxREG[0].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1CH[0] = VCPA1 == VCP_N0CH                  & NCH_FETCH  & NSxREG[0].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0CH[0] = VCPB0 == VCP_N0CH                  & NCH_FETCH  & NSxREG[0].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1CH[0] = VCPB1 == VCP_N0CH                  & NCH_FETCH  & NSxREG[0].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0CH[1] = VCPA0 == VCP_N1CH                  & NCH_FETCH  & NSxREG[1].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1CH[1] = VCPA1 == VCP_N1CH                  & NCH_FETCH  & NSxREG[1].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0CH[1] = VCPB0 == VCP_N1CH                  & NCH_FETCH  & NSxREG[1].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1CH[1] = VCPB1 == VCP_N1CH                  & NCH_FETCH  & NSxREG[1].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0CH[2] = VCPA0 == VCP_N2CH                  & NCH_FETCH  & NSxREG[2].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1CH[2] = VCPA1 == VCP_N2CH                  & NCH_FETCH  & NSxREG[2].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0CH[2] = VCPB0 == VCP_N2CH                  & NCH_FETCH  & NSxREG[2].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1CH[2] = VCPB1 == VCP_N2CH                  & NCH_FETCH  & NSxREG[2].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0CH[3] = VCPA0 == VCP_N3CH                  & NCH_FETCH  & NSxREG[3].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1CH[3] = VCPA1 == VCP_N3CH                  & NCH_FETCH  & NSxREG[3].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0CH[3] = VCPB0 == VCP_N3CH                  & NCH_FETCH  & NSxREG[3].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1CH[3] = VCPB1 == VCP_N3CH                  & NCH_FETCH  & NSxREG[3].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
 		
-		VA_PIPE[0].NxA0VS[0] = VCPA0 == VCP_N0VS & NSxREG[0].VCSC & NVCS_FETCH & NSxREG[0].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1VS[0] = VCPA1 == VCP_N0VS & NSxREG[0].VCSC & NVCS_FETCH & NSxREG[0].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0VS[0] = VCPB0 == VCP_N0VS & NSxREG[0].VCSC & NVCS_FETCH & NSxREG[0].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1VS[0] = VCPB1 == VCP_N0VS & NSxREG[0].VCSC & NVCS_FETCH & NSxREG[0].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxA0VS[1] = VCPA0 == VCP_N1VS & NSxREG[1].VCSC & NVCS_FETCH & NSxREG[1].ON & (REGS.RAMCTL.RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxA1VS[1] = VCPA1 == VCP_N1VS & NSxREG[1].VCSC & NVCS_FETCH & NSxREG[1].ON & (REGS.RAMCTL.RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
-		VA_PIPE[0].NxB0VS[1] = VCPB0 == VCP_N1VS & NSxREG[1].VCSC & NVCS_FETCH & NSxREG[1].ON & (REGS.RAMCTL.RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
-		VA_PIPE[0].NxB1VS[1] = VCPB1 == VCP_N1VS & NSxREG[1].VCSC & NVCS_FETCH & NSxREG[1].ON & (REGS.RAMCTL.RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0VS[0] = VCPA0 == VCP_N0VS & NSxREG[0].VCSC & NVCS_FETCH & NSxREG[0].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1VS[0] = VCPA1 == VCP_N0VS & NSxREG[0].VCSC & NVCS_FETCH & NSxREG[0].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0VS[0] = VCPB0 == VCP_N0VS & NSxREG[0].VCSC & NVCS_FETCH & NSxREG[0].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1VS[0] = VCPB1 == VCP_N0VS & NSxREG[0].VCSC & NVCS_FETCH & NSxREG[0].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxA0VS[1] = VCPA0 == VCP_N1VS & NSxREG[1].VCSC & NVCS_FETCH & NSxREG[1].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxA1VS[1] = VCPA1 == VCP_N1VS & NSxREG[1].VCSC & NVCS_FETCH & NSxREG[1].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
+		VA_PIPE[0].NxB0VS[1] = VCPB0 == VCP_N1VS & NSxREG[1].VCSC & NVCS_FETCH & NSxREG[1].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
+		VA_PIPE[0].NxB1VS[1] = VCPB1 == VCP_N1VS & NSxREG[1].VCSC & NVCS_FETCH & NSxREG[1].ON & (RDBSB1 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
 		
 		VA_PIPE[0].NxA0CPU = ((VCPA0 == VCP_CPU | (VCPA0 == VCP_NA & VCPA1 == VCP_NA)) & ~LS_FETCH & ~RPA_FETCH & ~BACK_FETCH & ~LN_FETCH) | VBLANK2 | ~DISP;
 		VA_PIPE[0].NxA1CPU = ((VCPA1 == VCP_CPU | (VCPA0 == VCP_NA & VCPA1 == VCP_NA)) & ~LS_FETCH & ~RPA_FETCH & ~BACK_FETCH & ~LN_FETCH) | VBLANK2 | ~DISP;
@@ -1994,9 +1994,9 @@ module VDP2 (
 	wire [ 8: 0] WxSY[2] = '{REGS.WPSY0.WxSY,REGS.WPSY1.WxSY};
 	wire [ 8: 0] WxEY[2] = '{REGS.WPEY0.WxEY,REGS.WPEY1.WxEY};
 	
-	wire W0_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[0][9:1],WxSX[0][0]&HRES[1]} || {WxSX[0][9:1],WxSX[0][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[0][9:1],WxEX[0][0]&HRES[1]} && {WxEX[0][9:1],WxEX[0][0]|~HRES[1]} != 10'h3FF &&
+	wire W0_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[0][9:1],WxSX[0][0]&HRES[1]} || {WxSX[0][9:1],WxSX[0][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[0][9:1],WxEX[0][0]&HRES[1]} && {WxEX[0][9:1],WxEX[0][0]&HRES[1]} <= 10'h380 &&
 	               WSCRNY                 >= {WxSY[0][8:1],WxSY[0][0]&~DDI}                                                      && WSCRNY                 <= {WxEY[0][8:1],WxEY[0][0]&~DDI};
-	wire W1_HIT = ({SCRNX,SCRNX0|HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]&HRES[1]} || {WxSX[1][9:1],WxSX[1][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]&HRES[1]} && {WxEX[1][9:1],WxEX[1][0]|~HRES[1]} != 10'h3FF &&
+	wire W1_HIT = ({SCRNX,SCRNX0|HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]&HRES[1]} || {WxSX[1][9:1],WxSX[1][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]&HRES[1]} && {WxEX[1][9:1],WxEX[1][0]&HRES[1]} <= 10'h380 &&
 	               WSCRNY                 >= {WxSY[1][8:1],WxSY[1][0]&~DDI}                                                      && WSCRNY                 <= {WxEY[1][8:1],WxEY[1][0]&~DDI};
 					  
 	bit          W0_HIT_PIPE[17*2];
