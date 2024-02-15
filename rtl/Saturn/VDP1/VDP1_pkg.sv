@@ -182,10 +182,10 @@ package VDP1_PKG;
 	
 	typedef struct packed
 	{
-		bit [10: 0] X;
-		bit [10: 0] Y;
+		bit [15: 0] X;
+		bit [15: 0] Y;
 	} Vertex_t;
-	parameter Vertex_t VERT_NULL = {11'h000,11'h000};
+	parameter Vertex_t VERT_NULL = {16'h0000,16'h0000};
 	
 	//Rotation screen
 	typedef struct packed
