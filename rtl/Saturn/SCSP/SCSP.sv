@@ -613,6 +613,7 @@ module SCSP (
 				OP5.KOFF <= OP4.KOFF;
 				OP5.EST <= OP4.EST;
 				OP5.EVOL <= OP4.EVOL;
+				OP5.ALFO <= 8'h00;//TODO
 				OP5.WD <= OP4.WD;
 			end
 		end
@@ -637,16 +638,20 @@ module SCSP (
 				OP6.SLOT <= OP5.SLOT;
 				OP6.KON <= OP5.KON;
 				OP6.KOFF <= OP5.KOFF;
-				OP6.EVOL <= OP5.EVOL;
+				OP6.LEVEL <= LevelAddALFO(OP5.EVOL, OP5.ALFO);
 //				OP6.SDIR <= SCR3.SDIR;
 				OP6.WD <= OP5.WD;
-				OP6.SD <= EnvVolCalc(OP5.WD, OP5.EVOL);
+//				OP6.SD <= EnvVolCalc(OP5.WD, OP5.EVOL);
 			end
 		end
 	end
 	
 	//Operation 6: Level calculation
 	always @(posedge CLK or negedge RST_N) begin
+		bit [ 9: 0] LEVEL;
+		
+		LEVEL = LevelAddTL(OP6.LEVEL, SCR3.TL);
+		
 		if (!RST_N) begin
 			OP7 <= OP7_RESET;
 		end else if (!RES_N) begin
@@ -656,7 +661,7 @@ module SCSP (
 				OP7.SLOT <= OP6.SLOT;
 				OP7.KON <= OP6.KON;
 				OP7.KOFF <= OP6.KOFF;
-				OP7.SD <= SCR3.SDIR ? OP6.WD : VolCalc(OP6.WD, OP6.EVOL, SCR3.TL);
+				OP7.SD <= SCR3.SDIR ? OP6.WD : VolCalc(OP6.WD, LEVEL);
 //				OP7.SD <= SCR3.SDIR ? OP6.WD : TotalVolCalc(OP6.SD, SCR3.TL);
 				OP7.STWINH <= SCR3.STWINH;
 			end
@@ -677,37 +682,39 @@ module SCSP (
 			DIR_ACC_R <= 0;
 			// synopsys translate_on
 		end else if (!RES_N) begin
-			
+			DIR_ACC_L <= 0;
+			DIR_ACC_R <= 0;
 		end else begin
 			S = OP7.SLOT;
+			if ((!SLOT_EN[ 0] && S == 5'd0 ) || (!SLOT_EN[ 1] && S == 5'd1 ) || (!SLOT_EN[ 2] && S == 5'd2 ) || (!SLOT_EN[ 3] && S == 5'd 3) ||
+						 (!SLOT_EN[ 4] && S == 5'd4 ) || (!SLOT_EN[ 5] && S == 5'd5 ) || (!SLOT_EN[ 6] && S == 5'd6 ) || (!SLOT_EN[ 7] && S == 5'd7 ) ||
+						 (!SLOT_EN[ 8] && S == 5'd8 ) || (!SLOT_EN[ 9] && S == 5'd9 ) || (!SLOT_EN[10] && S == 5'd10) || (!SLOT_EN[11] && S == 5'd11) ||
+						 (!SLOT_EN[12] && S == 5'd12) || (!SLOT_EN[13] && S == 5'd13) || (!SLOT_EN[14] && S == 5'd14) || (!SLOT_EN[15] && S == 5'd15) ||
+						 (!SLOT_EN[16] && S == 5'd16) || (!SLOT_EN[17] && S == 5'd17) || (!SLOT_EN[18] && S == 5'd18) || (!SLOT_EN[19] && S == 5'd19) ||
+						 (!SLOT_EN[20] && S == 5'd20) || (!SLOT_EN[21] && S == 5'd21) || (!SLOT_EN[22] && S == 5'd22) || (!SLOT_EN[23] && S == 5'd23) ||
+						 (!SLOT_EN[24] && S == 5'd24) || (!SLOT_EN[25] && S == 5'd25) || (!SLOT_EN[26] && S == 5'd26) || (!SLOT_EN[27] && S == 5'd27) ||
+						 (!SLOT_EN[28] && S == 5'd28) || (!SLOT_EN[29] && S == 5'd29) || (!SLOT_EN[30] && S == 5'd30) || (!SLOT_EN[31] && S == 5'd31))
+				TEMP = '0;
+			else 
+				TEMP = LevelCalc(OP7.SD,SCR8.DISDL);
+			PAN_L = PanLCalc(TEMP,SCR8.DIPAN);
+			PAN_R = PanRCalc(TEMP,SCR8.DIPAN);
 			
 			if (SLOT1_CE) begin
-				if ((!SLOT_EN[ 0] && S == 5'd0 ) || (!SLOT_EN[ 1] && S == 5'd1 ) || (!SLOT_EN[ 2] && S == 5'd2 ) || (!SLOT_EN[ 3] && S == 5'd 3) ||
-				    (!SLOT_EN[ 4] && S == 5'd4 ) || (!SLOT_EN[ 5] && S == 5'd5 ) || (!SLOT_EN[ 6] && S == 5'd6 ) || (!SLOT_EN[ 7] && S == 5'd7 ) ||
-					 (!SLOT_EN[ 8] && S == 5'd8 ) || (!SLOT_EN[ 9] && S == 5'd9 ) || (!SLOT_EN[10] && S == 5'd10) || (!SLOT_EN[11] && S == 5'd11) ||
-				    (!SLOT_EN[12] && S == 5'd12) || (!SLOT_EN[13] && S == 5'd13) || (!SLOT_EN[14] && S == 5'd14) || (!SLOT_EN[15] && S == 5'd15) ||
-					 (!SLOT_EN[16] && S == 5'd16) || (!SLOT_EN[17] && S == 5'd17) || (!SLOT_EN[18] && S == 5'd18) || (!SLOT_EN[19] && S == 5'd19) ||
-				    (!SLOT_EN[20] && S == 5'd20) || (!SLOT_EN[21] && S == 5'd21) || (!SLOT_EN[22] && S == 5'd22) || (!SLOT_EN[23] && S == 5'd23) ||
-					 (!SLOT_EN[24] && S == 5'd24) || (!SLOT_EN[25] && S == 5'd25) || (!SLOT_EN[26] && S == 5'd26) || (!SLOT_EN[27] && S == 5'd27) ||
-				    (!SLOT_EN[28] && S == 5'd28) || (!SLOT_EN[29] && S == 5'd29) || (!SLOT_EN[30] && S == 5'd30) || (!SLOT_EN[31] && S == 5'd31))
-				TEMP = '0;
-				else 
-				TEMP = LevelCalc(OP7.SD,SCR8.DISDL);
-				PAN_L = PanLCalc(TEMP,SCR8.DIPAN);
-				PAN_R = PanRCalc(TEMP,SCR8.DIPAN);
 				if (S == 5'd0) begin
-					DIR_ACC_L <= {{4{PAN_L[15]}},PAN_L[15:2]};
-					DIR_ACC_R <= {{4{PAN_R[15]}},PAN_R[15:2]};
+					DIR_ACC_L <= {{2{PAN_L[15]}},PAN_L[15:0]};
+					DIR_ACC_R <= {{2{PAN_R[15]}},PAN_R[15:0]};
 				end else begin
-					DIR_ACC_L <= DIR_ACC_L + {{4{PAN_L[15]}},PAN_L[15:2]};
-					DIR_ACC_R <= DIR_ACC_R + {{4{PAN_R[15]}},PAN_R[15:2]};
+					DIR_ACC_L <= DIR_ACC_L + {{2{PAN_L[15]}},PAN_L[15:0]};
+					DIR_ACC_R <= DIR_ACC_R + {{2{PAN_R[15]}},PAN_R[15:0]};
 				end
-`ifdef DEBUG
-				LVL_DBG <= TEMP;
-				PAN_L_DBG <= PAN_L;
-				PAN_R_DBG <= PAN_R;
-`endif
 			end
+			
+`ifdef DEBUG
+			LVL_DBG <= TEMP;
+			PAN_L_DBG <= PAN_L;
+			PAN_R_DBG <= PAN_R;
+`endif
 		end
 	end
 `ifdef DEBUG
@@ -752,7 +759,6 @@ module SCSP (
 					MIXS_OLD <= MIXS_SUM[SCR7.ISEL];
 				end
 				if (CYCLE_NUM[2:1] == 2'b10) begin
-//					MIXS_SUM[SCR7.ISEL] <= MIXS_OLD + {{4{SD[15]}},SD};
 					MIXS_SUM[SCR7.ISEL] <= MIXS_OLD + {SD,4'h00};
 				end
 			end
@@ -845,7 +851,7 @@ module SCSP (
 			case (MPRO1_Q.YSEL)
 				2'b00: Y = FRC_REG;
 				2'b01: Y = COEF_Q;
-				2'b10: Y = Y_REG[23:12];
+				2'b10: Y = Y_REG[23:11];
 				2'b11: Y = {1'b0,Y_REG[15:4]};
 			endcase
 			
@@ -859,7 +865,7 @@ module SCSP (
 				
 			MUL = DSPMult(X, Y);
 			
-			ADDR = MADRS_Q + (!MPRO1_Q.TABLE ? MDEC_CT : 16'h0000) + (MPRO1_Q.ADREB ? {4'h0,ADRS_REG} : 16'h0000) + (MPRO1_Q.NXADR ? 16'h0001 : 16'h0000);
+			ADDR = MADRS_Q + (!MPRO1_Q.TABLE ? MDEC_CT : 16'h0000) + (MPRO1_Q.ADREB ? {{4{ADRS_REG[11]}},ADRS_REG} : 16'h0000) + (MPRO1_Q.NXADR ? 16'h0001 : 16'h0000);
 			
 			if (CYCLE0_CE) begin
 				MPRO1_Q <= MPRO0_Q;
@@ -890,7 +896,7 @@ module SCSP (
 					if (MPRO1_Q.SHFT == 2'b11)
 						ADRS_REG <= SHFT_OUT[23:12];
 					else
-						ADRS_REG <= {{4{INPUTS[23]}},INPUTS[23:16]};///////
+						ADRS_REG <= {{4{INPUTS[23]}},INPUTS[23:16]};
 				end
 				
 				case (CR1.RBL | {2{MPRO1_Q.TABLE}})
@@ -947,34 +953,34 @@ module SCSP (
 			EFF_ACC_R <= '0;
 			// synopsys translate_on
 		end else if (!RES_N) begin
-			
+			EFF_ACC_L <= '0;
+			EFF_ACC_R <= '0;
 		end else begin
 			S = OP7.SLOT;
+			
+			TEMP = '0;
+			if (S <= 5'd15) begin
+				TEMP = LevelCalc(EFREG_Q,SCR8.EFSDL);
+			end else if (S == 5'd16) begin
+				TEMP = !SND_EN[2] ? 16'h0000 : LevelCalc(ESL,SCR8.EFSDL);
+			end else if (S == 5'd17) begin
+				TEMP = !SND_EN[2] ? 16'h0000 : LevelCalc(ESR,SCR8.EFSDL);
+			end
+			PAN_L = PanLCalc(TEMP,SCR8.EFPAN);
+			PAN_R = PanRCalc(TEMP,SCR8.EFPAN);
 			
 			if (SLOT0_CE) begin
 				EFREG_Q <= EFREG_RAM_Q;
 			end
 			
 			if (SLOT1_CE) begin
-				TEMP = '0;
-				if (S <= 5'd15) begin
-					TEMP = LevelCalc(EFREG_Q,SCR8.EFSDL);
-				end else if (S == 5'd16) begin
-					TEMP = !SND_EN[2] ? 16'h0000 : LevelCalc(ESL,SCR8.EFSDL);
-				end else if (S == 5'd17) begin
-					TEMP = !SND_EN[2] ? 16'h0000 : LevelCalc(ESR,SCR8.EFSDL);
-				end
-				PAN_L = PanLCalc(TEMP,SCR8.EFPAN);
-				PAN_R = PanRCalc(TEMP,SCR8.EFPAN);
-				
 				if (S == 5'd0) begin
-					EFF_ACC_L <= {{4{PAN_L[15]}},PAN_L[15:2]};
-					EFF_ACC_R <= {{4{PAN_R[15]}},PAN_R[15:2]};
+					EFF_ACC_L <= {{2{PAN_L[15]}},PAN_L[15:0]};
+					EFF_ACC_R <= {{2{PAN_R[15]}},PAN_R[15:0]};
 				end else begin
-					EFF_ACC_L <= EFF_ACC_L + {{4{PAN_L[15]}},PAN_L[15:2]};
-					EFF_ACC_R <= EFF_ACC_R + {{4{PAN_R[15]}},PAN_R[15:2]};
+					EFF_ACC_L <= EFF_ACC_L + {{2{PAN_L[15]}},PAN_L[15:0]};
+					EFF_ACC_R <= EFF_ACC_R + {{2{PAN_R[15]}},PAN_R[15:0]};
 				end
-				
 			end
 		end
 	end
@@ -1007,8 +1013,8 @@ module SCSP (
 	bit [16:0] SUM_L,SUM_R;
 	assign SUM_L = {DIR_L[15],DIR_L} + {EFF_L[15],EFF_L};
 	assign SUM_R = {DIR_R[15],DIR_R} + {EFF_R[15],EFF_R};
-	assign SOUND_L = MVolCalc(SUM_L[15:0],CR0.MVOL);
-	assign SOUND_R = MVolCalc(SUM_R[15:0],CR0.MVOL);
+	assign SOUND_L = MVolCalc(SUM_L[15:0], CR0.MVOL, CR0.DB);
+	assign SOUND_R = MVolCalc(SUM_R[15:0], CR0.MVOL, CR0.DB);
 `ifdef DEBUG
 	assign SUM_L_OF = (SUM_L[16] && !SUM_L[15]) || (!SUM_L[16] && SUM_L[15]);
 	assign SUM_R_OF = (SUM_R[16] && !SUM_R[15]) || (!SUM_R[16] && SUM_R[15]);
@@ -1211,7 +1217,7 @@ module SCSP (
 					end else if ((DSP_READ || DSP_WRITE) && DSP_EN) begin
 						MEM_A <= DSP_MEMA_REG[18:1];
 						MEM_D <= DSP_OUT_REG;
-						MEM_WE <= {2{DSP_WRITE}};
+						MEM_WE <= {2{DSP_WRITE&~DSP_MEMA_REG[19]}};
 						MEM_RD <= DSP_READ;
 						MEM_CS <= 1;
 						MEM_DEV <= 3'd2;
