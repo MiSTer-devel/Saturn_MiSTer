@@ -461,7 +461,6 @@ module SMPC (
 							end
 							
 							8'h0E: begin		//CKCHG352
-								SNDRES_N <= 1;
 								SYSRES_N <= 1;
 								WAIT_CNT <= 20'd400000;
 								NEXT_COMM_ST <= CS_EXEC;
@@ -469,7 +468,6 @@ module SMPC (
 							end
 							
 							8'h0F: begin		//CKCHG320
-								SNDRES_N <= 1;
 								SYSRES_N <= 1;
 								WAIT_CNT <= 20'd400000;
 								NEXT_COMM_ST <= CS_EXEC;
