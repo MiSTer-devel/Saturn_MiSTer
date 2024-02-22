@@ -750,7 +750,7 @@ module SCSP (
 			MIXS_SUM <= '{16{'0}};
 			// synopsys translate_on
 		end else if (!RES_N) begin
-			
+			MIXS_SUM <= '{16{'0}};
 		end else begin
 			SD = LevelCalc(OP7.SD,SCR7.IMXL);
 
@@ -800,6 +800,7 @@ module SCSP (
 	bit  [15: 0] DSP_OUT_REG;
 	bit          DSP_READ;
 	bit          DSP_WRITE;
+	bit          DSP_READ_NOFL;
 	
 	wire [23: 0] SHFT_OUT = DSPShifter(SFT_REG, MPRO1_Q.SHFT);
 	
@@ -833,6 +834,7 @@ module SCSP (
 			DSP_OUT_REG <= '0;
 			// synopsys translate_on
 		end else if (!RES_N) begin
+			MPRO1_Q <= '0;
 			MDEC_CT <= '0;
 			DSP_READ <= 0;
 			DSP_WRITE <= 0;
@@ -905,8 +907,9 @@ module SCSP (
 					2'b10: DSP_MEMA_REG <= {CR1.RBP,12'h000} + {4'b0000,ADDR[15:1]};
 					2'b11: DSP_MEMA_REG <= {CR1.RBP,12'h000} + {3'b000,ADDR[16:1]};
 				endcase
-				DSP_OUT_REG <= SHFT_OUT[23:8];//TODO NOFL
+				DSP_OUT_REG <= !MPRO1_Q.NOFL ? DSPItoF(SHFT_OUT) : SHFT_OUT[23:8];
 				DSP_READ <= MPRO1_Q.MRD;
+				DSP_READ_NOFL <= MPRO1_Q.NOFL;
 				DSP_WRITE <= MPRO1_Q.MWT & |CR1.RBP;//TODO
 			end
 `ifdef DEBUG
@@ -926,7 +929,7 @@ module SCSP (
 	assign DSP_MEMS_RA = MPRO0_Q.IRA[4:0];
 	assign DSP_MEMS_WA = MPRO1_Q.IWA;
 	assign DSP_MEMS_WE = MPRO1_Q.IWT;
-	assign DSP_MEMS_D = {DSP_INP_REG,8'h00};//TODO NOFL
+	assign DSP_MEMS_D = !DSP_READ_NOFL ? DSPFtoI(DSP_INP_REG) : {DSP_INP_REG,8'h00};
 	
 	assign DSP_COEF_RA = MPRO0_Q.COEF;
 	assign DSP_MADRS_RA = MPRO0_Q.MASA;

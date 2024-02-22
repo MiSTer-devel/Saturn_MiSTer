@@ -743,4 +743,40 @@ package SCSP_PKG;
 		return RES;
 	endfunction
 	
+	function bit [15:0] DSPItoF(bit [23:0] I);
+		bit         SIGN;
+		bit [ 3: 0] EXP;
+		bit [10: 0] MANT;
+		bit [22: 0] T0,T1,T2,T3;
+		bit [ 3: 0] E1,E2,E3;
+		
+		SIGN = I[23];
+		
+		T0 = I[22:0] ^ {23{SIGN}};
+		{E1,T1} = T0[22:19] != 4'b0000 ? {4'h0,T0[22:0]} : T0[18:15] != 4'b0000 ? {4'h4,T0[18:0],4'h0} : {4'h8,T0[14:0],4'h0,4'h0};
+		{E2,T2} = T1[22:21] != 2'b00 ? {4'h0,T1[22:0]} : {4'h2,T1[20:0],2'h0};
+		{E3,T3} = T2[22:22] != 1'b0 ? {4'h0,T2[22:0]} : T2[21:21] != 1'b0 ? {4'h1,T2[21:0],1'h0} : {4'h2,T2[21:0],1'h0};
+		
+		EXP = E1 + E2 + E3;
+		MANT = T3[21:11] ^ {11{SIGN}};
+		
+		return {SIGN,EXP,MANT};
+	endfunction
+	
+	function bit [23:0] DSPFtoI(bit [15:0] F);
+		bit         SIGN;
+		bit [ 3: 0] EXP;
+		bit [10: 0] MANT;
+		bit [23: 0] RES;
+	
+		{SIGN,EXP,MANT} = F;
+		
+		if (EXP >= 4'd12)
+			RES = {{12{SIGN}},SIGN,MANT};
+		else
+			RES = $signed($signed({SIGN,~SIGN,MANT,11'h000}) >>> EXP);
+	
+		return RES;
+	endfunction
+	
 endpackage
