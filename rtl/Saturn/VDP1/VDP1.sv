@@ -1571,7 +1571,7 @@ module VDP1 (
 	assign DRAW_WAIT = (FBD_ST != FBDS_IDLE);
 	
 	assign SPR_ADDR = SprAddr(SPR_OFFSY, CMD.CMDSRCA, CMD.CMDPMOD.CM);
-	assign CLT_ADDR = {CMD.CMDCOLR,2'b00};
+	assign CLT_ADDR = {CMD.CMDCOLR[15:2],2'b00,2'b00};
 	assign GRD_ADDR = {CMD.CMDGRDA,2'b00};
 	
 	bit  [15: 0] FB_DRAW_D;
@@ -2251,7 +2251,6 @@ module VDP1 (
 				EDSR.BEF <= EDSR.CEF;
 				DIE <= FBCR.DIE;
 				DIL <= FBCR.DIL;
-				MANUAL_ERASECHANGE_PEND <= 0;
 			end
 			if (FRAME_CHANGE) begin
 				FRAME_ERASE <= 0;
