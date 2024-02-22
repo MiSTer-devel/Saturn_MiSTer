@@ -2202,8 +2202,8 @@ module VDP2 (
 				NTPON[3] = NSxREG[1].TPON;
 				NCHCN[3] = {1'b0,NSxREG[1].CHCN[1:0]};
 				NEN[3] = BG_PIPE[2].NxCH_EN[1];
-			end else if (BG_PIPE[3].NxCH[1] && ((NSxREG[1].CHCN == 3'b000 && REGS.ZMCTL.N1ZMQT) || 
-			                                    (NSxREG[1].CHCN == 3'b001 && REGS.ZMCTL.N1ZMHF))) begin
+			end else if (BG_PIPE[3].NxCH[1] && ((NSxREG[1].CHCN == 3'b000 && NSxREG[1].ZMQT) || 
+			                                    (NSxREG[1].CHCN == 3'b001 && NSxREG[1].ZMHF))) begin
 				NCNT[3] = BG_PIPE[3].NxCH_CNT[1];
 				NPALN[3] = !NSxREG[1].BMEN ? PN_PIPE[5][5].PALN : {NSxREG[1].BMP,4'b0000};
 				NHF[3] = PN_PIPE[5][5].HF & ~NSxREG[1].BMEN;
@@ -2264,8 +2264,8 @@ module VDP2 (
 				NTPON[2] = NSxREG[0].TPON;
 				NCHCN[2] = NSxREG[0].CHCN;
 				NEN[2] = BG_PIPE[3].NxCH[0] & BG_PIPE[2].NxCH_EN[0];
-			end else if (BG_PIPE[3].NxCH[0] && ((NSxREG[0].CHCN == 3'b000 && REGS.ZMCTL.N0ZMQT) || 
-			                                    (NSxREG[0].CHCN == 3'b001 && REGS.ZMCTL.N0ZMHF))) begin
+			end else if (BG_PIPE[3].NxCH[0] && ((NSxREG[0].CHCN == 3'b000 && NSxREG[0].ZMQT) || 
+			                                    (NSxREG[0].CHCN == 3'b001 && NSxREG[0].ZMHF))) begin
 				NCNT[2] = BG_PIPE[3].NxCH_CNT[0];
 				NPALN[2] = !NSxREG[0].BMEN ? PN_PIPE[5][4].PALN : {NSxREG[0].BMP,4'b0000};
 				NHF[2] = PN_PIPE[5][4].HF & ~NSxREG[0].BMEN;
@@ -2326,7 +2326,7 @@ module VDP2 (
 				NTPON[1] = NSxREG[0].TPON;
 				NCHCN[1] = NSxREG[0].CHCN;
 				NEN[1] = BG_PIPE[2].NxCH_EN[0];
-			end else if (BG_PIPE[3].NxCH[1] && NSxREG[1].CHCN == 3'b000 && (REGS.ZMCTL.N1ZMHF || REGS.ZMCTL.N1ZMQT)) begin
+			end else if (BG_PIPE[3].NxCH[1] && NSxREG[1].CHCN == 3'b000 && (NSxREG[1].ZMHF || NSxREG[1].ZMQT)) begin
 				NCNT[1] = BG_PIPE[3].NxCH_CNT[1];
 				NPALN[1] = !NSxREG[1].BMEN ? PN_PIPE[5][1].PALN : {NSxREG[1].BMP,4'b0000}; NPALN[5] = !NSxREG[1].BMEN ? PN_PIPE[5][5].PALN : {NSxREG[1].BMP,4'b0000};
 				NHF[1] = !NSxREG[1].BMEN ? PN_PIPE[5][1].HF : 1'b0;                        NHF[5] = !NSxREG[1].BMEN ? PN_PIPE[5][5].HF : 1'b0;
@@ -2335,8 +2335,8 @@ module VDP2 (
 				NCH[1] = CH_PIPE[1][1];
 				NTPON[1] = NSxREG[1].TPON;
 				NCHCN[1] = NSxREG[1].CHCN;
-				NEN[1] = BG_PIPE[3].NxCH[1] & (!BG_PIPE[3].NxCH_CNT[1][1] | REGS.ZMCTL.N1ZMHF) & BG_PIPE[2].NxCH_EN[1];
-			end else if (BG_PIPE[3].NxCH[1] && NSxREG[1].CHCN == 3'b001 && REGS.ZMCTL.N1ZMHF) begin
+				NEN[1] = BG_PIPE[3].NxCH[1] & (!BG_PIPE[3].NxCH_CNT[1][1] | NSxREG[1].ZMHF) & BG_PIPE[2].NxCH_EN[1];
+			end else if (BG_PIPE[3].NxCH[1] && NSxREG[1].CHCN == 3'b001 && NSxREG[1].ZMHF) begin
 				NCNT[1] = BG_PIPE[3].NxCH_CNT[1];
 				NPALN[1] = !NSxREG[1].BMEN ? PN_PIPE[5][1].PALN : {NSxREG[1].BMP,4'b0000}; NPALN[5] = !NSxREG[1].BMEN ? PN_PIPE[5][5].PALN : {NSxREG[1].BMP,4'b0000};
 				NHF[1] = !NSxREG[1].BMEN ? PN_PIPE[5][1].HF : 1'b0;                        NHF[5] = !NSxREG[1].BMEN ? PN_PIPE[5][5].HF : 1'b0;
@@ -2360,7 +2360,7 @@ module VDP2 (
 			if (NEN[1]) begin
 				case (NCHCN[1])//                                               DC                                                                PR      CC      TPON      PALN
 					3'b000: begin				//4bits/dot, 16 colors
-						if (NCNT[1][0] && REGS.ZMCTL.N1ZMHF) begin
+						if (NCNT[1][0] && NSxREG[1].ZMHF) begin
 						NBG_CDC[1][3'b000               ^ {3{NHF[5]}}][ 7: 4] <= NCH[1][31:28]; NBG_CDP[5][3'b000               ^ {3{NHF[5]}}] <= {NPR[5], NCC[5], NTPON[1], NPALN[5]};
 						NBG_CDC[1][3'b001               ^ {3{NHF[5]}}][ 7: 4] <= NCH[1][27:24]; NBG_CDP[5][3'b001               ^ {3{NHF[5]}}] <= {NPR[5], NCC[5], NTPON[1], NPALN[5]};
 						NBG_CDC[1][3'b010               ^ {3{NHF[5]}}][ 7: 4] <= NCH[1][23:20]; NBG_CDP[5][3'b010               ^ {3{NHF[5]}}] <= {NPR[5], NCC[5], NTPON[1], NPALN[5]};
@@ -2398,7 +2398,7 @@ module VDP2 (
 			end
 			
 			NEN[0] = 0;
-			if (BG_PIPE[3].NxCH[0] && NSxREG[0].CHCN == 3'b000 && (REGS.ZMCTL.N0ZMHF || REGS.ZMCTL.N0ZMQT)) begin
+			if (BG_PIPE[3].NxCH[0] && NSxREG[0].CHCN == 3'b000 && (NSxREG[0].ZMHF || NSxREG[0].ZMQT)) begin
 				NCNT[0] = BG_PIPE[3].NxCH_CNT[0];
 				NPALN[0] = !NSxREG[0].BMEN ? PN_PIPE[5][0].PALN : {NSxREG[0].BMP,4'b0000}; NPALN[4] = !NSxREG[0].BMEN ? PN_PIPE[5][4].PALN : {NSxREG[0].BMP,4'b0000};
 				NHF[0] = !NSxREG[0].BMEN ? PN_PIPE[5][0].HF : 1'b0;                        NHF[4] = !NSxREG[0].BMEN ? PN_PIPE[5][4].HF : 1'b0;
@@ -2407,8 +2407,8 @@ module VDP2 (
 				NCH[0] = CH_PIPE[1][0];
 				NTPON[0] = NSxREG[0].TPON;
 				NCHCN[0] = NSxREG[0].CHCN;
-				NEN[0] = BG_PIPE[3].NxCH[0] & (!BG_PIPE[3].NxCH_CNT[0][1] | REGS.ZMCTL.N0ZMHF) & BG_PIPE[2].NxCH_EN[0];
-			end else if (BG_PIPE[3].NxCH[0] && NSxREG[0].CHCN == 3'b001 && REGS.ZMCTL.N0ZMHF) begin
+				NEN[0] = BG_PIPE[3].NxCH[0] & (!BG_PIPE[3].NxCH_CNT[0][1] | NSxREG[0].ZMHF) & BG_PIPE[2].NxCH_EN[0];
+			end else if (BG_PIPE[3].NxCH[0] && NSxREG[0].CHCN == 3'b001 && NSxREG[0].ZMHF) begin
 				NCNT[0] = BG_PIPE[3].NxCH_CNT[0];
 				NPALN[0] = !NSxREG[0].BMEN ? PN_PIPE[5][0].PALN : {NSxREG[0].BMP,4'b0000}; NPALN[4] = !NSxREG[0].BMEN ? PN_PIPE[5][4].PALN : {NSxREG[0].BMP,4'b0000};
 				NHF[0] = !NSxREG[0].BMEN ? PN_PIPE[5][0].HF : 1'b0;                        NHF[4] = !NSxREG[0].BMEN ? PN_PIPE[5][4].HF : 1'b0;
@@ -2432,7 +2432,7 @@ module VDP2 (
 			if (NEN[0]) begin
 				case (NCHCN[0])//                                               DC                                                                PR      CC      TPON      PALN
 					3'b000: begin				//4bits/dot, 16 colors
-						if (NCNT[0][0] && REGS.ZMCTL.N0ZMHF) begin
+						if (NCNT[0][0] && NSxREG[0].ZMHF) begin
 						NBG_CDC[0][3'b000               ^ {3{NHF[4]}}][ 7: 4] <= NCH[0][31:28]; NBG_CDP[4][3'b000               ^ {3{NHF[4]}}] <= {NPR[4], NCC[4], NTPON[0], NPALN[4]};
 						NBG_CDC[0][3'b001               ^ {3{NHF[4]}}][ 7: 4] <= NCH[0][27:24]; NBG_CDP[4][3'b001               ^ {3{NHF[4]}}] <= {NPR[4], NCC[4], NTPON[0], NPALN[4]};
 						NBG_CDC[0][3'b010               ^ {3{NHF[4]}}][ 7: 4] <= NCH[0][23:20]; NBG_CDP[4][3'b010               ^ {3{NHF[4]}}] <= {NPR[4], NCC[4], NTPON[0], NPALN[4]};
@@ -2743,10 +2743,10 @@ module VDP2 (
 			if (RSxREG[1].ON) begin
 				N0DOTDC <= RxDC[1];
 				N0DOTDP <= RxDP[1];
-			end else if (NSxREG[0].CHCN == 3'b000 && REGS.ZMCTL.N0ZMHF) begin
+			end else if (NSxREG[0].CHCN == 3'b000 && NSxREG[0].ZMHF) begin
 				N0DOTDC <= !NCX[0].INT[3] ? N0DC[{NCX[0].INT[4],NCX[0].INT[2:0]}] : N4DC[{NCX[0].INT[4],NCX[0].INT[2:0]}];
 				N0DOTDP <= !NCX[0].INT[3] ? N0DP[{NCX[0].INT[4],NCX[0].INT[2:0]}] : N4DP[{NCX[0].INT[4],NCX[0].INT[2:0]}];
-			end else if (NSxREG[0].CHCN == 3'b001 && REGS.ZMCTL.N0ZMHF) begin
+			end else if (NSxREG[0].CHCN == 3'b001 && NSxREG[0].ZMHF) begin
 				N0DOTDC <= !NCX[0].INT[3] ? N0DC[{NCX[0].INT[4],NCX[0].INT[2:0]}] : N2DC[{NCX[0].INT[4],NCX[0].INT[2:0]}];
 				N0DOTDP <= !NCX[0].INT[3] ? N0DP[{NCX[0].INT[4],NCX[0].INT[2:0]}] : N2DP[{NCX[0].INT[4],NCX[0].INT[2:0]}];
 			end else begin
@@ -2754,10 +2754,10 @@ module VDP2 (
 				N0DOTDP <= N0DP[NCX[0].INT[3:0]];
 			end
 			
-			if (NSxREG[1].CHCN == 3'b000 && REGS.ZMCTL.N1ZMHF) begin
+			if (NSxREG[1].CHCN == 3'b000 && NSxREG[1].ZMHF) begin
 				N1DOTDC <= !NCX[1].INT[3] ? N1DC[{NCX[1].INT[4],NCX[1].INT[2:0]}] : N5DC[{NCX[1].INT[4],NCX[1].INT[2:0]}];
 				N1DOTDP <= !NCX[1].INT[3] ? N1DP[{NCX[1].INT[4],NCX[1].INT[2:0]}] : N5DP[{NCX[1].INT[4],NCX[1].INT[2:0]}];
-			end else if (NSxREG[1].CHCN == 3'b001 && REGS.ZMCTL.N1ZMHF) begin
+			end else if (NSxREG[1].CHCN == 3'b001 && NSxREG[1].ZMHF) begin
 				N1DOTDC <= !NCX[1].INT[3] ? N1DC[{NCX[1].INT[4],NCX[1].INT[2:0]}] : N3DC[{NCX[1].INT[4],NCX[1].INT[2:0]}];
 				N1DOTDP <= !NCX[1].INT[3] ? N1DP[{NCX[1].INT[4],NCX[1].INT[2:0]}] : N3DP[{NCX[1].INT[4],NCX[1].INT[2:0]}];
 			end else begin
@@ -2773,11 +2773,13 @@ module VDP2 (
 		end
 	end
 	
+	wire N0_REDUCE = (NSxREG[0].CHCN[0] && NSxREG[0].ZMHF) || NSxREG[0].ZMQT;
+	wire N1_REDUCE = (NSxREG[1].CHCN[0] && NSxREG[1].ZMHF) || NSxREG[1].ZMQT;
 	assign R0DOT = MakeDotData(R0DOTDC,R0DOTDP,RSxREG[0].CHCN);
 	assign N0DOT = MakeDotData(N0DOTDC,N0DOTDP,NSxREG[0].CHCN);
 	assign N1DOT = MakeDotData(N1DOTDC,N1DOTDP,NSxREG[1].CHCN);
-	assign N2DOT = MakeDotData(N2DOTDC,N2DOTDP,(NSxREG[0].CHCN[0] && REGS.ZMCTL.N0ZMHF) || REGS.ZMCTL.N0ZMQT ? NSxREG[0].CHCN : NSxREG[2].CHCN);
-	assign N3DOT = MakeDotData(N3DOTDC,N3DOTDP,(NSxREG[1].CHCN[0] && REGS.ZMCTL.N1ZMHF) || REGS.ZMCTL.N1ZMQT ? NSxREG[1].CHCN : NSxREG[3].CHCN);
+	assign N2DOT = MakeDotData(N2DOTDC,N2DOTDP,(N0_REDUCE ? NSxREG[0].CHCN : NSxREG[2].CHCN));
+	assign N3DOT = MakeDotData(N3DOTDC,N3DOTDP,(N1_REDUCE ? NSxREG[1].CHCN : NSxREG[3].CHCN));
 								 
 	//Sprite data
 	SpriteDotData_t SDOT;
@@ -2829,12 +2831,12 @@ module VDP2 (
 			// synopsys translate_on
 		end
 		else if (DOT_CE_R || (DOT_CE_F & HRES[1])) begin
-			SON  =                                                                           ~SDOT.TP  & SCRN_EN[5] & ~(SW_EN     & SCRN_EN[6]);
-			R0ON = (               RSxREG[0].ON) &                                           ~R0DOT.TP & SCRN_EN[4] & ~(RxW_EN[0] & SCRN_EN[6]);
-			N0ON = (NSxREG[0].ON | RSxREG[1].ON) &                                           ~N0DOT.TP & SCRN_EN[0] & ~(NxW_EN[0] & SCRN_EN[6]);
-			N1ON = (NSxREG[1].ON               ) & ~NSxREG[0].CHCN[2] &                      ~N1DOT.TP & SCRN_EN[1] & ~(NxW_EN[1] & SCRN_EN[6]);
-			N2ON = (NSxREG[2].ON               ) & ~NSxREG[0].CHCN[2] & ~NSxREG[0].CHCN[1] & ~N2DOT.TP & SCRN_EN[2] & ~(NxW_EN[2] & SCRN_EN[6]);
-			N3ON = (NSxREG[3].ON               ) & ~NSxREG[0].CHCN[2] & ~NSxREG[1].CHCN[1] & ~N3DOT.TP & SCRN_EN[3] & ~(NxW_EN[3] & SCRN_EN[6]);
+			SON  =                                                                                        ~SDOT.TP  & SCRN_EN[5] & ~(SW_EN     & SCRN_EN[6]);
+			R0ON = (               RSxREG[0].ON) &                                                        ~R0DOT.TP & SCRN_EN[4] & ~(RxW_EN[0] & SCRN_EN[6]);
+			N0ON = (NSxREG[0].ON | RSxREG[1].ON) &                                                        ~N0DOT.TP & SCRN_EN[0] & ~(NxW_EN[0] & SCRN_EN[6]);
+			N1ON = (NSxREG[1].ON               ) & ~NSxREG[0].CHCN[2] &                                   ~N1DOT.TP & SCRN_EN[1] & ~(NxW_EN[1] & SCRN_EN[6]);
+			N2ON = (NSxREG[2].ON               ) & ~NSxREG[0].CHCN[2] & ~NSxREG[0].CHCN[1] & ~N0_REDUCE & ~N2DOT.TP & SCRN_EN[2] & ~(NxW_EN[2] & SCRN_EN[6]);
+			N3ON = (NSxREG[3].ON               ) & ~NSxREG[0].CHCN[2] & ~NSxREG[1].CHCN[1] & ~N1_REDUCE & ~N3DOT.TP & SCRN_EN[3] & ~(NxW_EN[3] & SCRN_EN[6]);
 			
 			SCAOS = REGS.CRAOFB.SPCAOS;
 			R0CAOS = REGS.CRAOFB.R0CAOS;
