@@ -190,6 +190,10 @@ module SH7604_BSC
 			STATE_NEXT = BUS_STATE;
 			case (BUS_STATE)
 				T0: begin
+					if (CE_F) begin
+						if (DBUS_A[28:27] != 2'b00)
+							DAT_BUF <= '0;
+					end
 				end
 				
 				T1: begin
