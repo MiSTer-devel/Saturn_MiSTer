@@ -194,6 +194,7 @@ module SMPC (
 	always @(posedge CLK or negedge RST_N) begin
 		CommExecState_t NEXT_COMM_ST;
 		bit        VBLANK_PEND;
+		bit        COMREG_SET;
 		bit        INTBACK_BREAK_PEND;
 		bit        RW_N_OLD;
 		bit        CS_N_OLD;
@@ -203,9 +204,10 @@ module SMPC (
 		bit        SRES_EXEC;
 		bit        INTBACK_EXEC;
 		bit        INTBACK_PERI;
-		bit        INTBACK_OPTIM;
-		bit        COMREG_SET;
-		bit        BREAK,CONT;
+		bit        INTBACK_OPTIM_EN;
+		bit        INTBACK_OPTIM_COND;
+		bit        CHECK_CONTINUE;
+		bit        BREAK,CONT,CONT_PREV;
 		
 		if (!RST_N) begin
 			COMREG <= '0;
@@ -241,6 +243,7 @@ module SMPC (
 			INTBACK_PERI <= 0;
 			BREAK <= 0;
 			CONT <= 0;
+			CONT_PREV <= 0;
 			INTBACK_BREAK_PEND <= 0;
 			VBLANK_PEND <= 0;
 			
@@ -263,8 +266,11 @@ module SMPC (
 			COMM_ST <= CS_IDLE;
 			INTBACK_EXEC <= 0;
 			INTBACK_PERI <= 0;
+			INTBACK_OPTIM_COND <= 0;
 			BREAK <= 0;
 			CONT <= 0;
+			CONT_PREV <= 0;
+			CHECK_CONTINUE <= 0;
 			INTBACK_BREAK_PEND <= 0;
 			VBLANK_PEND <= 0;
 		end else begin
@@ -285,8 +291,16 @@ module SMPC (
 					SSHNMI_N <= 1;
 				end
 				
-				if (INTBACK_WAIT_CNT) INTBACK_WAIT_CNT <= INTBACK_WAIT_CNT - 16'd1;
-				if (!IRQV_N) INTBACK_WAIT_CNT <= 16'd52200;
+				if (!IRQV_N) begin
+					INTBACK_OPTIM_COND <= 0;
+					INTBACK_WAIT_CNT <= 16'd52200;
+				end
+				else if (!INTBACK_WAIT_CNT) begin
+					INTBACK_OPTIM_COND <= 1;
+				end
+				else begin
+					INTBACK_WAIT_CNT <= INTBACK_WAIT_CNT - 16'd1;
+				end
 				
 				SR[4:0] <= {~SRES_N,IREG[1][7:4]};
 				
@@ -298,7 +312,7 @@ module SMPC (
 							NEXT_COMM_ST <= CS_INTBACK_BREAK;
 							COMM_ST <= CS_WAIT;
 						end 
-						else if (INTBACK_PERI && ((!INTBACK_WAIT_CNT && INTBACK_OPTIM) || !INTBACK_OPTIM) && IRQV_N && !SRES_EXEC) begin
+						else if (INTBACK_PERI && ((INTBACK_OPTIM_EN && INTBACK_OPTIM_COND) || !INTBACK_OPTIM_EN) && IRQV_N && !SRES_EXEC) begin
 							OREG_CNT <= '0;
 							WAIT_CNT <= 20'd70;
 							NEXT_COMM_ST <= CS_INTBACK_PERI;
@@ -313,6 +327,20 @@ module SMPC (
 						end
 						VBLANK_PEND <= 0;
 						MIRQ_N <= 1;
+						
+						if (CHECK_CONTINUE) begin
+							if (BREAK) begin
+								INTBACK_BREAK_PEND <= 1;
+								BREAK <= 0;
+								CHECK_CONTINUE <= 0;
+							end
+							else if (CONT != CONT_PREV) begin
+								INTBACK_PERI <= 1;
+								SF <= 1;
+								CONT_PREV <= CONT;
+								CHECK_CONTINUE <= 0;
+							end
+						end
 					end
 					
 					CS_WAIT: begin
@@ -404,8 +432,8 @@ module SMPC (
 									end else begin
 										INTBACK_EXEC <= 1;
 										INTBACK_PERI <= 1;
-										INTBACK_OPTIM <= ~IREG[1][1];
-										CONT <= 0;
+										INTBACK_OPTIM_EN <= ~IREG[1][1];
+										CONT_PREV <= 0;
 										COMM_ST <= CS_IDLE;
 									end
 								end else begin
@@ -569,10 +597,11 @@ module SMPC (
 										SR[3:0] <= 4'b1111;
 										if (IREG[1][3]) begin
 											INTBACK_EXEC <= 1;
-											INTBACK_OPTIM <= ~IREG[1][1];
+											INTBACK_OPTIM_EN <= ~IREG[1][1];
 											SR[5] <= 1;
+											CHECK_CONTINUE <= 1;
 										end
-										CONT <= 0;
+										CONT_PREV <= 0;
 										MIRQ_N <= 0;
 										COMM_ST <= CS_END;
 									end
@@ -631,14 +660,10 @@ module SMPC (
 							OREG_RAM_WA <= OREG_CNT;
 							OREG_RAM_D <= COMREG;
 							OREG_RAM_WE <= 1;
-							INTBACK_EXEC <= 0;
-							INTBACK_PERI <= 0;
 							SR[7:5] <= {1'b1,1'b1,1'b0};
-							SF <= 0;
+							//CHECK_CONTINUE <= 1;//TODO: multiple requests for large peripheral data
 							MIRQ_N <= 0;
-							//if (BREAK) INTBACK_BREAK_PEND <= 1;//TODO
-							BREAK <= 0;
-							COMM_ST <= CS_IDLE;
+							COMM_ST <= CS_INTBACK_BREAK;
 						end
 					end
 					
@@ -734,17 +759,8 @@ module SMPC (
 			if (!RW_N && RW_N_OLD && !CS_N) begin
 				case ({A,1'b1})
 					7'h01: begin 
-						if (INTBACK_EXEC) begin
-							if (DI[6]) begin
-								BREAK <= 1;
-							end else if (CONT != DI[7]) begin
-								INTBACK_PERI <= 1;
-								SF <= 1;
-							end
-							CONT <= DI[7];
-						end else begin
-							IREG[0] <= DI;
-						end
+						{CONT,BREAK} <= DI[7:6];
+						IREG[0] <= DI;
 					end
 					7'h03: IREG[1] <= DI;
 					7'h05: IREG[2] <= DI;
