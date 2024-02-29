@@ -346,6 +346,7 @@ package SCSP_PKG;
 	typedef struct packed
 	{
 		bit [ 4: 0] SLOT;	//
+		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
 		bit  [ 7:0] PHASE_INT;//Phase integer
@@ -353,11 +354,12 @@ package SCSP_PKG;
 		bit  [ 5:0] BASE_RATE;
 		bit [ 7: 0] PLFO;	//Pitch LFO data
 	} OP2_t;
-	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,8'h00,18'h00000,6'h00,8'h00};
+	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,8'h00,18'h00000,6'h00,8'h00};
 	
 	typedef struct packed
 	{
 		bit [ 4: 0] SLOT;	//
+		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
 		bit [ 5: 0] BASE_RATE;
@@ -368,11 +370,12 @@ package SCSP_PKG;
 		bit [ 1: 0] EST;//Envelope state
 		bit [ 9: 0] EVOL;//Envelope volume
 	} OP3_t;
-	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,6'h00,1'b0,1'b0,2'h0,2'h0,2'h0,10'h000};
+	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,1'b0,2'h0,2'h0,2'h0,10'h000};
 	
 	typedef struct packed
 	{
 		bit [ 4: 0] SLOT;	//
+		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
 		bit [ 5: 0] BASE_RATE;
@@ -381,11 +384,12 @@ package SCSP_PKG;
 		bit [ 9: 0] EVOL;//Envelope volume
 		bit [15: 0] WD;//Wave form data
 	} OP4_t;
-	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,6'h00,1'b0,2'h0,10'h000,16'h0000};
+	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,2'h0,10'h000,16'h0000};
 	
 	typedef struct packed
 	{
 		bit [ 4: 0] SLOT;	//
+		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
 		bit [15: 0] WD;	//Wave form data
@@ -393,11 +397,12 @@ package SCSP_PKG;
 		bit [ 9: 0] EVOL;	//Envelope volume
 		bit [ 7: 0] ALFO; 
 	} OP5_t;
-	parameter OP5_t OP5_RESET = '{5'h00,1'b0,1'b0,16'h0000,2'h0,10'h000,8'h00};
+	parameter OP5_t OP5_RESET = '{5'h00,1'b0,1'b0,1'b0,16'h0000,2'h0,10'h000,8'h00};
 	
 	typedef struct packed
 	{
 		bit [ 4: 0] SLOT;	//
+		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
 		bit [15: 0] WD;	//Wave form data
@@ -405,17 +410,18 @@ package SCSP_PKG;
 		bit [ 9: 0] LEVEL;//Level
 		bit         SDIR;
 	} OP6_t;
-	parameter OP6_t OP6_RESET = '{5'h00,1'b0,1'b0,16'h0000,16'h0000,10'h000,1'b0};
+	parameter OP6_t OP6_RESET = '{5'h00,1'b0,1'b0,1'b0,16'h0000,16'h0000,10'h000,1'b0};
 	
 	typedef struct packed
 	{
 		bit [ 4: 0] SLOT;	//
+		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
 		bit [15: 0] SD;	//Slot out data
 		bit         STWINH;
 	} OP7_t;
-	parameter OP7_t OP7_RESET = '{5'h00,1'b0,1'b0,16'h0000,1'b0};
+	parameter OP7_t OP7_RESET = '{5'h00,1'b0,1'b0,1'b0,16'h0000,1'b0};
 	
 	
 	
@@ -738,7 +744,7 @@ package SCSP_PKG;
 		
 		RES = !SHFT[1] && !TEMP[25] && TEMP[24:23] != 2'b00 ? 24'h7FFFFF : 
 		      !SHFT[1] &&  TEMP[25] && TEMP[24:23] != 2'b11 ? 24'h800000 : 
-				TEMP;
+				TEMP[23:0];
 				
 		return RES;
 	endfunction

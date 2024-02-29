@@ -249,63 +249,85 @@ module SCSP (
 
 	//Operation 1: PG, KEY ON/OFF
 	bit        SCR0_KB[32];
-	bit        KEYON[32];
+	bit        KEYON[32],KEYOFF[32];
 	bit  [4:0] SLOT;
+	bit        RST;
 	
 	wire [25:0] PHASE = PhaseCalc(SCR5);
 	
 	always @(posedge CLK or negedge RST_N) begin
 		bit       KYONEX_PEND;
-		bit       KYONEX;
-		bit       KEYON_OLD[32];
+		bit       SCR0_KB_OLD[32];
 		
 		if (!RST_N) begin
-			SCR0_KB <= '{32{0}};
-			KEYON <= '{32{0}};
-			KYONEX <= 0;
-			KYONEX_PEND <= 0;
 			// synopsys translate_off
+			SCR0_KB <= '{32{0}};
+			SCR0_KB_OLD <= '{32{0}};
+			KEYON <= '{32{0}};
+			KEYOFF <= '{32{0}};
+			KYONEX_PEND <= 0;
 			SLOT <= '0;
+			RST <= 1;
 			OP2 <= OP2_RESET;
-			KEYON_OLD <= '{32{0}};
 			// synopsys translate_on
 		end else if (!RES_N) begin
 			SCR0_KB <= '{32{0}};
+			SCR0_KB_OLD <= '{32{0}};
 			KEYON <= '{32{0}};
-			KYONEX <= 0;
+			KEYOFF <= '{32{0}};
 			KYONEX_PEND <= 0;
 			SLOT <= '0;
+			RST <= 1;
 			OP2 <= OP2_RESET;
 		end else begin
 			if (SLOT1_CE) begin
 				SLOT <= SLOT + 5'd1;
-				if (SLOT == 5'd31) begin
-					KYONEX_PEND <= 0;
-					KYONEX <= KYONEX_PEND;
-				end	
-				if (KYONEX) begin
-					KEYON[SLOT] <= SCR0_KB[SLOT];
-				end
-				KEYON_OLD[SLOT] <= KEYON[SLOT];
 //				OP2.PLFO <= LFOWave(LFOP_RAM_Q,8'h00,SCR6.PLFOWS) ^ 8'h80;
 				
+				KEYON[SLOT] <= 0;
+				KEYOFF[SLOT] <= 0;
+				if (SLOT == 5'd31) RST <= 0;
+				
 				OP2.SLOT <= SLOT;
+				OP2.RST <= RST;
 				OP2.KON <= 0;
 				OP2.KOFF <= 0;
-				{OP2.PHASE_INT,OP2.PHASE_FRAC} <= {8'h00,PHASE_FRAC_RAM_Q} + PHASE;
-				if (KEYON[SLOT] && !KEYON_OLD[SLOT]) begin
+				
+				if (RST)
+					{OP2.PHASE_INT,OP2.PHASE_FRAC} <= '0;
+				else
+					{OP2.PHASE_INT,OP2.PHASE_FRAC} <= {8'h00,PHASE_FRAC_RAM_Q} + PHASE;
+				
+				if (KEYON[SLOT]) begin
 					OP2.KON <= 1;
 					{OP2.PHASE_INT,OP2.PHASE_FRAC} <= '0;
 				end
-				else if (!KEYON[SLOT] & KEYON_OLD[SLOT]) begin
+				else if (KEYOFF[SLOT]) begin
 					OP2.KOFF <= 1;
 				end
 				OP2.BASE_RATE <= BaseRateCalc(SCR5);
 			end
 			
-			if (REG_A[11:10] == 2'b00 && {REG_A[4:1],1'b0} == 5'h00 && REG_WE[1] && CYCLE1_CE) begin
-				SCR0_KB[REG_A[9:5]] <= REG_D[11];
-				KYONEX_PEND <= REG_D[12];
+			if (CYCLE1_CE) begin
+				if (REG_A[11:10] == 2'b00 && {REG_A[4:1],1'b0} == 5'h00 && REG_WE[1]) begin
+					SCR0_KB[REG_A[9:5]] <= REG_D[11];
+					KYONEX_PEND <= REG_D[12];
+				end
+			end
+			
+			if (CE) begin
+				if (KYONEX_PEND) begin
+					for (int i=0;i<32;i++) begin
+						SCR0_KB_OLD[i] <= SCR0_KB[i];
+						if (SCR0_KB[i] && !SCR0_KB_OLD[i]) begin
+							KEYON[i] <= 1;
+						end
+						if (!SCR0_KB[i] & SCR0_KB_OLD[i]) begin
+							KEYOFF[i] <= 1;
+						end
+					end
+					KYONEX_PEND <= 0;
+				end
 			end
 		end
 	end
@@ -340,6 +362,8 @@ module SCSP (
 		bit  [15: 0] CALC_SO;
 		bit  [15: 0] MOD_SO;
 		bit  [15: 0] DELTA;
+		bit  [15: 0] NEW_SAO;
+		bit          NEW_SADIR;
 		
 		if (!RST_N) begin
 			// synopsys translate_off
@@ -363,13 +387,14 @@ module SCSP (
 			CALC_SO = !CUR_SADIR || SCR0.LPCTL <= 2'b01 ? CUR_SO + DELTA : CUR_SO - DELTA;
 			
 			if (SLOT1_CE) begin
-				{SADIR,SAO} <= {CUR_SADIR,CALC_SO};
-				
 				WD_READ <= 0;
 				OP3.LOOP_END <= 0;
-				if (EST == EST_RELEASE && (EVOL == 10'h3FF || OP2.KON)) begin
-					{SADIR,SAO} <= '0;
+				if (OP2.RST) begin
+					{NEW_SADIR,NEW_SAO} = '0;
+				end else if (EST == EST_RELEASE && (EVOL == 10'h3FF || OP2.KON)) begin
+					{NEW_SADIR,NEW_SAO} = '0;
 				end else begin
+					{NEW_SADIR,NEW_SAO} = {CUR_SADIR,CALC_SO};
 					case (SCR0.LPCTL)
 					2'b00: begin
 						if (CALC_SO > LEA - 1) begin
@@ -378,18 +403,18 @@ module SCSP (
 					end
 					2'b01: begin
 						if (CALC_SO > LEA - 1) begin
-							SAO <= LSA;
+							NEW_SAO = LSA;
 						end
 					end
 					2'b10: begin
 						if (!CUR_SADIR) begin
 							if (CALC_SO > LEA - 1) begin
-								SAO <= LEA;
-								SADIR <= 1;
+								NEW_SAO = LEA;
+								NEW_SADIR = 1;
 							end
 						end else begin
 							if (CALC_SO <= LSA) begin
-								SAO <= LSA;
+								NEW_SAO = LSA;
 							end
 						end
 					end
@@ -400,11 +425,13 @@ module SCSP (
 					
 					WD_READ <= 1;
 				end
+				{SADIR,SAO} <= {NEW_SADIR,NEW_SAO};
 				
 				MOD_SO = CUR_SO + MDCalc(SOUSX, SOUSY, SCR4.MDL);
 				ADP <= {SCR0.SAH,SA} + (!SCR0.PCM8B ? {3'b000,MOD_SO,1'b0} : {4'b0000,MOD_SO});
 				
 				OP3.SLOT <= OP2.SLOT;
+				OP3.RST <= OP2.RST;
 				OP3.KON <= OP2.KON;
 				OP3.KOFF <= OP2.KOFF;
 				OP3.PCM8B <= SCR0.PCM8B;
@@ -434,6 +461,7 @@ module SCSP (
 			
 			if (SLOT1_CE) begin
 				OP4.SLOT <= OP3.SLOT;
+				OP4.RST <= OP3.RST;
 				OP4.KON <= OP3.KON;
 				OP4.KOFF <= OP3.KOFF;
 				OP4.LOOP_END <= OP3.LOOP_END;
@@ -472,7 +500,7 @@ module SCSP (
 		if (!EFF_RATE[5:1] || (OP4.EST == EST_RELEASE && OP4.KON)) begin
 			NEW_SAMPLE_CNT = '0;
 			NEW_STEP_CNT = '0;
-		end else if (!EFF_RATE[5:1] < 6'h30>>1) begin
+		end else if (EFF_RATE[5:1] < (6'h30>>1)) begin
 			NEW_SAMPLE_CNT = CUR_SAMPLE_CNT + 13'd1;
 			NEW_STEP_CNT = '0;
 			if (CUR_SAMPLE_CNT == ENV_TBL[EFF_RATE][CUR_STEP_CNT].CNT) begin
@@ -576,7 +604,12 @@ module SCSP (
 					end
 				endcase
 				
-				if (OP4.EST == EST_RELEASE && OP4.KON) begin
+				if (OP4.RST) begin
+					NEW_EVOL = 10'h3FF;
+					NEW_EST = EST_RELEASE;
+					ENV_SAMPLE_CNT <= '0;
+					ENV_STEP_CNT <= '0;
+				end else if (OP4.EST == EST_RELEASE && OP4.KON) begin
 					NEW_EVOL = 10'h3FF;
 					NEW_EST = EST_ATTACK;
 					ENV_SAMPLE_CNT <= '0;
@@ -609,6 +642,7 @@ module SCSP (
 				EVOL_RAM_D <= {NEW_EST,NEW_EVOL};
 				
 				OP5.SLOT <= OP4.SLOT;
+				OP5.RST <= OP4.RST;
 				OP5.KON <= OP4.KON;
 				OP5.KOFF <= OP4.KOFF;
 				OP5.EST <= OP4.EST;
@@ -636,6 +670,7 @@ module SCSP (
 		end else begin
 			if (SLOT1_CE) begin
 				OP6.SLOT <= OP5.SLOT;
+				OP6.RST <= OP5.RST;
 				OP6.KON <= OP5.KON;
 				OP6.KOFF <= OP5.KOFF;
 				OP6.LEVEL <= LevelAddALFO(OP5.EVOL, OP5.ALFO);
@@ -659,6 +694,7 @@ module SCSP (
 		end else begin
 			if (SLOT1_CE) begin
 				OP7.SLOT <= OP6.SLOT;
+				OP7.RST <= OP6.RST;
 				OP7.KON <= OP6.KON;
 				OP7.KOFF <= OP6.KOFF;
 				OP7.SD <= SCR3.SDIR ? OP6.WD : VolCalc(OP6.WD, LEVEL);
@@ -1256,7 +1292,7 @@ module SCSP (
 						MEM_CS <= ~SCU_RA[19];
 						MEM_DEV <= 3'd4;
 						MEM_ST <= MS_SCU_WAIT;
-					end else if (!SCA[20] && SCPU_PEND) begin
+					end else if (SCA[23:20] == 4'h0 && SCPU_PEND) begin
 						MEM_A <= SCA[18:1];
 						MEM_D <= SCDI;
 						MEM_WE <= {~SCRW_N&~SCUDS_N,~SCRW_N&~SCLDS_N};
@@ -1366,7 +1402,7 @@ module SCSP (
 						REG_WE <= 2'b00;
 						REG_RD <= 1;
 						REG_ST <= MS_SCU_WAIT;
-					end else if (SCA[20] && SCPU_PEND) begin
+					end else if (SCA[23:20] == 4'h1 && SCPU_PEND) begin
 						SCDTACK_N <= 0;
 						REG_A <= SCA[11:1];
 						REG_D <= SCDI;
@@ -1681,51 +1717,51 @@ module SCSP (
 	wire       SCR_SEL = REG_A[11:10] == 2'b00;	
 	wire       SCR_SCR0_SEL  = SCR_SEL & (REG_A[4:1] == 5'h00>>1);
 	bit [15:0] SCR_SCR0_Q;
-	SCSP_RAM_8X2 #(5) SCR_SCR0(CLK, REG_A[9:5], REG_D, (REG_WE & {2{SCR_SCR0_SEL}}), (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_SCR0_Q);
+	SCSP_RAM_8X2 #(5) SCR_SCR0(CLK, OP2.RST ? OP2.SLOT : REG_A[9:5], OP2.RST ? '0 : REG_D, OP2.RST ? 2'b11 : (REG_WE & {2{SCR_SCR0_SEL}}), (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_SCR0_Q);
 	
 	wire       SCR_SA_SEL   = SCR_SEL & (REG_A[4:1] == 5'h02>>1);
 	bit [15:0] SCR_SA_Q;
-	SCSP_RAM_8X2 #(5) SCR_SA  (CLK, REG_A[9:5], REG_D  , (REG_WE & {2{SCR_SA_SEL}})  , (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_SA_Q);
+	SCSP_RAM_8X2 #(5) SCR_SA  (CLK, OP2.RST ? OP2.SLOT : REG_A[9:5], OP2.RST ? '0 : REG_D, OP2.RST ? 2'b11 : (REG_WE & {2{SCR_SA_SEL}})  , (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_SA_Q);
 	
 	wire       SCR_LSA_SEL  = SCR_SEL & (REG_A[4:1] == 5'h04>>1);
 	bit [15:0] SCR_LSA_Q;
-	SCSP_RAM_8X2 #(5) SCR_LSA (CLK, REG_A[9:5], REG_D , (REG_WE & {2{SCR_LSA_SEL}}) , (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_LSA_Q);
+	SCSP_RAM_8X2 #(5) SCR_LSA (CLK, OP2.RST ? OP2.SLOT : REG_A[9:5], OP2.RST ? '0 : REG_D, OP2.RST ? 2'b11 : (REG_WE & {2{SCR_LSA_SEL}}) , (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_LSA_Q);
 	
 	wire       SCR_LEA_SEL  = SCR_SEL & (REG_A[4:1] == 5'h06>>1);
 	bit [15:0] SCR_LEA_Q;
-	SCSP_RAM_8X2 #(5) SCR_LEA (CLK, REG_A[9:5], REG_D , (REG_WE & {2{SCR_LEA_SEL}}) , (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_LEA_Q);
+	SCSP_RAM_8X2 #(5) SCR_LEA (CLK, OP2.RST ? OP2.SLOT : REG_A[9:5], OP2.RST ? '0 : REG_D, OP2.RST ? 2'b11 : (REG_WE & {2{SCR_LEA_SEL}}) , (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_LEA_Q);
 	
 	wire       SCR_SCR1_SEL = SCR_SEL & (REG_A[4:1] == 5'h08>>1);
 	bit [15:0] SCR_SCR1_Q;
-	SCSP_RAM_8X2 #(5) SCR_SCR1(CLK, REG_A[9:5], REG_D, (REG_WE & {2{SCR_SCR1_SEL}}), (REG_RD ? REG_A[9:5] : OP4.SLOT), SCR_SCR1_Q);
+	SCSP_RAM_8X2 #(5) SCR_SCR1(CLK, OP4.RST ? OP4.SLOT : REG_A[9:5], OP4.RST ? '0 : REG_D, OP4.RST ? 2'b11 : (REG_WE & {2{SCR_SCR1_SEL}}), (REG_RD ? REG_A[9:5] : OP4.SLOT), SCR_SCR1_Q);
 	
 	wire       SCR_SCR2_SEL = SCR_SEL & (REG_A[4:1] == 5'h0A>>1);
 	bit [15:0] SCR_SCR2_Q;
-	SCSP_RAM_8X2 #(5) SCR_SCR2(CLK, REG_A[9:5], REG_D, (REG_WE & {2{SCR_SCR2_SEL}}), (REG_RD ? REG_A[9:5] : OP4.SLOT), SCR_SCR2_Q);
+	SCSP_RAM_8X2 #(5) SCR_SCR2(CLK, OP4.RST ? OP4.SLOT : REG_A[9:5], OP4.RST ? '0 : REG_D, OP4.RST ? 2'b11 : (REG_WE & {2{SCR_SCR2_SEL}}), (REG_RD ? REG_A[9:5] : OP4.SLOT), SCR_SCR2_Q);
 	
 	wire       SCR_SCR3_SEL = SCR_SEL & (REG_A[4:1] == 5'h0C>>1);
 	bit [15:0] SCR_SCR3_Q;
-	SCSP_RAM_8X2 #(5) SCR_SCR3(CLK, REG_A[9:5], REG_D, (REG_WE & {2{SCR_SCR3_SEL}}), (REG_RD ? REG_A[9:5] : OP6.SLOT), SCR_SCR3_Q);
+	SCSP_RAM_8X2 #(5) SCR_SCR3(CLK, OP6.RST ? OP6.SLOT : REG_A[9:5], OP6.RST ? '0 : REG_D, OP6.RST ? 2'b11 : (REG_WE & {2{SCR_SCR3_SEL}}), (REG_RD ? REG_A[9:5] : OP6.SLOT), SCR_SCR3_Q);
 	
 	wire       SCR_SCR4_SEL = SCR_SEL & (REG_A[4:1] == 5'h0E>>1);
 	bit [15:0] SCR_SCR4_Q;
-	SCSP_RAM_8X2 #(5) SCR_SCR4(CLK, REG_A[9:5], REG_D, (REG_WE & {2{SCR_SCR4_SEL}}), (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_SCR4_Q);
+	SCSP_RAM_8X2 #(5) SCR_SCR4(CLK, OP2.RST ? OP2.SLOT : REG_A[9:5], OP2.RST ? '0 : REG_D, OP2.RST ? 2'b11 : (REG_WE & {2{SCR_SCR4_SEL}}), (REG_RD ? REG_A[9:5] : OP2.SLOT), SCR_SCR4_Q);
 	
 	wire       SCR_SCR5_SEL = SCR_SEL & (REG_A[4:1] == 5'h10>>1);
 	bit [15:0] SCR_SCR5_Q;
-	SCSP_RAM_8X2 #(5) SCR_SCR5(CLK, REG_A[9:5], REG_D, (REG_WE & {2{SCR_SCR5_SEL}}), (REG_RD ? REG_A[9:5] :     SLOT), SCR_SCR5_Q);
+	SCSP_RAM_8X2 #(5) SCR_SCR5(CLK,     RST ?     SLOT : REG_A[9:5],     RST ? '0 : REG_D,     RST ? 2'b11 : (REG_WE & {2{SCR_SCR5_SEL}}), (REG_RD ? REG_A[9:5] :     SLOT), SCR_SCR5_Q);
 	
 	wire       SCR_SCR6_SEL = SCR_SEL & (REG_A[4:1] == 5'h12>>1);
 	bit [15:0] SCR_SCR6_Q;
-	SCSP_RAM_8X2 #(5) SCR_SCR6(CLK, REG_A[9:5], REG_D, (REG_WE & {2{SCR_SCR6_SEL}}), (REG_RD ? REG_A[9:5] :     SLOT), SCR_SCR6_Q);
+	SCSP_RAM_8X2 #(5) SCR_SCR6(CLK,     RST ?     SLOT : REG_A[9:5],     RST ? '0 : REG_D,     RST ? 2'b11 : (REG_WE & {2{SCR_SCR6_SEL}}), (REG_RD ? REG_A[9:5] :     SLOT), SCR_SCR6_Q);
 
 	wire       SCR_SCR7_SEL = SCR_SEL & (REG_A[4:1] == 5'h14>>1);
 	bit [15:0] SCR_SCR7_Q;
-	SCSP_RAM_8X2 #(5) SCR_SCR7(CLK, REG_A[9:5], REG_D, (REG_WE & {2{SCR_SCR7_SEL}}), (REG_RD ? REG_A[9:5] : OP7.SLOT), SCR_SCR7_Q);
+	SCSP_RAM_8X2 #(5) SCR_SCR7(CLK, OP7.RST ? OP7.SLOT : REG_A[9:5], OP7.RST ? '0 : REG_D, OP7.RST ? 2'b11 : (REG_WE & {2{SCR_SCR7_SEL}}), (REG_RD ? REG_A[9:5] : OP7.SLOT), SCR_SCR7_Q);
 	
 	wire       SCR_SCR8_SEL = SCR_SEL & (REG_A[4:1] == 5'h16>>1);
 	bit [15:0] SCR_SCR8_Q;
-	SCSP_RAM_8X2 #(5) SCR_SCR8(CLK, REG_A[9:5], REG_D, (REG_WE & {2{SCR_SCR8_SEL}}), (REG_RD ? REG_A[9:5] : OP7.SLOT), SCR_SCR8_Q);
+	SCSP_RAM_8X2 #(5) SCR_SCR8(CLK, OP7.RST ? OP7.SLOT : REG_A[9:5], OP7.RST ? '0 : REG_D, OP7.RST ? 2'b11 : (REG_WE & {2{SCR_SCR8_SEL}}), (REG_RD ? REG_A[9:5] : OP7.SLOT), SCR_SCR8_Q);
 	
 	//STACK,100600-10067F
 	wire       SOUS_SEL = REG_A[11:7] == 5'b01100;
