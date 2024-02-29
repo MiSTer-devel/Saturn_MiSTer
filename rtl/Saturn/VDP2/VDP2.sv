@@ -420,7 +420,6 @@ module VDP2 (
 	bit          NBG_FETCH;		//Normal screen pattern data fetch time
 	bit          NCH_FETCH;		//Normal screen char data fetch time
 	bit          NVCS_FETCH;	//Vertical cell scroll data fetch time
-	bit          RBG_PRECALC;
 	bit          RBG_CALC;
 	bit          RBG_FETCH;		//Rotation screen pattern data fetch time
 	bit          RCH_FETCH;		//Rotation screen char data fetch time
@@ -441,7 +440,6 @@ module VDP2 (
 			NCH_FETCH <= 0;
 			NVCS_FETCH <= 0;
 			RBG_FETCH <= 0;
-			RBG_PRECALC <= 0;
 			RBG_CALC <= 0;
 			RCTA_FETCH <= 0;
 			RCTB_FETCH <= 0;
@@ -458,7 +456,6 @@ module VDP2 (
 			NCH_FETCH <= 0;
 			NVCS_FETCH <= 0;
 			RBG_FETCH <= 0;
-			RBG_PRECALC <= 0;
 			RBG_CALC <= 0;
 			RCTA_FETCH <= 0;
 			RCTB_FETCH <= 0;
@@ -495,11 +492,6 @@ module VDP2 (
 				CT_FETCH <= 1;
 			end else if (H_CNT == RBG_FETCH_END - 4) begin
 				CT_FETCH <= 0;
-			end
-			if (H_CNT == RBG_FETCH_START - 1 - 2 && (V_CNT < VBL_START || V_CNT == LAST_LINE)) begin
-				RBG_PRECALC <= 1;
-			end else if (H_CNT == RBG_FETCH_END - 2) begin
-				RBG_PRECALC <= 0;
 			end
 			if (H_CNT == RBG_FETCH_START - 1 - 1 && (V_CNT < VBL_START || V_CNT == LAST_LINE)) begin
 				RBG_CALC <= 1;
@@ -1825,7 +1817,7 @@ module VDP2 (
 					KAx[1] <= $signed(KAx[1]) + $signed(AddrIncToRA(RP_DKAx[1]));
 				end
 				
-				if (RBG_PRECALC) begin
+				if (RBG_CALC) begin
 					Xsp[0] <= $signed(Xsp[0]) + $signed(dX[0]);
 					Ysp[0] <= $signed(Ysp[0]) + $signed(dY[0]);
 					Xsp[1] <= $signed(Xsp[1]) + $signed(dX[1]);
