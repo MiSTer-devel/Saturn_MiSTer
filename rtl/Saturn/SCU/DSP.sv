@@ -62,6 +62,8 @@ module SCU_DSP (
 	bit        Z;
 	bit        C;
 	bit        V;
+	
+	bit        LPS_EXE;
 
 	bit  [5:0] DATA_RAM_ADDR [4];
 	bit [31:0] DATA_RAM_D [4];
@@ -95,7 +97,7 @@ module SCU_DSP (
 			if (!EX) begin
 				IC <= '0;
 			end 
-			if (RUN) begin
+			if (RUN && (!LPS_EXE || LOP == 0)) begin
 				IC <= PRG_RAM_Q;
 			end
 		end
@@ -295,11 +297,13 @@ module SCU_DSP (
 			PC <= '0;
 			LOP <= '0;
 			TOP <= '0;
+			LPS_EXE <= 0;
 			// synopsys translate_on
 		end else if (!RES_N) begin
 			PC <= '0;
 			LOP <= '0;
 			TOP <= '0;
+			LPS_EXE <= 0;
 		end else begin
 			if (RUN && CE) begin
 				PC <= PC + 8'd1;
@@ -310,11 +314,23 @@ module SCU_DSP (
 				if (DECI.JPCW) begin
 					PC <= IC[7:0];
 				end
-				if (DECI.CTL.BTM || DECI.CTL.LPS) begin
+				if (DECI.CTL.BTM) begin
 					if (LOP) begin
 						LOP <= LOP - 12'd1;
-						if (DECI.CTL.BTM) PC <= TOP;
-						if (DECI.CTL.LPS) PC <= PC - 8'd1;//?
+						PC <= TOP;
+					end
+				end
+				if (DECI.CTL.LPS) begin
+					LPS_EXE <= 1;
+				end
+				
+				if (LPS_EXE) begin
+					if (LOP) begin
+						LOP <= LOP - 12'd1;
+						PC <= PC;
+					end
+					else begin
+						LPS_EXE <= 0;
 					end
 				end
 				
@@ -324,7 +340,7 @@ module SCU_DSP (
 				
 				if (DECI.D1BUS.TOPW) begin
 					TOP <= D1BUS[7:0];
-				end	
+				end
 				
 				if (DECI.DMA.PRGW) begin
 					PC <= '0;
