@@ -365,6 +365,7 @@ module SH7604_BSC
 						VBUSY <= 1;
 					end
 					
+					VBUS_ACTIVE <= 0;
 					if (((BUS_STATE == T2 || BUS_STATE == TD) && BUSY && DBUSY && !BURST_EN) || (BUS_STATE == TD && BURST_EN && !BURST_LAST)) begin
 						IS_SDRAM = IsSDRAMArea(A[26:25],BCR1);
 						case (AREA_SZ)
@@ -426,7 +427,6 @@ module SH7604_BSC
 						
 						IS_SDRAM = IsSDRAMArea(DBUS_A[26:25],BCR1); 
 						
-						VBUS_ACTIVE <= 0;
 						if (!VBUS_REQ || DBUS_LOCK) begin
 							case (GetAreaSZ(DBUS_A[26:25],BCR1,BCR2,A0_SZ,DRAM_SZ))
 								2'b01: begin 
