@@ -20,8 +20,6 @@ Known issues:
 - Sega Ages Volume 1 - freeze, slowdown
 - Space Jam - freeze in demo
 - Wing Arms - minor graphic gliches
-- Gouketsuji Ichizoku 3 (JP) - Groove on Fight - minor graphic gliches
-- J. League Jikkyou Honoo no Striker (JP) - graphic gliches
 - Tenchi Muyou! Rensa Hitsuyou (JP) - graphic gliches (VDP2 screen)
 - Thunder Force V (JP) - graphic gliches (VDP2 screen in hires mode)
 - X-Men vs. Street Fighter (JP) - freeze
