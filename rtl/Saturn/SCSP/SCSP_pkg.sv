@@ -363,6 +363,7 @@ package SCSP_PKG;
 		bit         KON;	//
 		bit         KOFF;	//
 		bit [ 5: 0] BASE_RATE;
+		bit         LOOP;//Loop processing 
 		bit         LOOP_END;//Loop processing end
 		bit         PCM8B;//
 		bit [ 1: 0] SBCTL;
@@ -370,7 +371,7 @@ package SCSP_PKG;
 		bit [ 1: 0] EST;//Envelope state
 		bit [ 9: 0] EVOL;//Envelope volume
 	} OP3_t;
-	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,1'b0,2'h0,2'h0,2'h0,10'h000};
+	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,1'b0,1'b0,2'h0,2'h0,2'h0,10'h000};
 	
 	typedef struct packed
 	{
@@ -379,12 +380,13 @@ package SCSP_PKG;
 		bit         KON;	//
 		bit         KOFF;	//
 		bit [ 5: 0] BASE_RATE;
+		bit         LOOP;//Loop processing 
 		bit         LOOP_END;//Loop processing end
 		bit [ 1: 0] EST;//Envelope state
 		bit [ 9: 0] EVOL;//Envelope volume
 		bit [15: 0] WD;//Wave form data
 	} OP4_t;
-	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,2'h0,10'h000,16'h0000};
+	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,1'b0,2'h0,10'h000,16'h0000};
 	
 	typedef struct packed
 	{

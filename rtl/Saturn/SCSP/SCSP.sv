@@ -354,16 +354,20 @@ module SCSP (
 	
 	bit [15: 0] SAO;	//Sample offset integer
 	bit         SADIR;//Sample address direction
+	bit         SALOOP;//Sample address loop state
 	always @(posedge CLK or negedge RST_N) begin
 		bit  [15: 0] SOUSX;
 		bit  [15: 0] SOUSY;
 		bit  [15: 0] CUR_SO;
 		bit          CUR_SADIR;
+		bit          CUR_SALOOP;
 		bit  [15: 0] CALC_SO;
+		bit          CALC_SO_OVF;
 		bit  [15: 0] MOD_SO;
 		bit  [15: 0] DELTA;
 		bit  [15: 0] NEW_SAO;
 		bit          NEW_SADIR;
+		bit          NEW_SALOOP;
 		
 		if (!RST_N) begin
 			// synopsys translate_off
@@ -381,54 +385,79 @@ module SCSP (
 				endcase
 			end
 		
-			{CUR_SADIR,CUR_SO} = SO_RAM_Q;
+			{CUR_SALOOP,CUR_SADIR,CUR_SO} = SO_RAM_Q;
+			
+			MOD_SO = CUR_SO + MDCalc(SOUSX, SOUSY, SCR4.MDL);
 			
 			DELTA = {8'h00,OP2.PHASE_INT};
-			CALC_SO = !CUR_SADIR || SCR0.LPCTL <= 2'b01 ? CUR_SO + DELTA : CUR_SO - DELTA;
+			{CALC_SO_OVF,CALC_SO} = !CUR_SADIR || SCR0.LPCTL <= 2'b01 ? {1'b0,CUR_SO} + {1'b0,DELTA} : {1'b0,CUR_SO} - {1'b0,DELTA};
 			
 			if (SLOT1_CE) begin
-				WD_READ <= 0;
+				ADP <= {SCR0.SAH,SA} + (!SCR0.PCM8B ? {3'b000,MOD_SO,1'b0} : {4'b0000,MOD_SO});
+				
+				WD_READ <= 1;
 				OP3.LOOP_END <= 0;
 				if (OP2.RST) begin
-					{NEW_SADIR,NEW_SAO} = '0;
+					{NEW_SALOOP,NEW_SADIR,NEW_SAO} = '0;
+					WD_READ <= 0;
 				end else if (EST == EST_RELEASE && (EVOL == 10'h3FF || OP2.KON)) begin
-					{NEW_SADIR,NEW_SAO} = '0;
+					{NEW_SALOOP,NEW_SADIR,NEW_SAO} = '0;
+					WD_READ <= 0;
 				end else begin
-					{NEW_SADIR,NEW_SAO} = {CUR_SADIR,CALC_SO};
+					{NEW_SALOOP,NEW_SADIR,NEW_SAO} = {CUR_SALOOP,CUR_SADIR,CALC_SO};
 					case (SCR0.LPCTL)
-					2'b00: begin
-						if (CALC_SO > LEA - 1) begin
+					2'b00: begin	//Loop off
+						if (CALC_SO >= LEA || CALC_SO_OVF) begin
+							NEW_SAO = '0;
 							OP3.LOOP_END <= 1;
+							WD_READ <= 0;
 						end
 					end
-					2'b01: begin
-						if (CALC_SO > LEA - 1) begin
-							NEW_SAO = LSA;
+					2'b01: begin	//Normal loop
+						if (!CUR_SALOOP) begin
+							if (CALC_SO >= LSA || CALC_SO_OVF) begin
+								NEW_SALOOP = 1;
+							end
+						end else begin
+							if (CALC_SO >= LEA || CALC_SO_OVF) begin
+								NEW_SAO = CALC_SO - (LEA - LSA);
+							end
 						end
 					end
-					2'b10: begin
-						if (!CUR_SADIR) begin
-							if (CALC_SO > LEA - 1) begin
-								NEW_SAO = LEA;
+					2'b10: begin	//Reverse loop
+						if (!CUR_SALOOP) begin
+							if (CALC_SO >= LEA || CALC_SO_OVF) begin
+								NEW_SALOOP = 1;
 								NEW_SADIR = 1;
 							end
 						end else begin
-							if (CALC_SO <= LSA) begin
-								NEW_SAO = LSA;
+							if (CALC_SO < LSA || CALC_SO_OVF) begin
+								NEW_SAO = LSA;//TODO
 							end
 						end
 					end
-					2'b11:  begin
-						
+					2'b11: begin	//Alternative loop
+						if (!CUR_SALOOP) begin
+							if (CALC_SO >= LSA || CALC_SO_OVF) begin
+								NEW_SALOOP = 1;
+								NEW_SADIR = 0;
+							end
+						end else if (!CUR_SADIR) begin
+							if (CALC_SO >= LEA || CALC_SO_OVF) begin
+								NEW_SAO = CALC_SO - (LEA - LSA);
+								NEW_SADIR = 1;
+							end
+						end else begin
+							if (CALC_SO < LSA || CALC_SO_OVF) begin
+								NEW_SAO = LSA;//TODO
+								NEW_SADIR = 0;
+							end
+						end
 					end
 					endcase
 					
-					WD_READ <= 1;
 				end
-				{SADIR,SAO} <= {NEW_SADIR,NEW_SAO};
-				
-				MOD_SO = CUR_SO + MDCalc(SOUSX, SOUSY, SCR4.MDL);
-				ADP <= {SCR0.SAH,SA} + (!SCR0.PCM8B ? {3'b000,MOD_SO,1'b0} : {4'b0000,MOD_SO});
+				{SALOOP,SADIR,SAO} <= {NEW_SALOOP,NEW_SADIR,NEW_SAO};
 				
 				OP3.SLOT <= OP2.SLOT;
 				OP3.RST <= OP2.RST;
@@ -436,6 +465,7 @@ module SCSP (
 				OP3.KOFF <= OP2.KOFF;
 				OP3.PCM8B <= SCR0.PCM8B;
 				OP3.BASE_RATE <= OP2.BASE_RATE;
+				OP3.LOOP <= CUR_SALOOP;
 				OP3.SBCTL <= SCR0.SBCTL;
 				OP3.SSCTL <= SCR0.SSCTL;
 				OP3.EVOL <= EVOL;
@@ -443,32 +473,38 @@ module SCSP (
 			end
 		end
 	end
-	bit [16:0] SO_RAM_Q;
-	SCSP_SO_RAM SO_RAM(CLK, OP3.SLOT, {SADIR,SAO}, SLOT1_CE, OP2.SLOT, SO_RAM_Q);
+	bit [17:0] SO_RAM_Q;
+	SCSP_SO_RAM SO_RAM(CLK, OP3.SLOT, {SALOOP,SADIR,SAO}, SLOT1_CE, OP2.SLOT, SO_RAM_Q);
 	
 	//Operation 3:  
 	always @(posedge CLK or negedge RST_N) begin
-		bit [15:0] TEMP;
+		bit [15: 0] WAVE;
+		bit [16: 0] NOISE;
 		
 		if (!RST_N) begin
 			OP4 <= OP4_RESET;
 			// synopsys translate_off
+			NOISE <= 17'h00001;
 			// synopsys translate_on
 		end else if (!RES_N) begin
 			OP4 <= OP4_RESET;
+			NOISE <= 17'h00001;
 		end else begin
-			TEMP = !WD_READ ? 16'h0000 : !OP3.PCM8B ? MEM_WD : !ADP[0] ? {MEM_WD[15:8],8'h00} : {MEM_WD[7:0],8'h00};
+			WAVE = !WD_READ ? 16'h0000 : !OP3.PCM8B ? MEM_WD : !ADP[0] ? {MEM_WD[15:8],8'h00} : {MEM_WD[7:0],8'h00};
 			
 			if (SLOT1_CE) begin
+				NOISE <= {NOISE[5]^NOISE[0],NOISE[16:1]};
+				
 				OP4.SLOT <= OP3.SLOT;
 				OP4.RST <= OP3.RST;
 				OP4.KON <= OP3.KON;
 				OP4.KOFF <= OP3.KOFF;
+				OP4.LOOP <= OP3.LOOP;
 				OP4.LOOP_END <= OP3.LOOP_END;
 				OP4.BASE_RATE <= OP3.BASE_RATE;
 				OP4.EVOL <= OP3.EVOL;
 				OP4.EST <= OP3.EST;
-				OP4.WD <= SoundSel(TEMP,16'h0000,OP3.SBCTL,OP3.SSCTL);
+				OP4.WD <= SoundSel(WAVE,{NOISE[7:0],8'h00},OP3.SBCTL,OP3.SSCTL);
 			end
 		end
 	end
@@ -558,7 +594,7 @@ module SCSP (
 						end else begin
 							NEW_EVOL = 10'h000;
 						end
-						if (!VOL_CALC && !SCR2.LPSLNK) begin
+						if ((!VOL_CALC && !SCR2.LPSLNK) || (OP4.LOOP && SCR2.LPSLNK)) begin
 							NEW_EST = EST_DECAY1;
 							ENV_STEP_CNT <= '0;
 `ifdef DEBUG
@@ -1970,10 +2006,10 @@ endmodule
 module SCSP_SO_RAM (
 	input	         CLK,
 	input	 [ 4: 0] WRADDR,
-	input	 [16: 0] DATA,
+	input	 [17: 0] DATA,
 	input	         WREN,
 	input	 [ 4: 0] RDADDR,
-	output [16: 0] Q);
+	output [17: 0] Q);
 //
 //`ifdef DEBUG
 //
@@ -2019,7 +2055,7 @@ module SCSP_SO_RAM (
 //	
 //`else
 
-	wire [16:0] sub_wire0;
+	wire [17:0] sub_wire0;
 	
 	altsyncram	altsyncram_component (
 				.address_a (WRADDR),
@@ -2039,7 +2075,7 @@ module SCSP_SO_RAM (
 				.clocken1 (1'b1),
 				.clocken2 (1'b1),
 				.clocken3 (1'b1),
-				.data_b ({17{1'b1}}),
+				.data_b ({18{1'b1}}),
 				.eccstatus (),
 				.q_a (),
 				.rden_a (1'b1),
@@ -2063,8 +2099,8 @@ module SCSP_SO_RAM (
 		altsyncram_component.read_during_write_mode_mixed_ports = "DONT_CARE",
 		altsyncram_component.widthad_a = 5,
 		altsyncram_component.widthad_b = 5,
-		altsyncram_component.width_a = 17,
-		altsyncram_component.width_b = 17,
+		altsyncram_component.width_a = 18,
+		altsyncram_component.width_b = 18,
 		altsyncram_component.width_byteena_a = 1;
 	
 	assign Q = sub_wire0;
