@@ -1585,6 +1585,20 @@ package VDP2_PKG;
 		bit [ 0: 0] Rx;
 	} RVRAMAccess_t;
 	
+	typedef struct packed
+	{
+		bit [10: 0] INT;
+		bit [ 7: 0] FRAC;
+	} ScrollData_t;
+	parameter ScrollData_t SCRLD_NULL = {11'h000,8'h00};
+	
+	typedef struct packed
+	{
+		bit [ 2: 0] INT;
+		bit [ 7: 0] FRAC;
+	} CoordInc_t;
+	parameter CoordInc_t CRDI_NULL = {3'h0,8'h00};
+	
 	typedef bit [10: 0] NxDispCoord_t[4];
 	typedef bit [ 1: 0] NxPNS_t[4];
 	typedef bit [ 1: 0] NxCHS_t[4];
@@ -1683,6 +1697,9 @@ package VDP2_PKG;
 	typedef PN_t        NxPND_t[6];
 	typedef NxPND_t     PNPipe_t [6];
 	
+	typedef ScrollData_t NxVS_t [2];
+	typedef NxVS_t      VSPipe_t [5];
+	
 	typedef bit [31: 0] NxCHD_t[4];
 	typedef NxCHD_t     CHPipe_t [2];
 	
@@ -1727,19 +1744,6 @@ package VDP2_PKG;
 	endfunction
 	
 	//Normal scroll screen
-	typedef struct packed
-	{
-		bit [10: 0] INT;
-		bit [ 7: 0] FRAC;
-	} ScrollData_t;
-	parameter ScrollData_t SCRLD_NULL = {11'h000,8'h00};
-	
-	typedef struct packed
-	{
-		bit [ 2: 0] INT;
-		bit [ 7: 0] FRAC;
-	} CoordInc_t;
-	parameter CoordInc_t CRDI_NULL = {3'h0,8'h00};
 	
 	function bit [19:1] NxPNAddr(input bit [1:0] NxPN_CNT, input bit [10:0] NxOFFX, input bit [10:0] NxOFFY,
 	                             input bit [8:6] NxMP, input bit [5:0] NxMPn[4], 
