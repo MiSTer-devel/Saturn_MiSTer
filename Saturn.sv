@@ -247,7 +247,7 @@ module emu
 		"FS3,BIN,Load cartridge;",
 		"-;",
 		"OLN,Cartridge,None,ROM 2M,DRAM 1M,DRAM 4M;",
-		"o13,Region,Japan,Taiwan,USA,Brazil,Korea,Asia,Europe;",
+		"o13,Region,Japan,Taiwan,USA,Brazil,Korea,Asia,Europe,Auto;",
 		"-;",
 		"D0RO,Load Backup RAM;",
 		"D0RP,Save Backup RAM;",
@@ -418,6 +418,8 @@ module emu
 	wire cart_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] == 2'h3);
 	wire save_download = ioctl_download & (ioctl_index[5:2] == 4'b0001);
 	wire cdd_download = ioctl_download & (ioctl_index[5:2] == 4'b0010);
+	wire cdboot_download = ioctl_download & (ioctl_index[5:2] == 4'b0011);
+	
 	
 	reg osd_btn = 0;
 //	always @(posedge clk_sys) begin
@@ -515,7 +517,6 @@ module emu
 		end
 	end 
 	
-	
 	wire reset = RESET | status[0] | buttons[1];
 	
 	reg rst_ram = 0;
@@ -527,7 +528,25 @@ module emu
 	end
 	
 	wire rst_sys = reset | download | rst_ram;
-
+	
+	//region select
+	reg [7:0] cd_area_symbol;
+	always @(posedge clk_sys) begin
+		if (cdboot_download && ioctl_wr) begin
+			case (ioctl_addr[7:0])
+				8'h40: cd_area_symbol <= ioctl_data[7:0];
+			endcase
+		end
+	end
+	wire [3:0] cd_area_code = cd_area_symbol == "J" ? 4'h1 :
+	                          cd_area_symbol == "T" ? 4'h2 :
+	                          cd_area_symbol == "U" ? 4'h4 :
+	                          cd_area_symbol == "B" ? 4'h5 :
+	                          cd_area_symbol == "K" ? 4'h6 :
+	                          cd_area_symbol == "A" ? 4'hA :
+	                          cd_area_symbol == "E" ? 4'hC :
+	                          cd_area_symbol == "L" ? 4'hD :
+										                       4'h1;
 	
 	wire  [3:0] area_code = status[35:33] == 3'd0 ? 4'h1 :	//Japan area
 									status[35:33] == 3'd1 ? 4'h2 :	//Asia NTSC area
@@ -536,7 +555,8 @@ module emu
 									status[35:33] == 3'd4 ? 4'h6 :	//Korea area
 									status[35:33] == 3'd5 ? 4'hA :	//Asia PAL area
 									status[35:33] == 3'd6 ? 4'hC :	//Europe PAL area
-																	4'h3;		//Reserved
+																	cd_area_code;	//Auto
+																	
 	wire [15:0] joy1 = {~joystick_0[0],~joystick_0[1],~joystick_0[2],~joystick_0[3],~joystick_0[7],~joystick_0[4],~joystick_0[6],~joystick_0[5],
 							  ~joystick_0[8],~joystick_0[9],~joystick_0[10],~joystick_0[11],~joystick_0[12],3'b111};
 	wire [15:0] joy2 = {~joystick_1[0],~joystick_1[1],~joystick_1[2],~joystick_1[3],~joystick_1[7],~joystick_1[4],~joystick_1[6],~joystick_1[5],
@@ -1273,6 +1293,8 @@ module emu
 						vdp1_state <= 2'd0;
 					end
 				end
+				
+				default:;
 			endcase
 		end
 	end
