@@ -410,9 +410,8 @@ package SCSP_PKG;
 		bit [15: 0] WD;	//Wave form data
 		bit [15: 0] SD;	//Slot out data
 		bit [ 9: 0] LEVEL;//Level
-		bit         SDIR;
 	} OP6_t;
-	parameter OP6_t OP6_RESET = '{5'h00,1'b0,1'b0,1'b0,16'h0000,16'h0000,10'h000,1'b0};
+	parameter OP6_t OP6_RESET = '{5'h00,1'b0,1'b0,1'b0,16'h0000,16'h0000,10'h000};
 	
 	typedef struct packed
 	{
@@ -642,22 +641,6 @@ package SCSP_PKG;
 		return RES;
 	endfunction
 	
-	function bit [15:0] EnvVolCalc(bit [15:0] WAVE, bit [9:0] EVOL);
-		bit [25:0] MULT;		
-		
-		MULT = $signed(WAVE) * $unsigned(~EVOL);
-				
-		return MULT[25:10];
-	endfunction
-	
-//	function bit [15:0] TotalVolCalc(bit [15:0] WAVE, bit [7:0] TL);
-//		bit [15:0] RES;		
-//		
-//		RES = $signed($signed(WAVE)>>>TL[7:4]);
-//				
-//		return RES;
-//	endfunction
-	
 	function bit [9:0] LevelAddALFO(bit [9:0] LEVEL, bit [7:0] ALFO);
 		bit [10:0] SUM;
 		
@@ -674,22 +657,11 @@ package SCSP_PKG;
 		return !SUM[10] ? SUM[9:0] : 10'h3FF;
 	endfunction
 	
-//	function bit [15:0] TotalVolCalc(bit [15:0] WAVE, bit [7:0] TL);
-//		bit [20:0] MULT;
-//		bit [15:0] RES;
-//		
-//		MULT = $signed(WAVE) * $unsigned({2'b01,~TL[3:0]} + 6'd1);
-//		
-//		RES = $signed($signed(MULT[20:5])>>>TL[7:4]);
-//		
-//		return RES;
-//	endfunction
-	
 	function bit signed [15:0] VolCalc(bit signed [15:0] WAVE, bit [9:0] LEVEL);
 		bit [22:0] MULT;
 		bit [15:0] RES;
 		
-		MULT = $signed(WAVE) * ({2'b01,~LEVEL[5:0]} /*+ 8'd1*/);
+		MULT = $signed(WAVE) * ({2'b01,~LEVEL[5:0]});
 		RES = $signed($signed(MULT[22:7])>>>LEVEL[9:6]);
 		
 		return RES;
@@ -700,18 +672,27 @@ package SCSP_PKG;
 	endfunction
 	
 	function bit signed [15:0] PanLCalc(bit signed [15:0] WAVE, bit [4:0] PAN);
-		return !PAN[4] ? $signed($signed(WAVE)>>>PAN[3:1]) : WAVE;
+		bit [15:0] TEMP;
+		
+		TEMP = $signed($signed(WAVE)>>>PAN[3:1]);
+		return !PAN[4] ? $signed(TEMP) - (PAN[0] ? $signed($signed(TEMP)>>>2) : '0) : WAVE;
 	endfunction
 	
 	function bit signed [15:0] PanRCalc(bit signed [15:0] WAVE, bit [4:0] PAN);
-		return  PAN[4] ? $signed($signed(WAVE)>>>PAN[3:1]) : WAVE;
-	endfunction
-	
-	function bit signed [15:0] MVolCalc(bit signed [15:0] WAVE, bit [3:0] MVOL, bit DAC18B);
 		bit [15:0] TEMP;
 		
+		TEMP = $signed($signed(WAVE)>>>PAN[3:1]);
+		return  PAN[4] ? $signed(TEMP) - (PAN[0] ? $signed($signed(TEMP)>>>2) : '0) : WAVE;
+	endfunction
+	
+	function bit signed [15:0] MVolCalc(bit signed [17:0] WAVE, bit [3:0] MVOL, bit DAC18B);
+		bit [17:0] TEMP;
+		bit [17:0] TEMP2;
+		
 		TEMP = DAC18B ? $signed(WAVE)<<<2 : WAVE;
-		return MVOL ? $signed($signed(TEMP)>>>(~MVOL[3:1])) : 16'sh0000;
+		TEMP2 = MVOL ? $signed($signed(TEMP)>>>(~MVOL[3:1])) - (!MVOL[0] ? $signed($signed(TEMP)>>>2) : '0) : 18'sh0000;
+		
+		return TEMP2[17] && TEMP2[16:15] != 2'b11 ? 16'h8000 : !TEMP2[17] && TEMP2[16:15] != 2'b00 ? 16'h7FFF : TEMP2[15:0];
 	endfunction
 	
 	function bit [7:0] LFOWave(bit [7:0] POS, bit [7:0] NOISE, bit [1:0] LFOWS);

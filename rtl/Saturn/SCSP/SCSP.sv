@@ -20,8 +20,8 @@ module SCSP (
 	output             RDY_N,
 	output             INT_N,
 	
-	output             SCCE_R,
-	output             SCCE_F,
+	output reg         SCCE_R,
+	output reg         SCCE_F,
 	input      [23: 1] SCA,
 	input      [15: 0] SCDI,
 	output     [15: 0] SCDO,
@@ -184,9 +184,15 @@ module SCSP (
 	bit          DMA_EXEC;
 	
 	bit          CLK_DIV;
-	always @(posedge CLK) if (CE) CLK_DIV <= ~CLK_DIV;
-	assign SCCE_R =  CLK_DIV & CE;
-	assign SCCE_F = ~CLK_DIV & CE;
+	always @(posedge CLK) begin
+		SCCE_R <= 0;
+		SCCE_F <= 0;
+		if (CE) begin
+			CLK_DIV <= ~CLK_DIV;
+			SCCE_R <=  CLK_DIV & CE;
+			SCCE_F <= ~CLK_DIV & CE;
+		end
+	end
 		
 	bit  [2:0] CYCLE_NUM;
 	always @(posedge CLK) 
@@ -710,9 +716,7 @@ module SCSP (
 				OP6.KON <= OP5.KON;
 				OP6.KOFF <= OP5.KOFF;
 				OP6.LEVEL <= LevelAddALFO(OP5.EVOL, OP5.ALFO);
-//				OP6.SDIR <= SCR3.SDIR;
 				OP6.WD <= OP5.WD;
-//				OP6.SD <= EnvVolCalc(OP5.WD, OP5.EVOL);
 			end
 		end
 	end
@@ -734,7 +738,6 @@ module SCSP (
 				OP7.KON <= OP6.KON;
 				OP7.KOFF <= OP6.KOFF;
 				OP7.SD <= SCR3.SDIR ? OP6.WD : VolCalc(OP6.WD, LEVEL);
-//				OP7.SD <= SCR3.SDIR ? OP6.WD : TotalVolCalc(OP6.SD, SCR3.TL);
 				OP7.STWINH <= SCR3.STWINH;
 			end
 		end
@@ -1065,34 +1068,28 @@ module SCSP (
 `endif
 	
 	//Out
-	bit [15:0] DIR_L,DIR_R;
-	bit [15:0] EFF_L,EFF_R;
+	bit [17:0] SUM_L,SUM_R;
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
 			// synopsys translate_off
-			DIR_L <= '0;
-			DIR_R <= '0;
+			SUM_L <= '0;
+			SUM_R <= '0;
 			// synopsys translate_on
 		end else if (!RES_N) begin
 			
 		end else begin
 			if (SAMPLE_CE) begin
-				DIR_L <= !SND_EN[0] ? 16'h0000 : DIR_ACC_L[17] && DIR_ACC_L[16:15] != 2'b11 ? 16'h8000 : !DIR_ACC_L[17] && DIR_ACC_L[16:15] != 2'b00 ? 16'h7FFF : DIR_ACC_L[15:0];
-				DIR_R <= !SND_EN[0] ? 16'h0000 : DIR_ACC_R[17] && DIR_ACC_R[16:15] != 2'b11 ? 16'h8000 : !DIR_ACC_R[17] && DIR_ACC_R[16:15] != 2'b00 ? 16'h7FFF : DIR_ACC_R[15:0];
-				EFF_L <= !SND_EN[1] ? 16'h0000 : EFF_ACC_L[17] && EFF_ACC_L[16:15] != 2'b11 ? 16'h8000 : !EFF_ACC_L[17] && EFF_ACC_L[16:15] != 2'b00 ? 16'h7FFF : EFF_ACC_L[15:0];
-				EFF_R <= !SND_EN[1] ? 16'h0000 : EFF_ACC_R[17] && EFF_ACC_R[16:15] != 2'b11 ? 16'h8000 : !EFF_ACC_R[17] && EFF_ACC_R[16:15] != 2'b00 ? 16'h7FFF : EFF_ACC_R[15:0];
+				SUM_L <= (!SND_EN[0] ? 18'h00000 : DIR_ACC_L) + (!SND_EN[1] ? 18'h00000 : EFF_ACC_L);
+				SUM_R <= (!SND_EN[0] ? 18'h00000 : DIR_ACC_R) + (!SND_EN[1] ? 18'h00000 : EFF_ACC_R);
 			end
 		end
 	end
 	
-	bit [16:0] SUM_L,SUM_R;
-	assign SUM_L = {DIR_L[15],DIR_L} + {EFF_L[15],EFF_L};
-	assign SUM_R = {DIR_R[15],DIR_R} + {EFF_R[15],EFF_R};
-	assign SOUND_L = MVolCalc(SUM_L[15:0], CR0.MVOL, CR0.DB);
-	assign SOUND_R = MVolCalc(SUM_R[15:0], CR0.MVOL, CR0.DB);
+	assign SOUND_L = MVolCalc(SUM_L, CR0.MVOL, CR0.DB);
+	assign SOUND_R = MVolCalc(SUM_R, CR0.MVOL, CR0.DB);
 `ifdef DEBUG
-	assign SUM_L_OF = (SUM_L[16] && !SUM_L[15]) || (!SUM_L[16] && SUM_L[15]);
-	assign SUM_R_OF = (SUM_R[16] && !SUM_R[15]) || (!SUM_R[16] && SUM_R[15]);
+	assign SUM_L_OF = (SUM_L[17] && SUM_L[16:15] != 2'b11) || (!SUM_L[17] && SUM_L[16:15] != 2'b00);
+	assign SUM_R_OF = (SUM_R[16] && SUM_R[16:15] != 2'b11) || (!SUM_R[17] && SUM_R[16:15] != 2'b00);
 `endif
 	
 	
@@ -1184,7 +1181,15 @@ module SCSP (
 	bit [20: 1] SAVE_WA;
 	bit [15: 0] SAVE_D;
 	bit [ 1: 0] SAVE_WE;
+	
+	bit [20: 1] SCPU_RA;
+	bit         SCPU_RPEND;
+	bit [20: 1] SCPU_WA;
+	bit [ 1: 0] SCPU_WE;
+	bit [15: 0] SCPU_D;
+	bit         SCPU_WPEND;
 	bit         SCPU_PEND;
+	
 	bit [ 2: 0] MEM_DEV_LATCH;
 	always @(posedge CLK or negedge RST_N) begin
 		bit         MEM_START;
@@ -1207,13 +1212,14 @@ module SCSP (
 			WE_N <= 1;
 			DQM <= '1;
 //			BURST <= 0;
-			SCPU_PEND <= 0;
+			SCPU_RPEND <= 0;
+			SCPU_WPEND <= 0;
 			SCDTACK_N <= 1;
 			SCU_RPEND <= 0;
 			SCU_RRDY <= 1;
 			SCU_WPEND <= 0;
 			SCU_WRDY <= 1;
-//		end else if (!RES_N) begin
+		end else if (!RES_N) begin
 //			MEM_ST <= MS_IDLE;
 //			MEM_WE <= '0;
 //			MEM_RD <= 0;
@@ -1274,8 +1280,19 @@ module SCSP (
 				SCU_RPEND <= 0;
 			end
 			
-			if (!SCAS_N && (!SCLDS_N || !SCUDS_N) && SCDTACK_N && SCFC != 3'b111 && MEM_DEV_LATCH != 3'd5 && !SCPU_PEND) SCPU_PEND <= 1;
-			if ((MEM_ST == MS_SCPU_WAIT && CYCLE1_CE) || (REG_ST == MS_SCPU_WAIT && CYCLE1_CE)) SCPU_PEND <= 0;
+			if (SCA[23:21] == 3'b000 && !SCAS_N && SCRW_N && SCDTACK_N && SCFC != 3'b111 && MEM_DEV_LATCH != 3'd5 && !SCPU_RPEND) begin
+				SCPU_RA <= SCA[20:1];
+				SCPU_RPEND <= 1;
+			end
+			if ((MEM_DEV_LATCH == 3'd5 && MEM_ST == MS_SCPU_WAIT && CYCLE1_CE) || (REG_ST == MS_SCPU_WAIT && CYCLE1_CE)) SCPU_RPEND <= 0;
+			
+			if (SCA[23:21] == 3'b000 && !SCAS_N && !SCRW_N && (!SCLDS_N || !SCUDS_N) && SCDTACK_N && SCFC != 3'b111 && MEM_DEV_LATCH != 3'd5 && !SCPU_WPEND) begin
+				SCPU_WA <= SCA[20:1];
+				SCPU_D <= SCDI;
+				SCPU_WE <= {~SCUDS_N,~SCLDS_N};
+				SCPU_WPEND <= 1;
+				SCDTACK_N <= 0;
+			end
 			
 			MEM_START <= CYCLE1_CE;
 			MEM_RFS <= 0;
@@ -1305,6 +1322,13 @@ module SCSP (
 						MEM_CS <= 1;
 						MEM_DEV <= 3'd3;
 						MEM_ST <= MS_DMA_WAIT;
+					end else if (!SCU_RA[20] && SCU_RPEND && MEM_DEV_LATCH != 3'd4) begin
+						MEM_A <= SCU_RA[18:1];
+						MEM_WE <= 2'b00;
+						MEM_RD <= 1;
+						MEM_CS <= ~SCU_RA[19];
+						MEM_DEV <= 3'd4;
+						MEM_ST <= MS_SCU_WAIT;
 					end else if (!SCU_WA[20] && SCU_WPEND) begin
 						SCU_WPEND <= 0;
 						MEM_A <= SCU_WA[18:1];
@@ -1321,31 +1345,22 @@ module SCSP (
 						if ({SCU_WA[19:1],1'b0} == 20'h00720 && SCU_WE[1]) DBG_SCU_720 <= SCU_D[15:8];
 						if ({SCU_WA[19:1],1'b0} == 20'h00740 && SCU_WE[1]) DBG_SCU_740 <= SCU_D[15:8];
 `endif
-					end else if (!SCU_RA[20] && SCU_RPEND && MEM_DEV_LATCH != 3'd4) begin
-						MEM_A <= SCU_RA[18:1];
-						MEM_WE <= 2'b00;
-						MEM_RD <= 1;
-						MEM_CS <= ~SCU_RA[19];
-						MEM_DEV <= 3'd4;
-						MEM_ST <= MS_SCU_WAIT;
-					end else if (SCA[23:20] == 4'h0 && SCPU_PEND) begin
-						MEM_A <= SCA[18:1];
-						MEM_D <= SCDI;
-						MEM_WE <= {~SCRW_N&~SCUDS_N,~SCRW_N&~SCLDS_N};
-						MEM_RD <= SCRW_N;
-						MEM_CS <= 1;
-						MEM_DEV <= SCRW_N ? 3'd5 : 3'd0;
-						if (!SCRW_N) SCDTACK_N <= 0;
+					end else if (!SCPU_WA[20] && SCPU_WPEND) begin
+						SCPU_WPEND <= 0;
+						MEM_A <= SCPU_WA[18:1];
+						MEM_D <= SCPU_D;
+						MEM_WE <= SCPU_WE;
+						MEM_RD <= 0;
+						MEM_CS <= ~SCPU_WA[19];
+						MEM_DEV <= 3'd0;
 						MEM_ST <= MS_SCPU_WAIT;
-`ifdef DEBUG
-//						DBG_68K_ERR <= ({SCA[20:1],1'b0} == 21'h001682) || ({SCA[20:1],1'b0} == 21'h00168C) || ({SCA[20:1],1'b0} == 21'h001696);
-						DBG_68K_ERR <= ({SCA[23:1],1'b0} >= 24'h080000 && {SCA[23:1],1'b0} < 24'h100000) || ({SCA[23:1],1'b0} >= 24'h100EE4);
-						if ({SCA[19:1],1'b0} == 20'h004E0 && !SCUDS_N && !SCRW_N) DBG_SCU_HOOK <= SCDI[15];
-						if ({SCA[19:1],1'b0} == 20'h00700 && !SCUDS_N && !SCRW_N) DBG_SCU_700 <= SCDI[15:8];
-						if ({SCA[19:1],1'b0} == 20'h00710 && !SCUDS_N && !SCRW_N) DBG_SCU_710 <= SCDI[15:8];
-						if ({SCA[19:1],1'b0} == 20'h00720 && !SCUDS_N && !SCRW_N) DBG_SCU_720 <= SCDI[15:8];
-						if ({SCA[19:1],1'b0} == 20'h00740 && !SCUDS_N && !SCRW_N) DBG_SCU_740 <= SCDI[15:8];
-`endif
+					end else if (!SCPU_RA[20] && SCPU_RPEND) begin
+						MEM_A <= SCPU_RA[18:1];
+						MEM_WE <= '0;
+						MEM_RD <= 1;
+						MEM_CS <= ~SCPU_RA[19];
+						MEM_DEV <= 3'd5;
+						MEM_ST <= MS_SCPU_WAIT;
 					end else begin
 						MEM_DEV <= 3'd0;
 						MEM_RFS <= 1;
@@ -1426,6 +1441,11 @@ module SCSP (
 						REG_WE <= '1;
 						REG_RD <= 0;
 						REG_ST <= MS_DMA_WAIT;
+					end else if (SCU_RA[20] && SCU_RPEND) begin
+						REG_A <= SCU_RA[11:1];
+						REG_WE <= 2'b00;
+						REG_RD <= 1;
+						REG_ST <= MS_SCU_WAIT;
 					end else if (SCU_WA[20] && SCU_WPEND) begin
 						SCU_WPEND <= 0;
 						REG_A <= SCU_WA[11:1];
@@ -1433,20 +1453,22 @@ module SCSP (
 						REG_WE <= SCU_WE;
 						REG_RD <= 0;
 						REG_ST <= MS_SCU_WAIT;
-					end else if (SCU_RA[20] && SCU_RPEND) begin
-						REG_A <= SCU_RA[11:1];
-						REG_WE <= 2'b00;
-						REG_RD <= 1;
-						REG_ST <= MS_SCU_WAIT;
-					end else if (SCA[23:20] == 4'h1 && SCPU_PEND) begin
+					end else if (SCPU_WA[20] && SCPU_WPEND) begin
+						SCPU_WPEND <= 0;
+						REG_A <= SCPU_WA[11:1];
+						REG_D <= SCPU_D;
+						REG_WE <= SCPU_WE;
+						REG_RD <= 0;
+						REG_ST <= MS_SCPU_WAIT;
+					end else if (SCPU_RA[20] && SCPU_RPEND) begin
 						SCDTACK_N <= 0;
-						REG_A <= SCA[11:1];
+						REG_A <= SCPU_RA[11:1];
 						REG_D <= SCDI;
-						REG_WE <= {~SCRW_N&~SCUDS_N,~SCRW_N&~SCLDS_N};
-						REG_RD <= SCRW_N;
+						REG_WE <= '0;
+						REG_RD <= 1;
 						REG_ST <= MS_SCPU_WAIT;
 `ifdef DEBUG
-						DBG_68K_ERR <= ({SCA[23:1],1'b0} >= 24'h080000 && {SCA[23:1],1'b0} < 24'h100000) || ({SCA[23:1],1'b0} >= 24'h100EE4);
+						DBG_68K_ERR <= ({SCPU_RA[20:1],1'b0} >= 21'h080000 && {SCPU_RA[20:1],1'b0} < 21'h100000) || ({SCPU_RA[20:1],1'b0} >= 21'h100EE4);
 `endif
 					end
 				end
@@ -1551,16 +1573,16 @@ module SCSP (
 					CR7.DEXE <= 0;
 				end
 				if (TMRA_CE) begin
-					CR8.TIMA  <= CR8.TIMA  + 8'd1;
-					if (CR8.TIMA == 8'hFF) {CR12.SCIPD[6],CR18.MCIPD[6]} <= '1;
+					CR8.TIMA <= CR8.TIMA + 8'd1;
+					if (CR8.TIMA == 8'hFE) {CR12.SCIPD[6],CR18.MCIPD[6]} <= '1;
 				end
 				if (TMRB_CE) begin
-					CR9.TIMB  <= CR9.TIMB  + 8'd1;
-					if (CR9.TIMB == 8'hFF) {CR12.SCIPD[7],CR18.MCIPD[7]} <= '1;
+					CR9.TIMB <= CR9.TIMB + 8'd1;
+					if (CR9.TIMB == 8'hFE) {CR12.SCIPD[7],CR18.MCIPD[7]} <= '1;
 				end
 				if (TMRC_CE) begin
 					CR10.TIMC <= CR10.TIMC + 8'd1;
-					if (CR10.TIMC == 8'hFF) {CR12.SCIPD[8],CR18.MCIPD[8]} <= '1;
+					if (CR10.TIMC == 8'hFE) {CR12.SCIPD[8],CR18.MCIPD[8]} <= '1;
 				end
 				if (SAMPLE_CE) begin
 					{CR12.SCIPD[10],CR18.MCIPD[10]} <= '1;
