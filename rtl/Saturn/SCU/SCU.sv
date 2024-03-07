@@ -217,8 +217,6 @@ module SCU (
 		BBUS_ADDR8_HL, 
 		BBUS_ADDR8_LH, 
 		BBUS_ADDR8_LL, 
-		BBUS_READ,
-		BBUS_READ_WAIT,
 		BBUS_WRITE16_H,
 		BBUS_WRITE16_L,
 		BBUS_WRITE16_END,
@@ -227,6 +225,10 @@ module SCU (
 		BBUS_WRITE8_LH,
 		BBUS_WRITE8_LL,
 		BBUS_WRITE8_END,
+		BBUS_READ16,
+		BBUS_READ8_H,
+		BBUS_READ8_L,
+		BBUS_READ_WAIT,
 		BBUS_DMA_RADDR1,
 		BBUS_DMA_RADDR2,
 		BBUS_DMA_READ,
@@ -914,7 +916,7 @@ module SCU (
 						BDO <= {2'b10,CDQMN_INNER[1:0],4'b0000,CA_INNER[8:1]};
 					BDTEN_N <= 1;
 					BADDT_N <= 1;
-					BBUS_ST <= BBUS_RD ? BBUS_READ : BBUS_WORD[1] ? BBUS_WRITE16_H : BBUS_WRITE16_L;
+					BBUS_ST <= BBUS_RD ? BBUS_READ16 : BBUS_WORD[1] ? BBUS_WRITE16_H : BBUS_WRITE16_L;
 				end
 				
 				BBUS_ADDR8_HH: if (CE_R) begin
@@ -943,7 +945,7 @@ module SCU (
 				end
 				
 				BBUS_ADDR8_LL: if (CE_R) begin
-					BBUS_ST <= BBUS_RD ? BBUS_READ : BBUS_WORD[1] ? BBUS_WRITE8_HH : BBUS_WRITE8_LH;
+					BBUS_ST <= BBUS_RD ? BBUS_READ8_H : BBUS_WORD[1] ? BBUS_WRITE8_HH : BBUS_WRITE8_LH;
 				end
 				
 				BBUS_WRITE16_H: if (CE_R) begin
@@ -1046,14 +1048,19 @@ module SCU (
 					BBUS_ST <= BBUS_IDLE;
 				end
 				
-				BBUS_READ: if (CE_R) begin
+				BBUS_READ16,
+				BBUS_READ8_H: if (CE_R) begin
 					if (BBUS_RDY) begin
 						BADDT_N <= 0;
 						BREQ_N <= 0;
 						
-						BBUS_ST <= BBUS_READ_WAIT;
+						BBUS_ST <= BBUS_ST == BBUS_READ8_H ? BBUS_READ8_L : BBUS_READ_WAIT;
 					end
 //					DBG_BBUS_WAIT_CNT <= '0;
+				end
+				
+				BBUS_READ8_L: if (CE_R) begin
+					BBUS_ST <= BBUS_READ_WAIT;
 				end
 					
 				BBUS_READ_WAIT: if (CE_R) begin
