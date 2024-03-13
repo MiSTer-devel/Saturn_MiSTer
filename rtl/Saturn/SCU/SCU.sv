@@ -248,9 +248,12 @@ module SCU (
 	typedef enum bit [3:0] {
 		CBUS_IDLE,  
 		CBUS_REQUEST, 
+		CBUS_START,
+		CBUS_IND_READ,
 		CBUS_READ, 
 		CBUS_READ_END,
 		CBUS_WRITE,
+		CBUS_RELEASE,
 		CBUS_END
 	} CBUSState_t;
 	CBUSState_t CBUS_ST;
@@ -400,6 +403,7 @@ module SCU (
 		bit         BBUS_READ_DONE;
 		bit         BBUS_WRITE_DONE;
 		bit         BBUS_DATA_ACK;
+		bit         CBUS_IND_DONE;
 		bit         CBUS_DMA_START;
 		bit         CBUS_READ_ACK;
 		bit         CBUS_DATA_ACK;
@@ -1054,7 +1058,7 @@ module SCU (
 						BADDT_N <= 0;
 						BREQ_N <= 0;
 						
-						BBUS_ST <= BBUS_ST == BBUS_READ8_H ? BBUS_READ8_L : BBUS_READ_WAIT;
+						BBUS_ST <= !CA_INNER[22] ? BBUS_READ8_L : BBUS_READ_WAIT;
 					end
 //					DBG_BBUS_WAIT_CNT <= '0;
 				end
@@ -1223,6 +1227,7 @@ module SCU (
 			//CBUS 06000000-06FFFFFF
 			CBUS_RD <= 0;
 			CBUS_WR <= '0;
+			CBUS_IND_DONE = 0;
 			CBUS_DATA_ACK = 0;
 			CBUS_READ_ACK = 0;
 			CBUS_READ_DONE = 0;
@@ -1235,26 +1240,44 @@ module SCU (
 			end
 			case (CBUS_ST)
 				CBUS_IDLE: if (CE_R) begin
-					if ((DMA_READ_C && !DMA_WRITE_C && !DMA_WA_ERR && (!DMA_WRITE_A || ABUS_ST == ABUS_IDLE) && (!DMA_WRITE_B || BBUS_ST == BBUS_IDLE) && !DMA_IND && CBRLS) || 
-					    (DMA_WRITE_C && !DMA_READ_C && !DMA_RA_ERR && (!DMA_READ_A || ABUS_ST == ABUS_IDLE) && (!DMA_READ_B || BBUS_ST == BBUS_IDLE) && !DMA_IND && CBRLS) ||
-						 (DMA_READ_C && !DMA_WRITE_C && DMA_IND && CBRLS)) begin
-						CBUS_REQ <= 1;
+					if ((DMA_READ_C && !DMA_WRITE_C && !DMA_WA_ERR && (!DMA_WRITE_A || ABUS_ST == ABUS_IDLE) && (!DMA_WRITE_B || BBUS_ST == BBUS_IDLE) && !DMA_IND) || 
+					    (DMA_WRITE_C && !DMA_READ_C && !DMA_RA_ERR && (!DMA_READ_A || ABUS_ST == ABUS_IDLE) && (!DMA_READ_B || BBUS_ST == BBUS_IDLE) && !DMA_IND)) begin
+						if (!CBRLS) CBUS_DMA_START <= 1;
+						CBUS_ST <= CBRLS ? CBUS_REQUEST : CBUS_START;
+					end
+					else if (DMA_READ_C && !DMA_WRITE_C && DMA_IND) begin
 						CBUS_ST <= CBUS_REQUEST;
+					end
+					else if (!CBRLS && !DMA_READ_C && !DMA_WRITE_C && !DMA_IND) begin
+						CBUS_REL <= 1;
+						CBUS_ST <= CBUS_END;
 					end
 				end
 				
 				CBUS_REQUEST: if (CE_R) begin
+					CBUS_REQ <= 1;
+					CBUS_DMA_START <= 1;
+					CBUS_ST <= CBUS_START;
+				end
+				
+				CBUS_START: if (CE_R) begin
 					if (!CBRLS) begin
-						if (DMA_READ_C) begin
-							CBUS_A <= DMA_IND ? {DMA_IA[26:2],2'b00} : {DMA_RA[26:2],2'b00};
+						if (DMA_READ_C && DMA_IND) begin
+							CBUS_A <= {DMA_IA[26:2],2'b00};
 							CBUS_RD <= 1;
 							CBUS_CS <= 1;
-							CCACHE_RADDR <= DMA_IND ? DMA_IA[4:2] : DMA_RA[4:2];
+							CBUS_ST <= CBUS_IND_READ;
+						end
+						else if (DMA_READ_C && !DMA_IND) begin
+							CBUS_A <= {DMA_RA[26:2],2'b00};
+							CBUS_RD <= 1;
+							CBUS_CS <= 1;
+							CCACHE_RADDR <= DMA_RA[4:2];
 							CCACHE_FULL <= '{2{0}};
 							CBUS_READ_ACK = 1;
 							CBUS_ST <= CBUS_READ;
 						end
-						if (DMA_WRITE_C && DMA_BUF_SIZE && (DMA_BUF_SIZE[2] || DMA_WA[1:0])) begin
+						else if (DMA_WRITE_C && DMA_BUF_SIZE && (DMA_BUF_SIZE[2] || DMA_WA[1:0])) begin
 							CBUS_A <= {DMA_WA[26:2],2'b00};
 							case (DMA_WA[1:0])
 								2'b00: CBUS_D <= {DMA_BUF[DMA_BUF_RPOS+0],DMA_BUF[DMA_BUF_RPOS+1],DMA_BUF[DMA_BUF_RPOS+2],DMA_BUF[DMA_BUF_RPOS+3]};
@@ -1269,11 +1292,23 @@ module SCU (
 								2'b11: CBUS_WR <= 4'b0001;
 							endcase
 							CBUS_CS <= 1;
-							CBUS_ST <= CBUS_WRITE;
 							CBUS_WRITE_PROCESS <= 1;
 							CBUS_DATA_ACK = 1;
+							CBUS_ST <= CBUS_WRITE;
 						end
-						CBUS_DMA_START <= 1;
+					end
+				end
+				
+				CBUS_IND_READ: if (CE_R) begin
+					if (ECWAIT_N) begin
+						CBUS_A <= CBUS_A + 27'd4;
+						CBUS_RD <= 1;
+						if (DMA_IND_REG == 2'd2) begin
+							CBUS_RD <= 0;
+							CBUS_CS <= 0;
+							CBUS_ST <= CBUS_IDLE;
+						end
+						CBUS_IND_DONE = 1;
 					end
 				end
 				
@@ -1286,14 +1321,14 @@ module SCU (
 						end
 					end
 					if (CBUS_DMA_OUT) begin
-						if ((DMA_IND && DMA_IND_REG == 2'd3) || (!DMA_IND && ((DMA_DSP && DSP_DMA_LAST) || (!DMA_DSP && !DMA_RTN)))) begin
+						if ((DMA_DSP && DSP_DMA_LAST) || (!DMA_DSP && !DMA_RTN)) begin
 							CBUS_ST <= CBUS_READ_END;
 						end else
 							CBUS_READ_ACK = 1;
 					end
 				end else if (CE_F) begin
-					if (CCACHE_FULL[CCACHE_RADDR[2]] && (!DMA_BUF_SIZE[2] || DMA_IND)) begin
-						CCACHE_RADDR <= DMA_IND ? DMA_IA[4:2] : DMA_RA[4:2];
+					if (CCACHE_FULL[CCACHE_RADDR[2]] && !DMA_BUF_SIZE[2]) begin
+						CCACHE_RADDR <= DMA_RA[4:2];
 						if (CCACHE_RADDR[1:0] == 2'b11 && ((DMA_DSP && DMA_WADD) || (!DMA_DSP && DMA_RADD))) CCACHE_FULL[CCACHE_RADDR[2]] <= 0;
 						CBUS_DMA_OUT <= 1;
 						CBUS_READ_DONE = 1;
@@ -1302,8 +1337,9 @@ module SCU (
 				
 				CBUS_READ_END: if (CE_R) begin
 					if (ECWAIT_N) begin
+						CBUS_DMA_START <= 0;
 						CBUS_CS <= 0;
-						CBUS_ST <= CBUS_END;
+						CBUS_ST <= CBUS_RELEASE;
 					end
 				end
 				
@@ -1325,16 +1361,22 @@ module SCU (
 							CBUS_DATA_ACK = 1;
 						end
 						else if ((!DMA_DSP && !DMA_WTN) || (DMA_DSP && DMA_LAST)) begin
+							CBUS_DMA_START <= 0;
 							CBUS_CS <= 0;
-							CBUS_ST <= CBUS_END;
+							CBUS_ST <= CBUS_RELEASE;
 						end
 					end
 				end
 				
-				CBUS_END: if (CE_R) begin
+				CBUS_RELEASE: if (CE_R) begin
 					if (!DMA_READ_C && !DMA_WRITE_C) begin
 						CBUS_REL <= 1;
-						CBUS_DMA_START <= 0;
+						CBUS_ST <= CBUS_END;
+					end
+				end
+				
+				CBUS_END: if (CE_R) begin
+					if (CBRLS) begin
 						CBUS_ST <= CBUS_IDLE;
 					end
 				end
@@ -1436,12 +1478,12 @@ module SCU (
 					end
 				end
 				
-				DMA_IND_READ: if (CE_F) begin
-					if (CBUS_READ_DONE) begin
+				DMA_IND_READ: if (CE_R) begin
+					if (CBUS_IND_DONE) begin
 						case (DMA_IND_REG)
-							2'd0: {DMA_RTN,DMA_WTN} <= {2{CCACHE_Q[19:0]}};
-							2'd1: DMA_WA <= CCACHE_Q[26:0];
-							2'd2: {DMA_EC,DMA_RA} <= {CCACHE_Q[31],CCACHE_Q[26:0]};
+							2'd0: {DMA_RTN,DMA_WTN} <= {2{ECDI[19:0]}};
+							2'd1: DMA_WA <= ECDI[26:0];
+							2'd2: {DMA_EC,DMA_RA} <= {ECDI[31],ECDI[26:0]};
 						endcase
 						
 						DMA_IND_REG <= DMA_IND_REG + 2'd1;
@@ -1455,16 +1497,15 @@ module SCU (
 				end
 				
 				DMA_IND_END: if (CE_R) begin
-					if (CBRLS) begin
-						DMA_IND <= 0;
-						DMA_ST <= DMA_SELECT;
-					end
+					DMA_ST <= DMA_SELECT;
 				end
 				
 				DMA_SELECT: if (CE_R) begin
 `ifdef DEBUG
 					DBG_WAIT_CNT <= DBG_WAIT_CNT + 1'd1;
 `endif
+					DMA_IND <= 0;
+					
 					DMA_RA_ERR <= 1;
 					if (DMA_DSP && DSP_DMA_WE) begin
 						DMA_RA_ERR <= 0;
@@ -1730,17 +1771,17 @@ module SCU (
 				end
 				
 				DMA_STOP: if (CE_R) begin
-					if ((!DMA_DSP && DMA_WRITE_A && ABUS_ST == ABUS_DMA_END && DMA_READ_C && CBUS_ST == CBUS_END) || 
+					if ((!DMA_DSP && DMA_WRITE_A && ABUS_ST == ABUS_DMA_END && DMA_READ_C && CBUS_ST == CBUS_RELEASE) || 
 					    (!DMA_DSP && DMA_WRITE_B && BBUS_ST == BBUS_DMA_END && DMA_READ_A && ABUS_ST == ABUS_DMA_END) || 
-					    (!DMA_DSP && DMA_WRITE_B && BBUS_ST == BBUS_DMA_END && DMA_READ_C && CBUS_ST == CBUS_END) || 
-					    (!DMA_DSP && DMA_WRITE_C && CBUS_ST == CBUS_END && DMA_READ_A && ABUS_ST == ABUS_DMA_END) || 
-					    (!DMA_DSP && DMA_WRITE_C && CBUS_ST == CBUS_END && DMA_READ_B && BBUS_ST == BBUS_DMA_END) || 
+					    (!DMA_DSP && DMA_WRITE_B && BBUS_ST == BBUS_DMA_END && DMA_READ_C && CBUS_ST == CBUS_RELEASE) || 
+					    (!DMA_DSP && DMA_WRITE_C && CBUS_ST == CBUS_RELEASE && DMA_READ_A && ABUS_ST == ABUS_DMA_END) || 
+					    (!DMA_DSP && DMA_WRITE_C && CBUS_ST == CBUS_RELEASE && DMA_READ_B && BBUS_ST == BBUS_DMA_END) || 
 						 (!DMA_DSP && DMA_ERR) ||
 						 ( DMA_DSP && DMA_READ_A && ABUS_ST == ABUS_DMA_END) ||
 						 ( DMA_DSP && DMA_READ_B && BBUS_ST == BBUS_DMA_END) ||
 						 ( DMA_DSP && DMA_WRITE_B && BBUS_ST == BBUS_DMA_END) ||
-						 ( DMA_DSP && DMA_READ_C && CBUS_ST == CBUS_END) ||
-						 ( DMA_DSP && DMA_WRITE_C && CBUS_ST == CBUS_END)) begin
+						 ( DMA_DSP && DMA_READ_C && CBUS_ST == CBUS_RELEASE) ||
+						 ( DMA_DSP && DMA_WRITE_C && CBUS_ST == CBUS_RELEASE)) begin
 						DMA_READ_A <= 0;
 						DMA_READ_B <= 0;
 						DMA_READ_C <= 0;
@@ -1821,9 +1862,7 @@ module SCU (
 					end 
 				end
 				if (CBUS_READ_ACK) begin
-					if (DMA_IND) begin
-						DMA_IA <= DMA_IA + 27'd4;
-					end else if (DMA_DSP) begin
+					if (DMA_DSP) begin
 						if (DMA_WADD)
 							DMA_RA <= DMA_RA + 27'd4;
 					end else begin
@@ -1835,6 +1874,9 @@ module SCU (
 						if ((DMA_WTN - DMA_RTN) > 20'd8) DBG_DMA_TN_ERR <= 1;
 `endif
 					end
+				end
+				if (CBUS_IND_DONE) begin
+					DMA_IA <= DMA_IA + 27'd4;
 				end
 				
 				if (ABUS_DATA_ACK && DMA_WADD) begin
