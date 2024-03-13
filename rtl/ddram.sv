@@ -125,7 +125,8 @@ reg            ram_read = 0;
 reg            ram_write = 0;
 reg  [  3:  0] ram_chan;
 
-reg  [ 25:  1] rcache_addr[10] = '{10{'1}};
+reg  [ 25:  1] rcache_addr[10];
+reg            rcache_dirty[10] = '{10{1}};
 reg  [127:  0] rcache_buf[10];
 reg            rcache_word[10];
 reg            rcache_update[10];
@@ -173,9 +174,9 @@ wire           fifo_empty[10];
 wire           fifo_full[10];
 ddr_infifo #(2) fifo0 (clk, rst_pulse, {mem0_addr,mem0_wr,mem0_din}, fifo_wrreq[0], fifo_rdreq[0], fifo_dout[0], fifo_empty[0], fifo_full[0]);
 ddr_infifo #(2) fifo1 (clk, rst_pulse, {mem1_addr,mem1_wr,mem1_din}, fifo_wrreq[1], fifo_rdreq[1], fifo_dout[1], fifo_empty[1], fifo_full[1]);
-ddr_infifo #(2) fifo2 (clk, rst_pulse, {mem2_addr,mem2_wr,mem2_din}, fifo_wrreq[2], fifo_rdreq[2], fifo_dout[2], fifo_empty[2], fifo_full[2]);
-ddr_infifo #(2) fifo3 (clk, rst_pulse, {mem3_addr,mem3_wr,mem3_din}, fifo_wrreq[3], fifo_rdreq[3], fifo_dout[3], fifo_empty[3], fifo_full[3]);
-ddr_infifo #(2) fifo4 (clk, rst_pulse, {mem4_addr,mem4_wr,mem4_din}, fifo_wrreq[4], fifo_rdreq[4], fifo_dout[4], fifo_empty[4], fifo_full[4]);
+ddr_infifo #(3) fifo2 (clk, rst_pulse, {mem2_addr,mem2_wr,mem2_din}, fifo_wrreq[2], fifo_rdreq[2], fifo_dout[2], fifo_empty[2], fifo_full[2]);
+ddr_infifo #(3) fifo3 (clk, rst_pulse, {mem3_addr,mem3_wr,mem3_din}, fifo_wrreq[3], fifo_rdreq[3], fifo_dout[3], fifo_empty[3], fifo_full[3]);
+ddr_infifo #(3) fifo4 (clk, rst_pulse, {mem4_addr,mem4_wr,mem4_din}, fifo_wrreq[4], fifo_rdreq[4], fifo_dout[4], fifo_empty[4], fifo_full[4]);
 ddr_infifo #(2) fifo5 (clk, rst_pulse, {mem5_addr,mem5_wr,mem5_din}, fifo_wrreq[5], fifo_rdreq[5], fifo_dout[5], fifo_empty[5], fifo_full[5]);
 ddr_infifo2     fifo6 (clk, rst_pulse, {mem6_addr,mem6_wr,mem6_din}, fifo_wrreq[6], fifo_rdreq[6], fifo_dout[6], fifo_empty[6], fifo_full[6]);
 ddr_infifo #(2) fifo7 (clk, rst_pulse, {mem7_addr,mem7_wr,mem7_din}, fifo_wrreq[7], fifo_rdreq[7], fifo_dout[7], fifo_empty[7], fifo_full[7]);
@@ -212,15 +213,16 @@ always @(posedge clk) begin
 
 	for (int i=0; i<10; i++) begin
 		if (rst_pulse) begin
-			rcache_addr[i] <= '1;
+			rcache_dirty[i] <= 1;
 			read_busy[i] <= 0;
 		end
 		else if (mem_rd[i] && !old_rd[i]) begin
-			if (rcache_addr[i][25:5] != mem_addr[i][25:5]) begin
+			if (rcache_addr[i][25:5] != mem_addr[i][25:5] || rcache_dirty[i]) begin
 				read_busy[i] <= 1;
 			end
 			rcache_addr[i] <= mem_addr[i];
 			rcache_word[i] <= mem_16b[i];
+			rcache_dirty[i] <= 0;
 		end
 		
 		if (rst_pulse) begin
@@ -248,7 +250,7 @@ always @(posedge clk) begin
 //			rcache_update[i] <= (rcache_addr[i][24:5] == mem_addr[i][24:5]);
 
 			if (rcache_addr[i][25:5] == mem_addr[i][25:5]) begin
-				rcache_addr[i] <= '1;
+				rcache_dirty[i] <= 1;
 //				if (mem_16b[i]) begin
 //					write_buf[i] <= {2{mem_din[i][15:0]}};
 //					case (mem_addr[i][2:1])
