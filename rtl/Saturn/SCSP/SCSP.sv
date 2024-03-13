@@ -352,9 +352,10 @@ module SCSP (
 	bit  [ 5: 0] STACK_RA;
 	always_comb begin
 		casex (CYCLE_NUM)
-			3'bxx1: STACK_RA = {1'b0,OP7.SLOT};
-			3'bx00: STACK_RA = {1'b0,OP2.SLOT} + SCR4.MDXSL;
-			3'bx10: STACK_RA = {1'b0,OP2.SLOT} + SCR4.MDYSL;
+			3'b0x0: STACK_RA = {1'b0,OP7.SLOT};
+			3'b100: STACK_RA = {1'b0,OP2.SLOT} + SCR4.MDXSL;
+			3'b110: STACK_RA = {1'b0,OP2.SLOT} + SCR4.MDYSL;
+			default: STACK_RA = '0;
 		endcase
 	end
 	
@@ -745,6 +746,7 @@ module SCSP (
 	
 	//Operation 7: Stack save
 	//Direct out
+	bit [15:0] STACKA_Q;
 	bit [17:0] DIR_ACC_L,DIR_ACC_R;
 	always @(posedge CLK or negedge RST_N) begin
 		bit [ 4:0] S;
@@ -760,6 +762,12 @@ module SCSP (
 			DIR_ACC_L <= 0;
 			DIR_ACC_R <= 0;
 		end else begin
+			if (CYCLE0_CE) begin
+				case (CYCLE_NUM[2:1])
+					2'b00: STACKA_Q <= STACK1_Q;
+				endcase
+			end
+			
 			S = OP7.SLOT;
 			if ((!SLOT_EN[ 0] && S == 5'd0 ) || (!SLOT_EN[ 1] && S == 5'd1 ) || (!SLOT_EN[ 2] && S == 5'd2 ) || (!SLOT_EN[ 3] && S == 5'd 3) ||
 						 (!SLOT_EN[ 4] && S == 5'd4 ) || (!SLOT_EN[ 5] && S == 5'd5 ) || (!SLOT_EN[ 6] && S == 5'd6 ) || (!SLOT_EN[ 7] && S == 5'd7 ) ||
@@ -1219,7 +1227,7 @@ module SCSP (
 			SCU_RRDY <= 1;
 			SCU_WPEND <= 0;
 			SCU_WRDY <= 1;
-		end else if (!RES_N) begin
+//		end else if (!RES_N) begin
 //			MEM_ST <= MS_IDLE;
 //			MEM_WE <= '0;
 //			MEM_RD <= 0;
@@ -1463,7 +1471,6 @@ module SCSP (
 					end else if (SCPU_RA[20] && SCPU_RPEND) begin
 						SCDTACK_N <= 0;
 						REG_A <= SCPU_RA[11:1];
-						REG_D <= SCDI;
 						REG_WE <= '0;
 						REG_RD <= 1;
 						REG_ST <= MS_SCPU_WAIT;
@@ -1725,8 +1732,10 @@ module SCSP (
 							default: REG_Q <= '0;
 						endcase
 `ifndef DEBUG
-//					end else if (SOUS_SEL) begin
-//						REG_Q <= STACK1_Q;
+					end else if (STACKA_SEL) begin
+						REG_Q <= STACK1_Q;
+					end else if (STACKB_SEL) begin
+						REG_Q <= STACK0_Q;
 					end else if (COEF_SEL) begin
 						REG_Q <= COEF_RAM_Q & COEF_MASK;
 					end else if (MADRS_SEL) begin
@@ -1822,10 +1831,11 @@ module SCSP (
 	SCSP_RAM_8X2 #(5) SCR_SCR8(CLK, OP7.RST ? OP7.SLOT : REG_A[9:5], OP7.RST ? '0 : REG_D, OP7.RST ? 2'b11 : (REG_WE & {2{SCR_SCR8_SEL}}), (REG_RD ? REG_A[9:5] : OP7.SLOT), SCR_SCR8_Q);
 	
 	//STACK,100600-10067F
-	wire       SOUS_SEL = REG_A[11:7] == 5'b01100;
+	wire       STACKA_SEL = REG_A[11:6] == 6'b011000;
+	wire       STACKB_SEL = REG_A[11:6] == 6'b011001;
 	bit [15:0] STACK0_Q,STACK1_Q;
-	SCSP_STACK_RAM STACK1 (CLK, OP7.SLOT, OP7.SD  , {2{~OP7.STWINH&SLOT1_CE}}, STACK_RA[4:0], STACK1_Q);
-	SCSP_STACK_RAM STACK0 (CLK, OP7.SLOT, STACK1_Q, {2{            SLOT1_CE}}, STACK_RA[4:0], STACK0_Q);
+	SCSP_STACK_RAM STACK1 (CLK, OP7.SLOT, OP7.SD  , {2{~OP7.STWINH&SLOT1_CE}}, (REG_RD ? REG_A[5:1] : STACK_RA[4:0]), STACK1_Q);
+	SCSP_STACK_RAM STACK0 (CLK, OP7.SLOT, STACKA_Q, {2{            SLOT1_CE}}, (REG_RD ? REG_A[5:1] : STACK_RA[4:0]), STACK0_Q);
 	
 	//COEF,100700-10077F
 	wire       COEF_SEL = REG_A[11:7] == 5'b01110;

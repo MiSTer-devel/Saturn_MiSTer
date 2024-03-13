@@ -686,13 +686,13 @@ package SCSP_PKG;
 	endfunction
 	
 	function bit signed [15:0] MVolCalc(bit signed [17:0] WAVE, bit [3:0] MVOL, bit DAC18B);
-		bit [17:0] TEMP;
-		bit [17:0] TEMP2;
+		bit [17:0] TEMP1,TEMP2,TEMP3;
 		
-		TEMP = DAC18B ? $signed(WAVE)<<<2 : WAVE;
-		TEMP2 = MVOL ? $signed($signed(TEMP)>>>(~MVOL[3:1])) - (!MVOL[0] ? $signed($signed(TEMP)>>>2) : '0) : 18'sh0000;
+		TEMP1 = DAC18B ? $signed(WAVE)<<<2 : WAVE;
+		TEMP2 = $signed($signed(TEMP1)>>>(~MVOL[3:1]));
+		TEMP3 = MVOL ? $signed(TEMP2) - (!MVOL[0] ? $signed($signed(TEMP2)>>>2) : '0) : 18'sh0000;
 		
-		return TEMP2[17] && TEMP2[16:15] != 2'b11 ? 16'h8000 : !TEMP2[17] && TEMP2[16:15] != 2'b00 ? 16'h7FFF : TEMP2[15:0];
+		return TEMP3[17] && TEMP3[16:15] != 2'b11 ? 16'h8000 : !TEMP3[17] && TEMP3[16:15] != 2'b00 ? 16'h7FFF : TEMP3[15:0];
 	endfunction
 	
 	function bit [7:0] LFOWave(bit [7:0] POS, bit [7:0] NOISE, bit [1:0] LFOWS);
