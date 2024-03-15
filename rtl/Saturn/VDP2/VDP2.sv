@@ -189,11 +189,8 @@ module VDP2 (
 	
 	
 	bit  [ 1: 0] DOTCLK_DIV;
-	always @(posedge CLK or negedge RST_N) begin
-		if (!RST_N) begin
-			DOTCLK_DIV <= '0;
-		end
-		else if (CE_R) begin
+	always @(posedge CLK) begin
+		if (CE_R) begin
 			DOTCLK_DIV <= DOTCLK_DIV + 2'd1;
 		end
 	end
@@ -259,17 +256,6 @@ module VDP2 (
 			HBLANK <= 0;
 			VBLANK <= 0;
 			ODD <= 0;
-			HDISP_CNT <= '0;
-		end
-		else if (!RES_N) begin
-			H_CNT <= '0;
-			V_CNT <= !PAL ? VS_START : 9'd280;
-			HSYNC <= 0;
-			VSYNC <= 1;
-			HBLANK <= 0;
-			VBLANK <= 1;
-			ODD <= 0;
-			VBLANK2 <= 1;
 			HDISP_CNT <= '0;
 		end
 		else if (DOT_CE_R) begin
@@ -342,10 +328,6 @@ module VDP2 (
 			HINT <= 0;
 			VINT <= 0;
 		end
-		else if (!RES_N) begin
-			HINT <= 0;
-			VINT <= 1;
-		end
 		else if (DOT_CE_R) begin
 			if (H_CNT == HINT_START - 1) begin
 				HINT <= 1;
@@ -373,10 +355,6 @@ module VDP2 (
 		if (!RST_N) begin
 			HTIM <= 0;
 			VTIM <= 0;
-		end
-		else if (!RES_N) begin
-			HTIM <= 0;
-			VTIM <= 1;
 		end
 		else if (DOT_CE_R) begin
 			if (H_CNT == HTIM_START - 1) begin
@@ -438,22 +416,6 @@ module VDP2 (
 	bit          DOT_FETCH;
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
-			CELLX <= '0;
-			NBG_FETCH <= 0;
-			NCH_FETCH <= 0;
-			NVCS_FETCH <= 0;
-			RBG_FETCH <= 0;
-			RBG_CALC <= 0;
-			RCTA_FETCH <= 0;
-			RCTB_FETCH <= 0;
-			LS_FETCH <= 0;
-			LW_FETCH <= 0;
-			RPA_FETCH <= 0;
-			RPB_FETCH <= 0;
-			BACK_FETCH <= 0;
-			DOT_FETCH <= 0;
-		end
-		else if (!RES_N) begin
 			CELLX <= '0;
 			NBG_FETCH <= 0;
 			NCH_FETCH <= 0;
@@ -966,7 +928,6 @@ module VDP2 (
 			VRAM_RRDY <= 1;
 			VRAM_WRDY <= 1;
 			VRAM_WLOCK <= 0;
-//			VRAM_WRITE_END <= 0;
 		end else begin
 			VRAM_WRITE_PEND_CLR = 0;
 			if (DOT_CE_F) begin
@@ -1433,6 +1394,14 @@ module VDP2 (
 				VRAM_WLOCK <= 0;
 			end
 			
+			if (!RES_N) begin
+				VRAM_WE <= '0;
+				VRAM_WRITE_PEND <= 0;
+				VRAM_READ_PEND <= 0;
+				VRAM_RRDY <= 1;
+				VRAM_WRDY <= 1;
+				VRAM_WLOCK <= 0;
+			end
 			//debug
 `ifdef DEBUG
 			if (VRAM_WRITE_PEND) VRAM_WRITE_PEND_CNT <= VRAM_WRITE_PEND_CNT + 1'd1;
@@ -1447,7 +1416,7 @@ module VDP2 (
 	bit         FIFO_EMPTY;
 	bit         FIFO_FULL;
 	bit         FIFO_LAST;
-	VDP2_WRITE_FIFO fifo(CLK, RST_N, {A[18:1],DI}, FIFO_WRREQ, FIFO_RDREQ, FIFO_Q, FIFO_EMPTY, FIFO_FULL, FIFO_LAST);
+	VDP2_WRITE_FIFO fifo(CLK, RES_N, {A[18:1],DI}, FIFO_WRREQ, FIFO_RDREQ, FIFO_Q, FIFO_EMPTY, FIFO_FULL, FIFO_LAST);
 	assign FIFO_WRREQ = VRAM_REQ & ~WE_N & ~DTEN_N & BURST;
 	assign FIFO_RDREQ = ~FIFO_EMPTY & ~VRAM_WRITE_PEND;
 	wire [18: 1] FIFO_A = FIFO_Q[33:16];
@@ -3316,6 +3285,7 @@ module VDP2 (
 	bit [15:0] REG_DO;
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
+			// synopsys translate_off
 			REGS.TVMD <= '0;
 			REGS.EXTEN <= '0;
 			REGS.TVSTAT <= '0;
@@ -3462,6 +3432,7 @@ module VDP2 (
 			REGS.COBB <= '0;
 
 			REG_DO <= '0;
+			// synopsys translate_on
 		end else if (!RES_N) begin
 			REGS.TVMD <= '0;
 			REGS.EXTEN <= '0;
@@ -3781,12 +3752,18 @@ module VDP2 (
 	
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
+			// synopsys translate_off
 			A <= '1;
 			WE_N <= 1;
 			DQM <= '1;
 			BURST <= 0;
-		end
-		else begin
+			// synopsys translate_on
+		end else if (!RES_N) begin
+			A <= '1;
+			WE_N <= 1;
+			DQM <= '1;
+			BURST <= 0;
+		end else begin
 			if (!CS_N && DTEN_N && AD_N && CE_R) begin
 				if (!DI[15]) begin
 					A[20:9] <= DI[11:0];
@@ -3797,7 +3774,7 @@ module VDP2 (
 					DQM <= DI[13:12];
 				end
 			end
-			if (/*BURST &&*/ (VRAM_SEL || REG_SEL || PAL_SEL) && !REQ_N) begin
+			if ((VRAM_SEL || REG_SEL || PAL_SEL) && !REQ_N) begin
 				A <= A + 20'd1;
 			end
 		end
