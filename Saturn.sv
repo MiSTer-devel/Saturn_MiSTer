@@ -1023,17 +1023,10 @@ module emu
 		.mem2_busy(ddr_busy[2]                                ),
 	
 		//VDP1 VRAM
-`ifdef MISTER_DUAL_SDRAM
-		.mem3_addr('0                                         ),
-		.mem3_din ('0                                         ),
-		.mem3_wr  ('0                                         ),
-		.mem3_rd  (0                                          ),
-`else
 		.mem3_addr({ 7'b0001000,VDP1_VRAM_A[18:1]}            ),
 		.mem3_din ({16'h0000,VDP1_VRAM_D}                     ),
 		.mem3_wr  ({2'b00,VDP1_VRAM_WE}                       ),
 		.mem3_rd  (VDP1_VRAM_RD                               ),
-`endif
 		.mem3_dout(ddr_do[3]                                  ),
 		.mem3_16b (1                                          ),
 		.mem3_busy(ddr_busy[3]                                ),
