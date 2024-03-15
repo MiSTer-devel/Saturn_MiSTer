@@ -478,6 +478,7 @@ module emu
 	always @(posedge CLK_50M) begin
 		reg pald = 0, pald2 = 0;
 		reg dotsel = 0, dotsel2 = 0;
+		reg resd = 0, resd2 = 0;
 		reg [2:0] state = 0;
 
 		pald  <= PAL;
@@ -485,10 +486,13 @@ module emu
 		
 		dotsel  <= SMPC_DOTSEL;
 		dotsel2 <= dotsel;
+		
+		resd  <= reset;
+		resd2 <= resd;
+	
+		if (dotsel2 != dotsel || pald2 != pald || (resd && !resd2)) state <= 1;
 	
 		cfg_write <= 0;
-		if (dotsel2 != dotsel || pald2 != pald) state <= 1;
-	
 		if (!cfg_waitrequest) begin
 			if (state) state <= state + 1'd1;
 			case (state)
@@ -965,12 +969,12 @@ module emu
 	always @(posedge clk_sys) begin
 		reg old_busy;
 		
-//		old_busy <= ddr_busy[8];
+//		old_busy <= ddr_busy[7];
 //		if ((bios_download || cart_download) && ioctl_wr) ioctl_wait <= 1;
-//		if (~ddr_busy[8] && old_busy) ioctl_wait <= 0;
-		ioctl_wait <= ddr_busy[8];
+//		if (~ddr_busy[7] && old_busy) ioctl_wait <= 0;
+		ioctl_wait <= ddr_busy[7];
 	end
-	wire [24:1] IO_ADDR = cart_download ? {3'b010,ioctl_addr[21:1]} : {6'b000000,ioctl_addr[18:1]};
+	wire [25:1] IO_ADDR = cart_download ? {4'b0011,ioctl_addr[21:1]} : {7'b0000000,ioctl_addr[18:1]};
 	wire [15:0] IO_DATA = {ioctl_data[7:0],ioctl_data[15:8]};
 	wire        IO_WR = (bios_download | cart_download) & ioctl_wr;
 
@@ -987,7 +991,7 @@ module emu
 		.rst(reset || rst_ram),
 		
 		//CD RAM
-		.mem0_addr({ 6'b011000,   CD_RAM_A[18:1]}             ),
+		.mem0_addr({ 7'b0010000, CD_RAM_A[18:1]}              ),
 		.mem0_din ({16'h0000,CD_RAM_D}                        ),
 `ifdef MISTER_DUAL_SDRAM
 		.mem0_wr  ('0                                         ),
@@ -1000,116 +1004,111 @@ module emu
 		.mem0_16b (1                                          ),
 		.mem0_busy(ddr_busy[0]                                ),
 	
-		//CPU bus (ROM,SRAM)
-		.mem1_addr({ 5'b00000,ROM_CS_N,MEM_A[18:1]}           ),
+		//CPU bus (ROM,SRAM,RAML)
+		.mem1_addr({ 4'b0000,~RAML_CS_N,~SRAM_CS_N,ROM_CS_N&SRAM_CS_N&MEM_A[19],MEM_A[18:1]}),
 		.mem1_din (MEM_DO                                     ),
-		.mem1_wr  ({3'b000,~SRAM_CS_N & ~MEM_DQM_N[0]}        ),
-		.mem1_rd  ((~ROM_CS_N | ~SRAM_CS_N) & ~MEM_RD_N       ),
+		.mem1_wr  ({2'b00,{2{~SRAM_CS_N|~RAML_CS_N}} & ~MEM_DQM_N[1:0]}),
+		.mem1_rd  ((~ROM_CS_N | ~SRAM_CS_N | ~RAML_CS_N) & ~MEM_RD_N),
 		.mem1_dout(ddr_do[1]                                  ),
 		.mem1_16b (1                                          ),
 		.mem1_busy(ddr_busy[1]                                ),
 	
 		//CPU bus (RAMH)
-		.mem2_addr({ 5'b00010,    MEM_A[19:2],1'b0}           ),
+		.mem2_addr({ 6'b000011,    MEM_A[19:2],1'b0}           ),
 		.mem2_din (MEM_DO                                     ),
 		.mem2_wr  ({4{~RAMH_CS_N}} & ~MEM_DQM_N               ),
 		.mem2_rd  (~RAMH_CS_N & ~MEM_RD_N                     ),
 		.mem2_dout(ddr_do[2]                                  ),
 		.mem2_16b (0                                          ),
 		.mem2_busy(ddr_busy[2]                                ),
-		
-		//CPU bus (RAML)
-		.mem3_addr({ 5'b00001,    MEM_A[19:1]}                ),
-		.mem3_din (MEM_DO                                     ),
-		.mem3_wr  ({4{~RAML_CS_N}} & ~MEM_DQM_N               ),
-		.mem3_rd  (~RAML_CS_N & ~MEM_RD_N                     ),
+	
+		//VDP1 VRAM
+`ifdef MISTER_DUAL_SDRAM
+		.mem3_addr('0                                         ),
+		.mem3_din ('0                                         ),
+		.mem3_wr  ('0                                         ),
+		.mem3_rd  (0                                          ),
+`else
+		.mem3_addr({ 7'b0001000,VDP1_VRAM_A[18:1]}            ),
+		.mem3_din ({16'h0000,VDP1_VRAM_D}                     ),
+		.mem3_wr  ({2'b00,VDP1_VRAM_WE}                       ),
+		.mem3_rd  (VDP1_VRAM_RD                               ),
+`endif
 		.mem3_dout(ddr_do[3]                                  ),
 		.mem3_16b (1                                          ),
 		.mem3_busy(ddr_busy[3]                                ),
 	
-		//VDP1 VRAM
-//`ifdef MISTER_DUAL_SDRAM
-//		.mem4_addr('0                                         ),
-//		.mem4_din ('0                                         ),
-//		.mem4_wr  ('0                                         ),
-//		.mem4_rd  (0                                          ),
-//`else
-		.mem4_addr({ 6'b001000,   VDP1_VRAM_A[18:1]}          ),
-		.mem4_din ({16'h0000,VDP1_VRAM_D}                     ),
-		.mem4_wr  ({2'b00,VDP1_VRAM_WE}                       ),
-		.mem4_rd  (VDP1_VRAM_RD                               ),
-//`endif
+		//VDP1 FB (rest)
+`ifdef DEBUG
+		.mem4_addr('0                                         ),
+		.mem4_din ('0                                         ),
+		.mem4_wr  ('0                                         ),
+		.mem4_rd  (0                                          ),
+`else
+		.mem4_addr({ 7'b0001001,VDP1_A}                       ),
+		.mem4_din ({16'h0000,VDP1_D}                          ),
+		.mem4_wr  ({2'b00,VDP1_WE}                            ),
+		.mem4_rd  (VDP1_RD                                    ),
+`endif
 		.mem4_dout(ddr_do[4]                                  ),
 		.mem4_16b (1                                          ),
 		.mem4_busy(ddr_busy[4]                                ),
-	
-		//VDP1 FB (rest)
-		.mem5_addr({ 7'b0001001,VDP1_A}                       ),
-		.mem5_din ({16'h0000,VDP1_D}                          ),
-		.mem5_wr  ({2'b00,VDP1_WE}                            ),
-		.mem5_rd  (VDP1_RD                                    ),
+		
+		//CD BUF
+		.mem5_addr({12'b010000000000,CD_BUF_ADDR}             ),
+		.mem5_din ('0                                         ),
+		.mem5_wr  ('0                                         ),
+		.mem5_rd  (CD_BUF_RD                                  ),
 		.mem5_dout(ddr_do[5]                                  ),
 		.mem5_16b (1                                          ),
 		.mem5_busy(ddr_busy[5]                                ),
 		
-		//CD BUF
-		.mem6_addr({11'b10000000000,CD_BUF_ADDR}              ),
+		//CART MEM
+`ifdef DEBUG
+		.mem6_addr('0                                         ),
 		.mem6_din ('0                                         ),
 		.mem6_wr  ('0                                         ),
-		.mem6_rd  (CD_BUF_RD                                  ),
+		.mem6_rd  (0                                          ),
+`else
+		.mem6_addr({4'b0011,CART_MEM_A[21:1]}                 ),
+		.mem6_din ({16'h0000,CART_MEM_D}                      ),
+		.mem6_wr  ({2'b00,CART_MEM_WE}                        ),
+		.mem6_rd  (CART_MEM_RD                                ),
+`endif
 		.mem6_dout(ddr_do[6]                                  ),
 		.mem6_16b (1                                          ),
 		.mem6_busy(ddr_busy[6]                                ),
-		
-		//CART MEM
-`ifdef DEBUG
-		.mem7_addr('0                                         ),
-		.mem7_din ('0                                         ),
-		.mem7_wr  ('0                                         ),
+	
+		//BIOS/CART load
+		.mem7_addr(IO_ADDR                                    ),
+		.mem7_din ({16'h0000,IO_DATA}                         ),
+		.mem7_wr  ({2'b00,{2{IO_WR}}}                         ),
 		.mem7_rd  (0                                          ),
-`else
-		.mem7_addr({3'b010,CART_MEM_A}                        ),
-		.mem7_din ({16'h0000,CART_MEM_D}                      ),
-		.mem7_wr  ({2'b00,CART_MEM_WE}                        ),
-		.mem7_rd  (CART_MEM_RD                                ),
-`endif
 		.mem7_dout(ddr_do[7]                                  ),
 		.mem7_16b (1                                          ),
 		.mem7_busy(ddr_busy[7]                                ),
-	
-		//BIOS/CART load
-		.mem8_addr(IO_ADDR                                    ),
-		.mem8_din ({16'h0000,IO_DATA}                         ),
-		.mem8_wr  ({2'b00,{2{IO_WR}}}                         ),
-		.mem8_rd  (0                                          ),
-		.mem8_dout(ddr_do[8]                                  ),
-		.mem8_16b (1                                          ),
-		.mem8_busy(ddr_busy[8]                                ),
 		
 		//SRAM backup
-		.mem9_addr({9'b000001000,sd_lba[6:0],tmpram_addr}     ),
-		.mem9_din ({16'h0000,tmpram_dout[7:0],tmpram_dout[15:8]}),
-		.mem9_wr  ({2'b00,{2{tmpram_req & bk_loading}}}       ),
-		.mem9_rd  ((tmpram_req & ~bk_loading)                 ),
-		.mem9_dout(ddr_do[9]                                  ),
-		.mem9_16b (1                                          ),
-		.mem9_busy(ddr_busy[9]                                )
+		.mem8_addr({10'b0000010000,sd_lba[6:0],tmpram_addr}   ),
+		.mem8_din ({16'h0000,tmpram_dout[7:0],tmpram_dout[15:8]}),
+		.mem8_wr  ({2'b00,{2{tmpram_req & bk_loading}}}       ),
+		.mem8_rd  ((tmpram_req & ~bk_loading)                 ),
+		.mem8_dout(ddr_do[8]                                  ),
+		.mem8_16b (1                                          ),
+		.mem8_busy(ddr_busy[8]                                )
 	);
-	assign VDP1_VRAM_Q = ddr_do[4][15:0];
-	assign VDP1_VRAM_RDY = ~ddr_busy[4];
+	assign VDP1_VRAM_Q = ddr_do[3][15:0];
+	assign VDP1_VRAM_RDY = ~ddr_busy[3];
 //	assign VDP1_FB_RDY = 1;
 	
-	assign MEM_DI     = !ROM_CS_N  ? ddr_do[1] :
-							  !SRAM_CS_N ? ddr_do[1] :
-							  !RAML_CS_N ? ddr_do[3] :
-												ddr_do[2];
-	assign MEM_WAIT_N = ~(ddr_busy[1] | ddr_busy[2] | ddr_busy[3]);
+	assign MEM_DI     = !ROM_CS_N ||!SRAM_CS_N || !RAML_CS_N ? ddr_do[1] : ddr_do[2];
+	assign MEM_WAIT_N = ~(ddr_busy[1] | ddr_busy[2]);
 
-	assign CD_BUF_DI = ddr_do[6][15:0];
-	assign CD_BUF_RDY = ~ddr_busy[6];
+	assign CD_BUF_DI = ddr_do[5][15:0];
+	assign CD_BUF_RDY = ~ddr_busy[5];
 	
-	assign CART_MEM_Q = ddr_do[7][15:0];
-	assign CART_MEM_RDY = ~ddr_busy[7];
+	assign CART_MEM_Q = ddr_do[6][15:0];
+	assign CART_MEM_RDY = ~ddr_busy[6];
 `ifndef MISTER_DUAL_SDRAM
 	assign CD_RAM_Q = ddr_do[0][15:0];
 	assign CD_RAM_RDY = ~ddr_busy[0];
@@ -1167,38 +1166,64 @@ module emu
 `endif
 
 
-	//VDP1 FB (first 352x256x16 bit)
-	wire         FB0_EXT_SEL = VDP1_FB_MODE3 ? VDP1_FB0_A[17:9] >= 9'd352 : VDP1_FB0_A[9:1] >= 9'd352;
-	wire         FB1_EXT_SEL = VDP1_FB_MODE3 ? VDP1_FB1_A[17:9] >= 9'd352 : VDP1_FB1_A[9:1] >= 9'd352;
-	wire [17: 1] FB0_EXT_A = VDP1_FB_MODE3 ? {VDP1_FB0_A[17:9],VDP1_FB0_A[8:1]} : {VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]};
-	wire [17: 1] FB1_EXT_A = VDP1_FB_MODE3 ? {VDP1_FB1_A[17:9],VDP1_FB1_A[8:1]} : {VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]};
-	bit  [15: 0] FB0_EXT_Q;
-	bit  [15: 0] FB1_EXT_Q;
+	//VDP1 FB
+`ifdef SATURN_FULL_FB
+	wire        FB0_EXT_SEL = 0;
+	wire        FB1_EXT_SEL = 0;
+`else
+	wire        FB0_EXT_SEL = VDP1_FB_MODE3 ? VDP1_FB0_A[17:9] >= 9'd352 : VDP1_FB0_A[9:1] >= 9'd352;
+	wire        FB1_EXT_SEL = VDP1_FB_MODE3 ? VDP1_FB1_A[17:9] >= 9'd352 : VDP1_FB1_A[9:1] >= 9'd352;
+	bit  [15:0] FB0_EXT_Q;
+	bit  [15:0] FB1_EXT_Q;
+`endif
+	wire [17:1] FB0_A = VDP1_FB_MODE3 ? {VDP1_FB0_A[17:9],VDP1_FB0_A[8:1]} : {VDP1_FB0_A[9:1],VDP1_FB0_A[17:10]};
+	wire [17:1] FB1_A = VDP1_FB_MODE3 ? {VDP1_FB1_A[17:9],VDP1_FB1_A[8:1]} : {VDP1_FB1_A[9:1],VDP1_FB1_A[17:10]};
 	
-	bit [15:0] FB0_Q;
+	bit [15:0] FB0_Q,FB1_Q;
+`ifdef SATURN_FULL_FB
+	vdp1_fb_512x256x16 vdp1_fb0
+	(
+		.clock(clk_sys),
+		.address(FB0_A),
+		.data(VDP1_FB0_D),
+		.wren(VDP1_FB0_WE),
+		.q(FB0_Q)
+	);
+
+	vdp1_fb_512x256x16 vdp1_fb1
+	(
+		.clock(clk_sys),
+		.address(FB1_A),
+		.data(VDP1_FB1_D),
+		.wren(VDP1_FB1_WE),
+		.q(FB1_Q)
+	);
+`else
+	//first 352x256x16 bit
 	vdp1_fb_352x256x16 vdp1_fb0
 	(
 		.clock(clk_sys),
-		.address(FB0_EXT_A),
+		.address(FB0_A),
 		.data(VDP1_FB0_D),
 		.wren(VDP1_FB0_WE & {2{~FB0_EXT_SEL}}),
 		.q(FB0_Q)
 	);
 
-	bit [15:0] FB1_Q;
 	vdp1_fb_352x256x16 vdp1_fb1
 	(
 		.clock(clk_sys),
-		.address(FB1_EXT_A),
+		.address(FB1_A),
 		.data(VDP1_FB1_D),
 		.wren(VDP1_FB1_WE & {2{~FB1_EXT_SEL}}),
 		.q(FB1_Q)
 	);
-	
+`endif
+
 	assign VDP1_FB0_Q = !FB0_EXT_SEL ? FB0_Q : FB0_EXT_Q;
 	assign VDP1_FB1_Q = !FB1_EXT_SEL ? FB1_Q : FB1_EXT_Q;
 
-//`ifndef MISTER_DUAL_SDRAM
+`ifndef SATURN_FULL_FB
+`ifndef DEBUG
 	bit [18:1] VDP1_A;
 	bit [15:0] VDP1_D;
 	bit [ 1:0] VDP1_WE;
@@ -1248,13 +1273,13 @@ module emu
 			case (vdp1_state)
 				2'd0: begin
 					if ((VDP1_FB0_RD && FB0_EXT_SEL) || VDP1_FB0_RPEND) begin
-						VDP1_A <= {1'b0,FB0_EXT_A};
+						VDP1_A <= {1'b0,FB0_A};
 						VDP1_RD <= 1;
 						VDP1_FB0_RPEND <= 0; 
 						vdp1_state <= 2'd1;
 					end else if (VDP1_FB0_WPEND && !VDP1_WE) begin
-						if (!ddr_busy[5]) begin
-							VDP1_A <= {1'b0,FB0_EXT_A};
+						if (!ddr_busy[4]) begin
+							VDP1_A <= {1'b0,FB0_A};
 							VDP1_D <= VDP1_FB0_D;
 							VDP1_WE <= VDP1_FB0_WPEND;
 							VDP1_FB0_WPEND <= '0;
@@ -1262,13 +1287,13 @@ module emu
 							vdp1_state <= 2'd0;
 						end
 					end else if ((VDP1_FB1_RD && FB1_EXT_SEL) || VDP1_FB1_RPEND) begin
-						VDP1_A <= {1'b1,FB1_EXT_A};
+						VDP1_A <= {1'b1,FB1_A};
 						VDP1_RD <= 1;
 						VDP1_FB1_RPEND <= 0; 
 						vdp1_state <= 2'd2;
 					end else if (VDP1_FB1_WPEND && !VDP1_WE) begin
-						if (!ddr_busy[5]) begin
-							VDP1_A <= {1'b1,FB1_EXT_A};
+						if (!ddr_busy[4]) begin
+							VDP1_A <= {1'b1,FB1_A};
 							VDP1_D <= VDP1_FB1_D;
 							VDP1_WE <= VDP1_FB1_WPEND;
 							VDP1_FB1_WPEND <= '0;
@@ -1279,16 +1304,16 @@ module emu
 				end
 				
 				2'd1: begin
-					if (!ddr_busy[5] && !VDP1_RD) begin
-						FB0_EXT_Q <= ddr_do[5][15:0];
+					if (!ddr_busy[4] && !VDP1_RD) begin
+						FB0_EXT_Q <= ddr_do[4][15:0];
 						VDP1_FB0_BUSY <= 0;
 						vdp1_state <= 2'd0;
 					end
 				end
 				
 				2'd2: begin
-					if (!ddr_busy[5] && !VDP1_RD) begin
-						FB1_EXT_Q <= ddr_do[5][15:0];
+					if (!ddr_busy[4] && !VDP1_RD) begin
+						FB1_EXT_Q <= ddr_do[4][15:0];
 						VDP1_FB1_BUSY <= 0;
 						vdp1_state <= 2'd0;
 					end
@@ -1299,7 +1324,17 @@ module emu
 		end
 	end
 	assign VDP1_FB_RDY = ~(VDP1_FB0_BUSY | VDP1_FB1_BUSY);
-//`endif
+`else
+	wire [24:1] VDP1_A = '0;
+	wire [15:0] VDP1_D = '0;
+	wire [ 1:0] VDP1_WE = '0;
+	wire        VDP1_RD = 0;
+	
+	assign FB0_EXT_Q = '0;
+	assign FB1_EXT_Q = '0;
+	assign VDP1_FB_RDY = 1;
+`endif
+`endif
 
 /////////////////////////  BRAM SAVE/LOAD  /////////////////////////////
 	wire downloading = save_download;
@@ -1405,8 +1440,8 @@ module emu
 	end
 
 	wire [15:0] tmpram_dout;
-	wire [15:0] tmpram_din = {ddr_do[9][7:0],ddr_do[9][15:8]};
-	wire        tmpram_busy = ddr_busy[9];
+	wire [15:0] tmpram_din = {ddr_do[8][7:0],ddr_do[8][15:8]};
+	wire        tmpram_busy = ddr_busy[8];
 
 	wire [15:0] tmpram_sd_buff_q;
 	dpram_dif #(8,16,8,16) tmpram
