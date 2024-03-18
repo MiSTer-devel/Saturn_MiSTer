@@ -399,6 +399,7 @@ module VDP1 (
 		bit [10: 0] NEXT_POLY_LDY;
 		bit [10: 0] NEXT_POLY_RDX;
 		bit [10: 0] NEXT_POLY_RDY;
+		bit         CLIP_H;
 		bit         EC_FIND;
 		CMDCRD_t    CMD_SSPR_LEFT,CMD_SSPR_RIGHT,CMD_SSPR_TOP,CMD_SSPR_BOTTOM;
 		bit [11: 0] SSPR_WIDTH_ABS,SSPR_HEIGHT_ABS;
@@ -855,6 +856,12 @@ module VDP1 (
 					DIR <= '0;
 					TEXT_X <= '0;
 					TEXT_Y <= '0;
+					
+					CLIP_H <= 0;
+					if (($signed(CMD.CMDXA[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && $signed(CMD.CMDXD[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1})) ||
+					    ($signed(CMD.CMDXB[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && $signed(CMD.CMDXC[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}))) begin
+						CLIP_H <= 1;
+					end
 										
 					/*CMD_DELAY <= CMD_DELAY - 1'd1;
 					if (!CMD_DELAY)*/
@@ -1051,7 +1058,7 @@ module VDP1 (
 					NEW_LINE_SY = {RIGHT_VERT.Y[11],RIGHT_VERT.Y} - {LEFT_VERT.Y[11],LEFT_VERT.Y};
 					NEW_LINE_ASX = Abs(NEW_LINE_SX[11:0]);
 					NEW_LINE_ASY = Abs(NEW_LINE_SY[11:0]);
-					if ($signed(LEFT_VERT.X) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && !CMD.CMDPMOD.PCLP) begin
+					if ($signed(LEFT_VERT.X) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
 						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
 						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
 						LINE_VERTB.X <= SYS_CLIP_X1;
@@ -1067,7 +1074,7 @@ module VDP1 (
 						LINE_DIRX <= ~NEW_LINE_SX[12];
 						LINE_DIRY <= ~NEW_LINE_SY[12];
 						DIR[0] <= 1;
-					end else if ($signed(RIGHT_VERT.X) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && !CMD.CMDPMOD.PCLP) begin
+					end else if ($signed(RIGHT_VERT.X) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
 						LINE_VERTA.X <= LEFT_VERT.X[10:0];
 						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
 						LINE_VERTB.X <= SYS_CLIP_X1;
