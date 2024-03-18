@@ -312,7 +312,7 @@ module VDP2 (
 			end
 			
 			HRES <= REGS.TVMD.HRESO[1:0];
-			VRES <= !PAL && REGS.TVMD.VRESO[1] ? 2'b01 : REGS.TVMD.VRESO[1:0];
+			VRES <= REGS.TVMD.VRESO[1:0] & {PAL,1'b1};
 			LSMD <= REGS.TVMD.LSMD;
 			DISP <= REGS.TVMD.DISP;
 		end
@@ -2673,14 +2673,12 @@ module VDP2 (
 					N3DP[i] <= N3DP[i+8]; N3DP[i+8] <= NBG_CDP[3][i];
 				end
 			end
-			
-			RxDC[0] <= {RBG_DC[0][3],RBG_DC[0][1],RBG_DC[0][2],RBG_DC[0][0]};
-			RxDP[0] <= RBG_DP[0];
-			
-			RxDC[1] <= {RBG_DC[1][3],RBG_DC[1][1],RBG_DC[1][2],RBG_DC[1][0]};
-			RxDP[1] <= RBG_DP[1];
 		end
 	end
+	assign RxDC[0] = {RBG_DC[0][3],RBG_DC[0][1],RBG_DC[0][2],RBG_DC[0][0]};
+	assign RxDP[0] = RBG_DP[0];
+	assign RxDC[1] = {RBG_DC[1][3],RBG_DC[1][1],RBG_DC[1][2],RBG_DC[1][0]};
+	assign RxDP[1] = RBG_DP[1];
 	
 	ScrollData_t NCX[4];
 	always @(posedge CLK or negedge RST_N) begin
@@ -2739,12 +2737,12 @@ module VDP2 (
 			// synopsys translate_on
 		end
 		else if (DOT_CE_R || (DOT_CE_F & HRES[1])) begin
-			R0DOTDC <= {RBG_DC[0][3],RBG_DC[0][1],RBG_DC[0][2],RBG_DC[0][0]};//RxDC[0];
-			R0DOTDP <= RBG_DP[0];//RxDP[0];
+			R0DOTDC <= RxDC[0];
+			R0DOTDP <= RxDP[0];
 			
 			if (RSxREG[1].ON) begin
-				N0DOTDC <= {RBG_DC[1][3],RBG_DC[1][1],RBG_DC[1][2],RBG_DC[1][0]};//RxDC[1];
-				N0DOTDP <= RBG_DP[1];//RxDP[1];
+				N0DOTDC <= RxDC[1];
+				N0DOTDP <= RxDP[1];
 			end else if (NSxREG[0].CHCN == 3'b000 && NSxREG[0].ZMHF) begin
 				N0DOTDC <= !NCX[0].INT[3] ? N0DC[{NCX[0].INT[4],NCX[0].INT[2:0]}] : N4DC[{NCX[0].INT[4],NCX[0].INT[2:0]}];
 				N0DOTDP <= !NCX[0].INT[3] ? N0DP[{NCX[0].INT[4],NCX[0].INT[2:0]}] : N4DP[{NCX[0].INT[4],NCX[0].INT[2:0]}];
