@@ -387,32 +387,38 @@ module SMPC (
 							end
 							
 							8'h0D: begin		//SYSRES
-								MSHRES_N <= 0;
-								MSHNMI_N <= 0;
-								SSHRES_N <= 0;
-								SSHNMI_N <= 0;
-								SNDRES_N <= 0;
-								CDRES_N <= 0;
-								SYSRES_N <= 0;
-								COMM_ST <= CS_RESET;
+								if (IRQV_N && !IRQV_N_OLD) begin
+									MSHRES_N <= 0;
+									MSHNMI_N <= 0;
+									SSHRES_N <= 0;
+									SSHNMI_N <= 0;
+									SNDRES_N <= 0;
+									CDRES_N <= 0;
+									SYSRES_N <= 0;
+									COMM_ST <= CS_RESET;
+								end
 							end
 							
 							8'h0E: begin		//CKCHG352
-								SSHRES_N <= 0;
-								SSHNMI_N <= 0;
-								SNDRES_N <= 0;
-								SYSRES_N <= 0;
-								DOTSEL <= 1;
-								COMM_ST <= CS_RESET;
+								if (IRQV_N && !IRQV_N_OLD) begin
+									SSHRES_N <= 0;
+									SSHNMI_N <= 0;
+									SNDRES_N <= 0;
+									SYSRES_N <= 0;
+									DOTSEL <= 1;
+									COMM_ST <= CS_RESET;
+								end
 							end
 							
 							8'h0F: begin		//CKCHG320
-								SSHRES_N <= 0;
-								SSHNMI_N <= 0;
-								SNDRES_N <= 0;
-								SYSRES_N <= 0;
-								DOTSEL <= 0;
-								COMM_ST <= CS_RESET;
+								if (IRQV_N && !IRQV_N_OLD) begin
+									SSHRES_N <= 0;
+									SSHNMI_N <= 0;
+									SNDRES_N <= 0;
+									SYSRES_N <= 0;
+									DOTSEL <= 0;
+									COMM_ST <= CS_RESET;
+								end
 							end
 							
 							8'h10: begin		//INTBACK
@@ -488,8 +494,8 @@ module SMPC (
 							default: ;
 						endcase
 						
-						if (IRQV_N && !IRQV_N_OLD) begin
-							WAIT_CNT <= 16'd5000;
+						if (!IRQV_N && IRQV_N_OLD) begin
+							WAIT_CNT <= 16'd4000;
 							NEXT_COMM_ST <= CS_EXEC;
 							COMM_ST <= CS_WAIT;
 						end
@@ -539,23 +545,17 @@ module SMPC (
 							end
 							
 							8'h0D: begin		//SYSRES
-								if (!IRQV_N && IRQV_N_OLD) begin
-									COMM_ST <= CS_END;
-								end
+								COMM_ST <= CS_END;
 							end
 							
 							8'h0E: begin		//CKCHG352
-								if (!IRQV_N && IRQV_N_OLD) begin
-									MSHNMI_N <= 0;
-									COMM_ST <= CS_END;
-								end
+								MSHNMI_N <= 0;
+								COMM_ST <= CS_END;
 							end
 							
 							8'h0F: begin		//CKCHG320
-								if (!IRQV_N && IRQV_N_OLD) begin
-									MSHNMI_N <= 0;
-									COMM_ST <= CS_END;
-								end
+								MSHNMI_N <= 0;
+								COMM_ST <= CS_END;
 							end
 							
 							8'h10: begin		//INTBACK
