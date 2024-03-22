@@ -1094,7 +1094,7 @@ module emu
 	assign VDP1_VRAM_RDY = ~ddr_busy[3];
 //	assign VDP1_FB_RDY = 1;
 	
-	assign MEM_DI     = !ROM_CS_N ||!SRAM_CS_N || !RAML_CS_N ? ddr_do[1] : ddr_do[2];
+	assign MEM_DI     = !RAMH_CS_N ? ddr_do[2] : ddr_do[1];
 	assign MEM_WAIT_N = ~(ddr_busy[1] | ddr_busy[2]);
 
 	assign CD_BUF_DI = ddr_do[5][15:0];
