@@ -133,7 +133,7 @@ wire SD_CS, SD_CLK, SD_MOSI, SD_MISO, SD_CD;
 	assign SD_SPI_CS   = mcp_en ?  (mcp_sdcd  ? 1'bZ : SD_CS) : (sog & ~cs1 & ~VGA_EN) ? 1'b1 : 1'bZ;
 	assign SD_SPI_CLK  = (~mcp_en | mcp_sdcd) ? 1'bZ : SD_CLK;
 	assign SD_SPI_MOSI = (~mcp_en | mcp_sdcd) ? 1'bZ : SD_MOSI;
-	assign {SDIO_CLK,SDIO_CMD,SDIO_DAT} = av_dis ? 6'bZZZZZZ : (mcp_en | SDCD_SPDIF) ? {vga_g,vga_r,vga_b} : {SD_CLK,SD_MOSI,SD_CS,3'bZZZ};
+	assign {SDIO_CLK,SDIO_CMD,SDIO_DAT} = av_dis ? 6'bZZZZZZ : (mcp_en | (SDCD_SPDIF & ~SW[2])) ? {vga_g,vga_r,vga_b} : {SD_CLK,SD_MOSI,SD_CS,3'bZZZ};
 `else
 	assign SD_CD       = mcp_sdcd;
 	assign SD_MISO     = mcp_sdcd | SD_SPI_MISO;
@@ -188,9 +188,22 @@ wire io_dig = mcp_en ? mcp_mode : SW[3];
 	wire   BTN_DIS   = SDRAM2_DQ[15];
 `endif
 
-wire btn_r = mcp_en ? mcp_btn[1] : ~(BTN_RESET|BTN_DIS);
-wire btn_o = mcp_en ? mcp_btn[2] : ~(BTN_OSD  |BTN_DIS);
-wire btn_u = mcp_en ? mcp_btn[0] : ~(BTN_USER |BTN_DIS);
+reg BTN_EN = 0;
+reg [25:0] btn_timeout = 0;
+initial btn_timeout = 0;
+always @(posedge FPGA_CLK2_50) begin
+	reg btn_up = 0;
+	reg btn_en = 0;
+
+	btn_up <= BTN_RESET & BTN_OSD & BTN_USER;
+	if(~reset & btn_up & ~&btn_timeout) btn_timeout <= btn_timeout + 1'd1;
+	btn_en <= ~BTN_DIS;
+	BTN_EN <= &btn_timeout & btn_en;
+end
+
+wire btn_r = (mcp_en | SW[3]) ? mcp_btn[1] : (BTN_EN & ~BTN_RESET);
+wire btn_o = (mcp_en | SW[3]) ? mcp_btn[2] : (BTN_EN & ~BTN_OSD  );
+wire btn_u = (mcp_en | SW[3]) ? mcp_btn[0] : (BTN_EN & ~BTN_USER );
 
 reg btn_user, btn_osd;
 always @(posedge FPGA_CLK2_50) begin
