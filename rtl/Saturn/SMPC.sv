@@ -788,7 +788,7 @@ module SMPC (
 	end
 	
 	bit [ 7: 0] SMEM_Q;
-	SMPC_SMEM SMEM (CLK, OREG_CNT[1:0], IREG[OREG_CNT[1:0]], (COMM_ST == CS_EXEC && COMREG == 8'h17 && CE), OREG_CNT[1:0], SMEM_Q);
+	SMPC_SMEM SMEM (CLK, OREG_CNT[1:0], IREG[OREG_CNT[2:0]], (COMM_ST == CS_EXEC && COMREG == 8'h17 && CE), OREG_CNT[1:0], SMEM_Q);
 	
 	bit [4:0] OREG_RAM_WA;
 	bit [7:0] OREG_RAM_D;
@@ -808,7 +808,7 @@ module SMPC_OREG_RAM
 	input        CLK,
 	input  [4:0] WADDR,
 	input  [7:0] DATA,
-	input  [1:0] WREN,
+	input        WREN,
 	input  [4:0] RADDR,
 	output [7:0] Q
 );
@@ -820,7 +820,7 @@ module SMPC_OREG_RAM
 				.inclock (CLK),
 				.rdaddress (RADDR),
 				.wraddress (WADDR),
-				.wren (WREN[0]),
+				.wren (WREN),
 				.q (sub_wire0),
 				.aclr (1'b0),
 				.byteena (1'b1),
@@ -860,7 +860,7 @@ module SMPC_SMEM
 	input        CLK,
 	input  [1:0] WADDR,
 	input  [7:0] DATA,
-	input  [1:0] WREN,
+	input        WREN,
 	input  [1:0] RADDR,
 	output [7:0] Q
 );
@@ -872,7 +872,7 @@ module SMPC_SMEM
 				.inclock (CLK),
 				.rdaddress (RADDR),
 				.wraddress (WADDR),
-				.wren (WREN[0]),
+				.wren (WREN),
 				.q (sub_wire0),
 				.aclr (1'b0),
 				.byteena (1'b1),
