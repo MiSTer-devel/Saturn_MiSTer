@@ -1277,7 +1277,7 @@ module VDP2 (
 //					NBG_PN_CNT <= '{2{'0}};
 //					NBG_CH_CNT <= '{4{'0}};
 //				end
-				if (SCRNX[2:0] == 3'd3) begin
+				if (CELLX == 3'd3) begin
 					NBG_CH_CNT <= '{4{'0}};
 				end	
 				if (H_CNT == NBG_FETCH_START - 1) begin
