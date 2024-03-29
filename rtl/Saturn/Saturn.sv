@@ -80,10 +80,6 @@ module Saturn (
 	input     [ 6: 0] SMPC_PDR2I,
 	output    [ 6: 0] SMPC_PDR2O,
 	output    [ 6: 0] SMPC_DDR2,
-	output            SMPC_INPUT_ACT,
-	output     [ 4:0] SMPC_INPUT_POS,
-	input      [ 7:0] SMPC_INPUT_DATA,
-	input             SMPC_INPUT_WE,
 
 	input             CD_CE,
 	input             CD_CDATA,
@@ -265,7 +261,6 @@ module Saturn (
 	bit         BRDY2_N;
 	bit         IRQV_N;
 	bit         IRQH_N;
-	bit         IRQL_N;
 	bit         BCSS_N;
 	bit         BRDYS_N;
 	bit         IRQS_N;
@@ -289,6 +284,7 @@ module Saturn (
 	bit         SYSRES_N;
 	bit         SNDRES_N;
 	bit         CDRES_N;
+	bit         EXL_N;
 	
 	//VDP1
 	bit  [15:0] VDP1_DO;
@@ -475,7 +471,6 @@ module Saturn (
 	assign BDI      = !BCS1_N ? VDP1_DO :
 	                  !BCS2_N ? VDP2_DO :
 							!BCSS_N ? SCSP_DO : 16'h0000;
-	assign IRQL_N   = 1;
 
 	bit DBG_ABUS_END;
 	SCU SCU
@@ -540,7 +535,7 @@ module Saturn (
 		.BRDY2_N(BRDY2_N),
 		.IRQV_N(IRQV_N),
 		.IRQH_N(IRQH_N),
-		.IRQL_N(IRQL_N),
+		.IRQL_N(EXL_N),
 		.BCSS_N(BCSS_N),
 		.BRDYS_N(BRDYS_N),
 		.IRQS_N(IRQS_N),
@@ -648,7 +643,7 @@ module Saturn (
 		.SRES_N(SRES_N),
 		
 		.IRQV_N(IRQV_N),
-		.EXL(1'b0),
+		.EXL_N(EXL_N),
 		
 		.MSHRES_N(MSHRES_N),
 		.MSHNMI_N(MSHNMI_N),
@@ -666,12 +661,7 @@ module Saturn (
 		.DDR1(SMPC_DDR1),
 		.PDR2I(SMPC_PDR2I),
 		.PDR2O(SMPC_PDR2O),
-		.DDR2(SMPC_DDR2),
-		
-		.INPUT_ACT(SMPC_INPUT_ACT),
-		.INPUT_POS(SMPC_INPUT_POS),
-		.INPUT_DATA(SMPC_INPUT_DATA),
-		.INPUT_WE(SMPC_INPUT_WE)
+		.DDR2(SMPC_DDR2)
 	);
 	
 	VDP1 VDP1
@@ -759,6 +749,8 @@ module Saturn (
 		.FBDO(FBDO),
 		
 		.PAL(PAL),
+		
+		.EXLAT_N(EXL_N),
 		
 		.RA0_A(VDP2_RA0_A),
 		.RA1_A(VDP2_RA1_A),

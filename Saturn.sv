@@ -173,7 +173,6 @@ module emu
 	assign {UART_RTS, UART_TXD, UART_DTR} = 0;
 	assign BUTTONS   = {1'b0,osd_btn};
 	assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
-	assign USER_OUT = '0;
 
 	always_comb begin
 		if (status[10]) begin
@@ -237,7 +236,7 @@ module emu
 	// 0         1         2         3          4         5         6   
 	// 01234567890123456789012345678901 23456789012345678901234567890123
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXX       XXXXXXXXXXXXX                
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXX      XXXXXXXXXXXXX                
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -265,8 +264,9 @@ module emu
 	
 		"P2,Input;",
 		"P2-;",
-		"P2OFH,Pad 1,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission;",
-		"P2OIK,Pad 2,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission;",
+		"P2OFH,Pad 1,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse;",
+		"P2OIK,Pad 2,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse;",
+		"P2OR,SNAC,OFF,ON;",
 		"-;",
 		
 `ifndef DEBUG
@@ -561,13 +561,23 @@ module emu
 									status[35:33] == 3'd6 ? 4'hC :	//Europe PAL area
 																	cd_area_code;	//Auto
 																	
-	wire [15:0] joy1 = {~joystick_0[0],~joystick_0[1],~joystick_0[2],~joystick_0[3],~joystick_0[7],~joystick_0[4],~joystick_0[6],~joystick_0[5],
-							  ~joystick_0[8],~joystick_0[9],~joystick_0[10],~joystick_0[11],~joystick_0[12],3'b111};
-	wire [15:0] joy2 = {~joystick_1[0],~joystick_1[1],~joystick_1[2],~joystick_1[3],~joystick_1[7],~joystick_1[4],~joystick_1[6],~joystick_1[5],
-							  ~joystick_1[8],~joystick_1[9],~joystick_1[10],~joystick_1[11],~joystick_1[12],3'b111};
+	wire [15:0] joy1 = {~joystick_0[0]|joystick_0[1], ~joystick_0[1]|joystick_0[0], ~joystick_0[2]|joystick_0[3], ~joystick_0[3]|joystick_0[2], ~joystick_0[7], ~joystick_0[4], ~joystick_0[6], ~joystick_0[5],
+							  ~joystick_0[8], ~joystick_0[9], ~joystick_0[10], ~joystick_0[11], ~joystick_0[12], 3'b111};
+	wire [15:0] joy2 = {~joystick_1[0]|joystick_1[1], ~joystick_1[1]|joystick_1[0], ~joystick_1[2]|joystick_1[3], ~joystick_1[3]|joystick_1[2], ~joystick_1[7], ~joystick_1[4], ~joystick_1[6], ~joystick_1[5],
+							  ~joystick_1[8], ~joystick_1[9], ~joystick_1[10], ~joystick_1[11], ~joystick_1[12], 3'b111};
 
-	
-	
+	wire snac = status[27];
+	reg  [6:0] USERJOYSTICK;
+	wire [6:0] USERJOYSTICKOUT;
+	always @(posedge clk_sys) begin
+		if (snac) begin
+			USERJOYSTICK <= {USER_IN[4], USER_IN[6], USER_IN[2], USER_IN[3], USER_IN[5], USER_IN[0], USER_IN[1]};//TH, C(TR), B(TL), R, L, D, U
+			USER_OUT <= {USERJOYSTICKOUT[5], USERJOYSTICKOUT[2], USERJOYSTICKOUT[6], USERJOYSTICKOUT[3], USERJOYSTICKOUT[4], USERJOYSTICKOUT[0], USERJOYSTICKOUT[1]};
+		end else begin
+			USER_OUT <= '1;
+		end
+	end
+
 	
 	
 	wire [24:0] MEM_A;
@@ -631,10 +641,6 @@ module emu
 	wire [ 6: 0] SMPC_PDR2I;
 	wire [ 6: 0] SMPC_PDR2O;
 	wire [ 6: 0] SMPC_DDR2;
-	wire         SMPC_INPUT_ACT;
-	wire [ 4: 0] SMPC_INPUT_POS;
-	wire [ 7:0 ] SMPC_INPUT_DATA;
-	wire         SMPC_INPUT_WE;
 	
 	wire        CD_CDATA;
 	wire        CD_HDATA;
@@ -793,16 +799,12 @@ module emu
 		.TIME_SET(~status[32]),
 		.SMPC_AREA(area_code),
 		.SMPC_DOTSEL(SMPC_DOTSEL),
-		.SMPC_PDR1I(SMPC_PDR1I),
+		.SMPC_PDR1I(snac ? USERJOYSTICK : SMPC_PDR1I),
 		.SMPC_PDR1O(SMPC_PDR1O),
 		.SMPC_DDR1(SMPC_DDR1),
 		.SMPC_PDR2I(SMPC_PDR2I),
 		.SMPC_PDR2O(SMPC_PDR2O),
 		.SMPC_DDR2(SMPC_DDR2),
-		.SMPC_INPUT_ACT(SMPC_INPUT_ACT),
-		.SMPC_INPUT_POS(SMPC_INPUT_POS),
-		.SMPC_INPUT_DATA(SMPC_INPUT_DATA),
-		.SMPC_INPUT_WE(SMPC_INPUT_WE),
 		
 		.CD_CE(CD_CE),
 		.CD_CDATA(CD_CDATA),
@@ -856,6 +858,7 @@ module emu
 		.DBG_EXT(DBG_EXT)
 	);
 	
+	assign USERJOYSTICKOUT = SMPC_PDR1O;
 	
 	HPS2PAD PAD
 	(
@@ -869,11 +872,6 @@ module emu
 		.PDR2I(SMPC_PDR2I),
 		.PDR2O(SMPC_PDR2O),
 		.DDR2(SMPC_DDR2),
-		
-		.INPUT_ACT(SMPC_INPUT_ACT),
-		.INPUT_POS(SMPC_INPUT_POS),
-		.INPUT_DATA(SMPC_INPUT_DATA),
-		.INPUT_WE(SMPC_INPUT_WE),
 		
 		.JOY1(joy1),
 		.JOY2(joy2),
