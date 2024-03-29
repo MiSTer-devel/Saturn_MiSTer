@@ -30,6 +30,8 @@ module VDP2 (
 	
 	input             PAL,
 	
+	input             EXLAT_N,
+	
 	output     [17:1] RA0_A,
 	output     [16:1] RA1_A,
 	output     [63:0] RA_D,
@@ -3285,6 +3287,8 @@ module VDP2 (
 	bit        BURST;
 	bit [15:0] REG_DO;
 	always @(posedge CLK or negedge RST_N) begin
+		bit        EXLAT_N_OLD;
+		
 		if (!RST_N) begin
 			// synopsys translate_off
 			REGS.TVMD <= '0;
@@ -3747,6 +3751,13 @@ module VDP2 (
 						REGS.TVSTAT.EXSYFG <= 0;
 					end
 				end
+			end
+				
+			EXLAT_N_OLD <= EXLAT_N;
+			if (!EXLAT_N && EXLAT_N_OLD && REGS.EXTEN.EXLTEN) begin	//EXTEN
+				REGS.HCNT.HCT = {H_CNT,DOTCLK_DIV[1]};
+				REGS.VCNT.VCT = LSMD == 2'b11 ? {V_CNT,~ODD} : {1'b0,V_CNT};
+				REGS.TVSTAT.EXLTFG <= 1;
 			end
 		end
 	end
