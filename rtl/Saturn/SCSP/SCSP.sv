@@ -144,6 +144,7 @@ module SCSP (
 	OP6_t        OP6;
 	OP7_t        OP7;
 	
+	bit [16: 0] NOISE;
 	
 	
 	bit [19:0] ADP;
@@ -182,6 +183,10 @@ module SCSP (
 	bit  [15: 0] DMA_DAT;
 	bit          DMA_WR;
 	bit          DMA_EXEC;
+	
+	bit  [ 3: 0] MONITOR_CA;
+	bit  [ 1: 0] MONITOR_SGC;
+	bit  [ 4: 0] MONITOR_EG;
 	
 	bit          CLK_DIV;
 	always @(posedge CLK) begin
@@ -259,11 +264,19 @@ module SCSP (
 	bit  [4:0] SLOT;
 	bit        RST;
 	
-	wire [25:0] PHASE = PhaseCalc(SCR5);
+	bit  [ 9: 0] LFO_DIV;
+	bit  [ 7: 0] LFO_DATA;
+	
+	wire [ 7: 0] ALFO_WAVE = ALFOCalc(LFO_RAM_Q[7:0], NOISE[7:0], SCR6.ALFOWS, SCR6.ALFOS);
+	
+	wire [ 7: 0] PLFO_WAVE = PLFOCalc(LFO_RAM_Q[7:0], NOISE[7:0], SCR6.PLFOWS, SCR6.PLFOS);
+	wire [25: 0] PHASE = PhaseCalc(SCR5, PLFO_WAVE);
 	
 	always @(posedge CLK or negedge RST_N) begin
-		bit       KYONEX_PEND;
-		bit       SCR0_KB_OLD[32];
+		bit          KYONEX_PEND;
+		bit          SCR0_KB_OLD[32];
+		bit  [ 9: 0] CUR_LFO_DIV,NEW_LFO_DIV;
+		bit  [ 7: 0] CUR_LFO_DATA,NEW_LFO_DATA;
 		
 		if (!RST_N) begin
 			// synopsys translate_off
@@ -288,7 +301,6 @@ module SCSP (
 		end else begin
 			if (SLOT1_CE) begin
 				SLOT <= SLOT + 5'd1;
-//				OP2.PLFO <= LFOWave(LFOP_RAM_Q,8'h00,SCR6.PLFOWS) ^ 8'h80;
 				
 				KEYON[SLOT] <= 0;
 				KEYOFF[SLOT] <= 0;
@@ -312,6 +324,7 @@ module SCSP (
 					OP2.KOFF <= 1;
 				end
 				OP2.BASE_RATE <= BaseRateCalc(SCR5);
+				OP2.ALFO <= ALFO_WAVE;
 			end
 			
 			if (CYCLE1_CE) begin
@@ -335,14 +348,32 @@ module SCSP (
 					KYONEX_PEND <= 0;
 				end
 			end
+			
+			//LFO
+			{CUR_LFO_DIV,CUR_LFO_DATA} = LFO_RAM_Q;
+			if (SLOT1_CE) begin
+				if (!CUR_LFO_DIV) begin
+					NEW_LFO_DIV = LFOFreqDiv(SCR6.LFOF);
+					NEW_LFO_DATA = CUR_LFO_DATA + 8'd1;
+				end else begin
+					NEW_LFO_DIV = CUR_LFO_DIV - 10'd1;
+					NEW_LFO_DATA = CUR_LFO_DATA;
+				end
+				if (SCR6.LFORE) begin
+					NEW_LFO_DATA = '0;
+				end
+				
+				LFO_DIV <= NEW_LFO_DIV;
+				LFO_DATA <= NEW_LFO_DATA;
+			end
 		end
 	end
 	
+	bit  [17:0] LFO_RAM_Q;
+	SCSP_LFO_RAM LFO_RAM(CLK, OP2.SLOT, {LFO_DIV,LFO_DATA}, SLOT1_CE, SLOT, LFO_RAM_Q);
+	
 	bit  [17:0] PHASE_FRAC_RAM_Q;
 	SCSP_PHASE_RAM PHASE_FRAC_RAM(CLK, OP2.SLOT, OP2.PHASE_FRAC, SLOT1_CE, SLOT, PHASE_FRAC_RAM_Q);
-	
-//	bit  [7:0] LFOP_RAM_Q;
-//	SCSP_LFOP_RAM LFOP_RAM(CLK, OP2.SLOT, OP2.PHASE_FRAC, SLOT1_CE, SLOT, LFOP_RAM_Q);
 	
 	//Operation 2: MD read, ADP
 	bit  [ 9: 0] EVOL;//Current envelope volume
@@ -475,8 +506,13 @@ module SCSP (
 				OP3.LOOP <= CUR_SALOOP;
 				OP3.SBCTL <= SCR0.SBCTL;
 				OP3.SSCTL <= SCR0.SSCTL;
-				OP3.EVOL <= EVOL;
 				OP3.EST <= EST;
+				OP3.EVOL <= EVOL;
+				OP3.ALFO <= OP2.ALFO;
+				
+				if (OP2.SLOT == CR4.MSLC) begin
+					MONITOR_CA <= NEW_SAO[15:12];
+				end
 			end
 		end
 	end
@@ -486,7 +522,6 @@ module SCSP (
 	//Operation 3:  
 	always @(posedge CLK or negedge RST_N) begin
 		bit [15: 0] WAVE;
-		bit [16: 0] NOISE;
 		
 		if (!RST_N) begin
 			OP4 <= OP4_RESET;
@@ -509,8 +544,9 @@ module SCSP (
 				OP4.LOOP <= OP3.LOOP;
 				OP4.LOOP_END <= OP3.LOOP_END;
 				OP4.BASE_RATE <= OP3.BASE_RATE;
-				OP4.EVOL <= OP3.EVOL;
 				OP4.EST <= OP3.EST;
+				OP4.EVOL <= OP3.EVOL;
+				OP4.ALFO <= OP3.ALFO;
 				OP4.WD <= SoundSel(WAVE,{NOISE[7:0],8'h00},OP3.SBCTL,OP3.SSCTL);
 			end
 		end
@@ -690,8 +726,13 @@ module SCSP (
 				OP5.KOFF <= OP4.KOFF;
 				OP5.EST <= OP4.EST;
 				OP5.EVOL <= OP4.EVOL;
-				OP5.ALFO <= 8'h00;//TODO
+				OP5.ALFO <= OP4.ALFO;
 				OP5.WD <= OP4.WD;
+				
+				if (OP4.SLOT == CR4.MSLC) begin
+					MONITOR_SGC <= NEW_EST;
+					MONITOR_EG <= NEW_EVOL[9:5];
+				end
 			end
 		end
 	end
@@ -1384,7 +1425,6 @@ module SCSP (
 					end
 				end
 
-				
 				MS_DSP_WAIT: begin
 					if (CYCLE1_CE) begin
 						MEM_WE <= '0;
@@ -1581,15 +1621,15 @@ module SCSP (
 				end
 				if (TMRA_CE) begin
 					CR8.TIMA <= CR8.TIMA + 8'd1;
-					if (CR8.TIMA == 8'hFE) {CR12.SCIPD[6],CR18.MCIPD[6]} <= '1;
+					if (CR8.TIMA == 8'hFF) {CR12.SCIPD[6],CR18.MCIPD[6]} <= '1;
 				end
 				if (TMRB_CE) begin
 					CR9.TIMB <= CR9.TIMB + 8'd1;
-					if (CR9.TIMB == 8'hFE) {CR12.SCIPD[7],CR18.MCIPD[7]} <= '1;
+					if (CR9.TIMB == 8'hFF) {CR12.SCIPD[7],CR18.MCIPD[7]} <= '1;
 				end
 				if (TMRC_CE) begin
 					CR10.TIMC <= CR10.TIMC + 8'd1;
-					if (CR10.TIMC == 8'hFE) {CR12.SCIPD[8],CR18.MCIPD[8]} <= '1;
+					if (CR10.TIMC == 8'hFF) {CR12.SCIPD[8],CR18.MCIPD[8]} <= '1;
 				end
 				if (SAMPLE_CE) begin
 					{CR12.SCIPD[10],CR18.MCIPD[10]} <= '1;
@@ -1772,10 +1812,9 @@ module SCSP (
 					end
 				end
 				
-				if (OP3.SLOT == CR4.MSLC && SLOT1_CE) begin
-					CR4.CA <= SAO[15:12];
-					CR4.SGC <= 2'b11;
-				end
+				CR4.CA <= MONITOR_CA;
+				CR4.SGC <= MONITOR_SGC;
+				CR4.EG <= MONITOR_EG;
 			end
 		end
 	end
@@ -1930,6 +1969,112 @@ module SCSP (
 endmodule
 
 module SCSP_PHASE_RAM (
+	input	         CLK,
+	input	 [ 4: 0] WRADDR,
+	input	 [17: 0] DATA,
+	input	         WREN,
+	input	 [ 4: 0] RDADDR,
+	output [17: 0] Q);
+
+//`ifdef DEBUG
+//
+//	wire [17:0] sub_wire0;
+//
+//	altdpram	altdpram_component (
+//				.data (DATA),
+//				.inclock (CLK),
+//				.rdaddress (RDADDR),
+//				.wraddress (WRADDR),
+//				.wren (WREN),
+//				.q (sub_wire0),
+//				.aclr (1'b0),
+//				.byteena (1'b1),
+//				.inclocken (1'b1),
+//				.rdaddressstall (1'b0),
+//				.rden (1'b1),
+//				//.sclr (1'b0),
+//				.wraddressstall (1'b0));
+//	defparam
+//		altdpram_component.indata_aclr = "OFF",
+//		altdpram_component.indata_reg = "INCLOCK",
+//		altdpram_component.intended_device_family = "Cyclone V",
+//		altdpram_component.lpm_type = "altdpram",
+//		altdpram_component.outdata_aclr = "OFF",
+//		altdpram_component.outdata_reg = "UNREGISTERED",
+//		altdpram_component.power_up_uninitialized = "TRUE",
+//		altdpram_component.ram_block_type = "MLAB",
+//		altdpram_component.rdaddress_aclr = "OFF",
+//		altdpram_component.rdaddress_reg = "UNREGISTERED",
+//		altdpram_component.rdcontrol_aclr = "OFF",
+//		altdpram_component.rdcontrol_reg = "UNREGISTERED",
+//		altdpram_component.read_during_write_mode_mixed_ports = "CONSTRAINED_DONT_CARE",
+//		altdpram_component.width = 18,
+//		altdpram_component.widthad = 5,
+//		altdpram_component.width_byteena = 1,
+//		altdpram_component.wraddress_aclr = "OFF",
+//		altdpram_component.wraddress_reg = "INCLOCK",
+//		altdpram_component.wrcontrol_aclr = "OFF",
+//		altdpram_component.wrcontrol_reg = "INCLOCK";
+//		
+//	assign Q = sub_wire0;
+//	
+//`else
+
+	wire [17:0] sub_wire0;
+	
+	altsyncram	altsyncram_component (
+				.address_a (WRADDR),
+				.byteena_a (WREN),
+				.clock0 (CLK),
+				.data_a (DATA),
+				.wren_a (|WREN),
+				.address_b (RDADDR),
+				.q_b (sub_wire0),
+				.aclr0 (1'b0),
+				.aclr1 (1'b0),
+				.addressstall_a (1'b0),
+				.addressstall_b (1'b0),
+				.byteena_b (1'b1),
+				.clock1 (1'b1),
+				.clocken0 (1'b1),
+				.clocken1 (1'b1),
+				.clocken2 (1'b1),
+				.clocken3 (1'b1),
+				.data_b ({18{1'b1}}),
+				.eccstatus (),
+				.q_a (),
+				.rden_a (1'b1),
+				.rden_b (1'b1),
+				.wren_b (1'b0));
+	defparam
+		altsyncram_component.address_aclr_b = "NONE",
+		altsyncram_component.address_reg_b = "CLOCK0",
+		altsyncram_component.clock_enable_input_a = "BYPASS",
+		altsyncram_component.clock_enable_input_b = "BYPASS",
+		altsyncram_component.clock_enable_output_b = "BYPASS",
+		altsyncram_component.intended_device_family = "Cyclone V",
+		altsyncram_component.lpm_type = "altsyncram",
+		altsyncram_component.numwords_a = 32,
+		altsyncram_component.numwords_b = 32,
+		altsyncram_component.operation_mode = "DUAL_PORT",
+		altsyncram_component.outdata_aclr_b = "NONE",
+		altsyncram_component.outdata_reg_b = "UNREGISTERED",
+		altsyncram_component.power_up_uninitialized = "FALSE",
+		altsyncram_component.ram_block_type = "M10K",
+		altsyncram_component.read_during_write_mode_mixed_ports = "DONT_CARE",
+		altsyncram_component.widthad_a = 5,
+		altsyncram_component.widthad_b = 5,
+		altsyncram_component.width_a = 18,
+		altsyncram_component.width_b = 18,
+		altsyncram_component.width_byteena_a = 1;
+	
+	assign Q = sub_wire0;
+	
+//`endif
+
+endmodule
+
+module SCSP_LFO_RAM (
 	input	         CLK,
 	input	 [ 4: 0] WRADDR,
 	input	 [17: 0] DATA,

@@ -137,9 +137,8 @@ package SCSP_PKG;
 	{
 		bit [ 4: 0] MSLC;		//W
 		bit [ 3: 0] CA;		//R
-		bit [ 1: 0] UNUSED;
 		bit [ 1: 0] SGC;		//R
-		bit [ 2: 0] UNUSED2;
+		bit [ 4: 0] EG;		//R
 	} CR4_t;
 	parameter bit [15:0] CR4_RMASK = 16'h07FF;
 	parameter bit [15:0] CR4_WMASK = 16'hF800;
@@ -349,10 +348,10 @@ package SCSP_PKG;
 		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
-		bit  [ 7:0] PHASE_INT;//Phase integer
-		bit  [17:0] PHASE_FRAC;//Phase fractional
-		bit  [ 5:0] BASE_RATE;
-		bit [ 7: 0] PLFO;	//Pitch LFO data
+		bit [ 7: 0] PHASE_INT;//Phase integer
+		bit [17: 0] PHASE_FRAC;//Phase fractional
+		bit [ 5: 0] BASE_RATE;
+		bit [ 7: 0] ALFO;	//ALFO wave
 	} OP2_t;
 	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,8'h00,18'h00000,6'h00,8'h00};
 	
@@ -370,8 +369,9 @@ package SCSP_PKG;
 		bit [ 1: 0] SSCTL;
 		bit [ 1: 0] EST;//Envelope state
 		bit [ 9: 0] EVOL;//Envelope volume
+		bit [ 7: 0] ALFO;	//ALFO wave
 	} OP3_t;
-	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,1'b0,1'b0,2'h0,2'h0,2'h0,10'h000};
+	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,1'b0,1'b0,2'h0,2'h0,2'h0,10'h000,8'h00};
 	
 	typedef struct packed
 	{
@@ -384,9 +384,10 @@ package SCSP_PKG;
 		bit         LOOP_END;//Loop processing end
 		bit [ 1: 0] EST;//Envelope state
 		bit [ 9: 0] EVOL;//Envelope volume
+		bit [ 7: 0] ALFO;	//ALFO wave
 		bit [15: 0] WD;//Wave form data
 	} OP4_t;
-	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,1'b0,2'h0,10'h000,16'h0000};
+	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,6'h00,1'b0,1'b0,2'h0,10'h000,8'h00,16'h0000};
 	
 	typedef struct packed
 	{
@@ -397,7 +398,7 @@ package SCSP_PKG;
 		bit [15: 0] WD;	//Wave form data
 		bit [ 1: 0] EST;	//Envelope state
 		bit [ 9: 0] EVOL;	//Envelope volume
-		bit [ 7: 0] ALFO; 
+		bit [ 7: 0] ALFO; //ALFO wave
 	} OP5_t;
 	parameter OP5_t OP5_RESET = '{5'h00,1'b0,1'b0,1'b0,16'h0000,2'h0,10'h000,8'h00};
 	
@@ -442,22 +443,64 @@ package SCSP_PKG;
 
 	function bit signed [15:0] MDCalc(bit signed [15:0] X, bit signed [15:0] Y, bit [3:0] MDL);
 		bit signed [15:0] MD;
-		bit signed [15:0] TEMP;
+		bit signed [16:0] TEMP;
 		
-		TEMP = {X[15],X[15:1]} + {Y[15],Y[15:1]}; 
-		MD = $signed($signed(TEMP)>>>(~MDL));
+		TEMP = $signed({X[15],X[15:0]}) + $signed({Y[15],Y[15:0]}); 
+		MD = $signed($signed(TEMP[16:1])>>>(~MDL));
 		
-		return MDL ? MD : '0;
+		return MDL > 4'd4 ? MD : '0;
 	endfunction
 	
-	function bit [25:0] PhaseCalc(SCR5_t SCR5);
+	function bit [9:0] LFOFreqDiv(bit [4:0] LFOF);
+		bit [2:0] TEMP;
+		bit [9:0] TEMP2;
+		
+		TEMP = ~{1'b0,LFOF[1:0]} + 3'd1;
+		TEMP2 = {TEMP,7'b0000000}>>LFOF[4:2];
+		return TEMP2 - 10'd4;
+	endfunction
+	
+	function bit [7:0] ALFOCalc(bit [7:0] DATA, bit [7:0] NOISE, bit [1:0] ALFOWS, bit [2:0] ALFOS);
+		bit [7:0] WAVE;
+		bit [7:0] TEMP;
+		
+		case (ALFOWS)
+			2'b00: WAVE = DATA;
+			2'b01: WAVE = {8{DATA[7]}};
+			2'b10: WAVE = {DATA[6:0],1'b0} ^ {8{DATA[7]}};
+			2'b11: WAVE = NOISE;
+		endcase
+		TEMP = ALFOS ? (WAVE>>(~ALFOS)) : '0;
+		
+		return TEMP;
+	endfunction
+	
+	function bit [7:0] PLFOCalc(bit [7:0] DATA, bit [7:0] NOISE, bit [1:0] PLFOWS, bit [2:0] PLFOS);
+		bit [7:0] WAVE;
+		bit [7:0] TEMP;
+		
+		case (PLFOWS)
+			2'b00: WAVE = DATA;
+			2'b01: WAVE = {8{DATA[7]}};
+			2'b10: WAVE = {DATA[6:0],1'b0} ^ {8{DATA[7]}};
+			2'b11: WAVE = NOISE;
+		endcase
+		
+		TEMP = PLFOS ? $signed($signed(WAVE ^ 8'h80)>>>(~PLFOS)) : '0;
+		
+		return TEMP;
+	endfunction
+	
+	function bit [25:0] PhaseCalc(SCR5_t SCR5, bit signed [7:0] PLFO_WAVE);
 		bit [25:0] P;
 		bit [3:0] S;
 		bit [10:0] F;
+		bit [10:0] FM;
 		
 		S = SCR5.OCT^4'h8;
 		F = 11'h400 + SCR5.FNS;
-		P = {15'b000000000000000,F}<<S;
+		FM = $signed(($signed(PLFO_WAVE) * F[10:5]) >>> 6);
+		P = {15'b000000000000000,F+FM}<<S;
 		
 		return P;
 	endfunction
@@ -693,18 +736,6 @@ package SCSP_PKG;
 		TEMP3 = MVOL ? $signed(TEMP2) - (!MVOL[0] ? $signed($signed(TEMP2)>>>2) : '0) : 18'sh0000;
 		
 		return TEMP3[17] && TEMP3[16:15] != 2'b11 ? 16'h8000 : !TEMP3[17] && TEMP3[16:15] != 2'b00 ? 16'h7FFF : TEMP3[15:0];
-	endfunction
-	
-	function bit [7:0] LFOWave(bit [7:0] POS, bit [7:0] NOISE, bit [1:0] LFOWS);
-		bit [7:0] WAVE;
-		
-		case (LFOWS)
-			2'b00: WAVE = POS;
-			2'b01: WAVE = {8{POS[7]}};
-			2'b10: WAVE = {POS[6:0],1'b0} ^ {8{POS[7]}};
-			2'b11: WAVE = NOISE;
-		endcase
-		return WAVE;
 	endfunction
 	
 	function bit [25:0] DSPMult(bit [23:0] X, bit [12:0] Y);
