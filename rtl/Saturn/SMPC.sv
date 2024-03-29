@@ -40,14 +40,16 @@ module SMPC (
 );
 
 	//Registers
-	bit   [7:0] COMREG;
-	bit   [7:0] SR;
-	bit         SF;
-	bit   [7:0] IREG[7];
-	bit         PDR1O7;
-	bit         PDR2O7;
-	bit   [1:0] IOSEL;
-	bit   [1:0] EXLE;
+	bit  [7 : 0] COMREG;
+	bit  [7 : 0] SR;
+	bit          SF;
+	bit  [7 : 0] IREG[7];
+	
+	wire [6 : 0] PDR_I[2] = '{PDR1I,PDR2I};
+	bit  [7 : 0] PDR_O[2];
+	bit  [6 : 0] DDR[2];
+	bit  [1 : 0] IOSEL;
+	bit  [1 : 0] EXLE;
 	
 	bit          RESD;
 	bit          STE;
@@ -92,6 +94,7 @@ module SMPC (
 		PS_END
 	} PortState_t;
 	PortState_t PORT_ST;
+	
 
 	always @(posedge CLK or negedge RST_N) begin
 		bit [21: 0] CLK_CNT;
@@ -228,10 +231,8 @@ module SMPC (
 			SR <= '0;
 			SF <= 0;
 			IREG <= '{7{'0}};
-			PDR1O <= '1;
-			PDR2O <= '1;
-			DDR1 <= '0;
-			DDR2 <= '0;
+			PDR_O <= '{2{'1}};
+			DDR <= '{2{'0}};
 			IOSEL <= '0;
 			EXLE <= '0;
 			
@@ -782,7 +783,7 @@ module SMPC (
 					
 					PS_START: begin
 						if (!IOSEL[PORT_NUM]) begin
-							if (!PORT_NUM) PDR1O <= '1; else PDR2O[`THTR] <= '1;
+							PDR_O[PORT_NUM] <= '1; 
 							PORT_ST <= PS_ID1_0;
 						end else begin
 							OREG_DATA <= 8'hF0;
@@ -792,26 +793,26 @@ module SMPC (
 					end
 					
 					PS_ID1_0: begin
-						if (!PORT_NUM) DDR1[`THTR] <= 2'b10; else DDR2[`THTR] <= 2'b10;
-						if (!PORT_NUM) PDR1O[`THTR] <= 2'b11; else PDR2O[`THTR] <= 2'b11;
+						DDR[PORT_NUM][`THTR] <= 2'b10;
+						PDR_O[PORT_NUM][`THTR] <= 2'b11;
 						PORT_DELAY <= 16'd60;
 						PORT_ST <= PS_ID1_1;
 					end
 					
 					PS_ID1_1: begin
-						if (!PORT_NUM) JOY_DATA[3:0] <= PDR1I[3:0]; else JOY_DATA[3:0] <= PDR2I[3:0];
+						JOY_DATA[3:0] <= PDR_I[PORT_NUM][3:0];
 						PORT_ST <= PS_ID1_2;
 					end
 					
 					PS_ID1_2: begin
-						if (!PORT_NUM) DDR1[`THTR] <= 2'b10; else DDR2[`THTR] <= 2'b10;
-						if (!PORT_NUM) PDR1O[`THTR] <= 2'b01; else PDR2O[`THTR] <= 2'b01;
+						DDR[PORT_NUM][`THTR] <= 2'b10;
+						PDR_O[PORT_NUM][`THTR] <= 2'b01;
 						PORT_DELAY <= 16'd60;
 						PORT_ST <= PS_ID1_3;
 					end
 					
 					PS_ID1_3: begin
-						if (!PORT_NUM) JOY_DATA[15:12] <= PDR1I[3:0]; else JOY_DATA[15:12] <= PDR2I[3:0];
+						JOY_DATA[15:12] <= PDR_I[PORT_NUM][3:0];
 						PORT_ST <= PS_ID1_4;
 					end
 					
@@ -835,26 +836,26 @@ module SMPC (
 					
 					//Standart PAD
 					PS_DPAD_0: begin
-						DDR1[`THTR] <= 2'b11;
-						PDR1O[`THTR] <= 2'b10;
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b10;
 						PORT_DELAY <= 16'd60;
 						PORT_ST <= PS_DPAD_1;
 					end
 					
 					PS_DPAD_1: begin
-						JOY_DATA[11:8] <= PDR1I[3:0];
+						JOY_DATA[11:8] <= PDR_I[PORT_NUM][3:0];
 						PORT_ST <= PS_DPAD_2;
 					end
 					
 					PS_DPAD_2: begin
-						DDR1[`THTR] <= 2'b11;
-						PDR1O[`THTR] <= 2'b00;
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b00;
 						PORT_DELAY <= 16'd60;
 						PORT_ST <= PS_DPAD_3;
 					end
 					
 					PS_DPAD_3: begin
-						JOY_DATA[7:4] <= PDR1I[3:0];
+						JOY_DATA[7:4] <= PDR_I[PORT_NUM][3:0];
 						PORT_ST <= PS_DPAD_4;
 					end
 					
@@ -877,36 +878,36 @@ module SMPC (
 					end
 					
 					PS_DPAD_7: begin
-						OREG_DATA <= JOY_DATA[7:0];
+						OREG_DATA <= {JOY_DATA[7:3],3'b111};
 						OREG_WRITE <= 1;
 						PORT_ST <= PS_NEXT;
 					end
 					
 					//Mouse
 					PS_MOUSE_0: begin
-						DDR1[`THTR] <= 2'b11;
-						PDR1O[`THTR] <= 2'b00;
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b00;
 						PORT_DELAY <= 16'd60;
 						PORT_ST <= PS_MOUSE_1;
 					end
 					
 					PS_MOUSE_1: begin
-						if (!PDR1I[4]) begin
-							ID2[7:4] <= PDR1I[3:0];
+						if (!PDR_I[PORT_NUM][4]) begin
+							ID2[7:4] <= PDR_I[PORT_NUM][3:0];
 							PORT_ST <= PS_MOUSE_2;
 						end
 					end
 					
 					PS_MOUSE_2: begin
-						DDR1[`THTR] <= 2'b11;
-						PDR1O[`THTR] <= 2'b01;
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b01;
 						PORT_DELAY <= 16'd60;
 						PORT_ST <= PS_MOUSE_3;
 					end
 					
 					PS_MOUSE_3: begin
-						if (PDR1I[4]) begin
-							ID2[3:0] <= PDR1I[3:0];
+						if (PDR_I[PORT_NUM][4]) begin
+							ID2[3:0] <= PDR_I[PORT_NUM][3:0];
 							PORT_ST <= PS_MOUSE_4;
 						end
 					end
@@ -925,29 +926,29 @@ module SMPC (
 					end
 					
 					PS_MOUSE_6: begin
-						DDR1[`THTR] <= 2'b11;
-						PDR1O[`THTR] <= 2'b00;
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b00;
 						PORT_DELAY <= 16'd60;
 						PORT_ST <= PS_MOUSE_7;
 					end
 					
 					PS_MOUSE_7: begin
-						if (!PDR1I[4]) begin
-							JOY_DATA[7:4] <= PDR1I[3:0];
+						if (!PDR_I[PORT_NUM][4]) begin
+							JOY_DATA[7:4] <= PDR_I[PORT_NUM][3:0];
 							PORT_ST <= PS_MOUSE_8;
 						end
 					end
 					
 					PS_MOUSE_8: begin
-						DDR1[`THTR] <= 2'b11;
-						PDR1O[`THTR] <= 2'b01;
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b01;
 						PORT_DELAY <= 16'd60;
 						PORT_ST <= PS_MOUSE_9;
 					end
 					
 					PS_MOUSE_9: begin
-						if (PDR1I[4]) begin
-							JOY_DATA[3:0] <= PDR1I[3:0];
+						if (PDR_I[PORT_NUM][4]) begin
+							JOY_DATA[3:0] <= PDR_I[PORT_NUM][3:0];
 							PORT_ST <= PS_MOUSE_10;
 						end
 					end
@@ -961,14 +962,16 @@ module SMPC (
 					
 					
 					PS_NEXT: begin
-						if (!PORT_NUM) DDR1[`THTR] <= 2'b11; else DDR2[`THTR] <= 2'b11;
-						if (!PORT_NUM) PDR1O[`THTR] <= 2'b11; else PDR2O[`THTR] <= 2'b11;
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b11;
 						PORT_DELAY <= 16'd60;
 							
 						PORT_NUM <= ~PORT_NUM;
 						if (!PORT_NUM) begin
 							PORT_ST <= PS_START;
 						end else begin
+							OREG_DATA <= 8'h00;
+							OREG_WRITE <= 1;
 							PORT_ST <= PS_END;
 						end
 					end
@@ -995,10 +998,10 @@ module SMPC (
 					7'h0D: IREG[6] <= DI;
 					7'h1F: begin COMREG <= DI; COMREG_SET <= 1; end
 					7'h63: if (DI[0]) SF <= 1;
-					7'h75: if (IOSEL[0]) {PDR1O7,PDR1O} <= DI;
-					7'h77: if (IOSEL[1]) {PDR2O7,PDR2O} <= DI;
-					7'h79: DDR1 <= DI[6:0];
-					7'h7B: DDR2 <= DI[6:0];
+					7'h75: if (IOSEL[0]) PDR_O[0] <= DI;
+					7'h77: if (IOSEL[1]) PDR_O[1] <= DI;
+					7'h79: DDR[0] <= DI[6:0];
+					7'h7B: DDR[1] <= DI[6:0];
 					7'h7D: IOSEL <= DI[1:0];
 					7'h7F: EXLE <= DI[1:0];
 					default:;
@@ -1013,14 +1016,18 @@ module SMPC (
 					case ({A,1'b1})
 						7'h61: REG_DO <= SR;
 						7'h63: REG_DO <= {7'b0000000,SF};
-						7'h75: REG_DO <= {PDR1O7,PDR1I};
-						7'h77: REG_DO <= {PDR2O7,PDR2I};
+						7'h75: REG_DO <= {PDR_O[0][7],PDR1I};
+						7'h77: REG_DO <= {PDR_O[1][7],PDR2I};
 						default: REG_DO <= '0;
 					endcase
 			end
 		end
 	end
 	
+	assign PDR1O = PDR_O[0][6:0];
+	assign PDR2O = PDR_O[1][6:0];
+	assign DDR1 = DDR[0];
+	assign DDR2 = DDR[1];
 	assign EXL_N = (~EXLE[0] | PDR1I[6]) & (~EXLE[1] | PDR2I[6]);
 	
 	bit [ 7: 0] SMEM_Q;
