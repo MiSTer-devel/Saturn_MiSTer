@@ -143,12 +143,14 @@ module SCU (
 	bit         IRQV_N_OLD, IRQH_N_OLD;
 	bit         IRQS_N_OLD;
 	bit         IRQ1_N_OLD;
+	bit         IRQL_N_OLD;
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
 			IRQV_N_OLD <= 1;
 			IRQH_N_OLD <= 1;
 			IRQS_N_OLD <= 1;
 			IRQ1_N_OLD <= 1;
+			IRQL_N_OLD <= 1;
 		end
 		else begin
 			if (!RES_N) begin
@@ -159,6 +161,7 @@ module SCU (
 				IRQV_N_OLD <= IRQV_N;
 				IRQS_N_OLD <= IRQS_N;
 				IRQ1_N_OLD <= IRQ1_N;
+				IRQL_N_OLD <= IRQL_N;
 			end
 		end
 	end
@@ -167,6 +170,7 @@ module SCU (
 	wire        HBL_IN   = !IRQH_N &  IRQH_N_OLD;
 	wire        SCSP_REQ = !IRQS_N &  IRQS_N_OLD;
 	wire        VDP1_REQ = !IRQ1_N &  IRQ1_N_OLD;
+	wire        PAD_REQ = !IRQL_N &  IRQL_N_OLD;
 	
 	bit         VBIN_PEND;
 	bit         VBOUT_PEND;
@@ -176,7 +180,7 @@ module SCU (
 	bit         DSP_PEND;
 	bit         SCSP_PEND;
 	bit         SM_PEND;
-//	bit         PAD_PEND;
+	bit         PAD_PEND;
 	bit         DMA_INT_PEND[3];
 	bit         DMAIL_PEND;
 	bit         VDP1_PEND;
@@ -2055,6 +2059,7 @@ module SCU (
 			HBIN_PEND <= 0;
 			DSP_PEND <= 0;
 			SCSP_PEND <= 0;
+			PAD_PEND <= 0;
 		end else if (CE_R) begin
 			VBIN_PEND <= 0;	
 			if (VBL_IN && !VBIN_PEND) VBIN_PEND <= 1;
@@ -2078,6 +2083,9 @@ module SCU (
 			SM_PEND <= 0;
 			MIREQ_N_OLD <= MIREQ_N;
 			if (!MIREQ_N && MIREQ_N_OLD && !SM_PEND) SM_PEND <= 1;
+			
+			PAD_PEND <= 0;
+			if (PAD_REQ && !PAD_PEND) PAD_PEND <= 1;
 		end
 	end
 	
@@ -2141,7 +2149,7 @@ module SCU (
 			if (DSP_PEND       ) IST.DSPEI <= 1;
 			if (SCSP_PEND      ) IST.SRI <= 1;
 			if (SM_PEND        ) IST.SMI <= 1;
-//			if (PAD_PEND       ) IST.PADI <= 1;
+			if (PAD_PEND       ) IST.PADI <= 1;
 			if (DMA_INT_PEND[2]) IST.D2EI <= 1;
 			if (DMA_INT_PEND[1]) IST.D1EI <= 1;
 			if (DMA_INT_PEND[0]) IST.D0EI <= 1;
@@ -2172,14 +2180,13 @@ module SCU (
 			else if (IST.DSPEI && !IMS.MS5  && !INT_SET) begin DSP_INT <= 1;    IST.DSPEI <= 0; INT_SET <= 1; end
 			else if (IST.SRI   && !IMS.MS6  && !INT_SET) begin SCSP_INT <= 1;   IST.SRI <= 0;   INT_SET <= 1; end
 			else if (IST.SMI   && !IMS.MS7  && !INT_SET) begin SM_INT <= 1;     IST.SMI <= 0;   INT_SET <= 1; end
-//			else if (IST.PADI  && !IMS.MS8  && !INT_SET) begin PAD_INT <= 1;    IST.PADI <= 0;  INT_SET <= 1; end
+			else if (IST.PADI  && !IMS.MS8  && !INT_SET) begin PAD_INT <= 1;    IST.PADI <= 0;  INT_SET <= 1; end
 			else if (IST.D2EI  && !IMS.MS9  && !INT_SET) begin DMA_INT[2] <= 1; IST.D2EI <= 0;  INT_SET <= 1; end
 			else if (IST.D1EI  && !IMS.MS10 && !INT_SET) begin DMA_INT[1] <= 1; IST.D1EI <= 0;  INT_SET <= 1; end
 			else if (IST.D0EI  && !IMS.MS11 && !INT_SET) begin DMA_INT[0] <= 1; IST.D0EI <= 0;  INT_SET <= 1; end
 //			else if (IST.DII   && !IMS.MS12 && !INT_SET) begin DMAIL_INT <= 1;  IST.DII <= 1;   INT_SET <= 1; end
 			else if (IST.SDEI  && !IMS.MS13 && !INT_SET) begin VDP1_INT <= 1;   IST.SDEI <= 0;  INT_SET <= 1; end
 
-			PAD_INT <= 0;
 			DMAIL_INT <= 0;
 			EXT_INT <= '0;
 			
@@ -2259,7 +2266,7 @@ module SCU (
 			4'hB: IVEC = 8'h44;
 			4'hA: IVEC = 8'h45;
 			4'h9: IVEC = 8'h46;
-			4'h8: IVEC = /*SM_INT      ?*/ 8'h47 /*: 8'h48*/;
+			4'h8: IVEC = PAD_INT     ? 8'h48 : 8'h47;
 			4'h7: IVEC = EXT_INT[0]  ? 8'h50 : 
 			             EXT_INT[1]  ? 8'h51 : 
 							 EXT_INT[2]  ? 8'h52 : 8'h53;
