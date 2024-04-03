@@ -94,6 +94,7 @@ module VDP1 (
 	bit          VBLANK_ERASE;
 	bit          FRAME_ERASE_EN;
 	bit          VBLANK_ERASE_EN;
+	bit          OUT_EN;
 	bit          DRAW_TERMINATE;
 	bit          DRAW_END;
 	
@@ -129,30 +130,34 @@ module VDP1 (
 	
 	assign FB_MODE3 = (TVMR.TVM[1:0] == 2'b11);
 	
-	typedef enum bit [4:0] {
+	typedef enum bit [5:0] {
 		CMDS_IDLE,  
 		CMDS_READ, 
 		CMDS_GRD_LOAD,
 		CMDS_EXEC,
 		CMDS_CLT_LOAD,
+		CMDS_GRD_CALC_COL,
 		CMDS_GRD_CALC_LEFT,
 		CMDS_GRD_CALC_RIGHT,
+		CMDS_GRD_CALC_ROW,
 		CMDS_GRD_CALC_LINE,
 		CMDS_NSPR_START,
 		CMDS_NSPR_CALCY,
 		CMDS_NSPR_CALCX,
 		CMDS_NSPR_DRAW,
 		CMDS_SSPR_START,
-		CMDS_SSPR_CALCY,
+		CMDS_SSPR_CALCTY,
 		CMDS_SSPR_CALCX,
+		CMDS_SSPR_CALCTX,
 		CMDS_SSPR_DRAW,
 		CMDS_DSPR_START,
 		CMDS_POLYGON_START,
-		CMDS_POLYGON_CALCD,
-		CMDS_POLYGON_CALCTDY,
+		CMDS_POLYGON_CALCS,
+		CMDS_POLYGON_CALCTY,
 		CMDS_POLYLINE_START,
 		CMDS_LINE_START,
 		CMDS_LINE_CALC,
+		CMDS_LINE_CALCTX,
 		CMDS_LINE_CALCD,
 		CMDS_LINE_DRAW,
 		CMDS_AA_DRAW,
@@ -188,8 +193,8 @@ module VDP1 (
 	Pattern_t    PAT;
 	bit  [ 8: 0] TEXT_X;
 	bit  [ 7: 0] TEXT_Y;
-	bit  [ 8: 0] TEXT_DX;
-	bit  [ 8: 0] TEXT_SX;
+	bit  [ 8: 0] TEXT_INCX;
+	bit  [ 8: 0] TEXT_WX;
 	bit  [ 1: 0] TEXT_MASK;
 	bit  [16: 3] SPR_OFFSY;
 	bit  [10: 0] POLY_LSX;
@@ -217,8 +222,9 @@ module VDP1 (
 	bit  [10: 0] LINE_SY;
 	bit          LINE_DIRX;
 	bit          LINE_DIRY;
+	bit          LINE_CLIP;
 	bit          LINE_S;
-	bit  [11: 0] LINE_D,ROW_D,COL_D;
+	bit  [11: 0] LINE_D;
 	bit  [10: 0] ROW_WIDTH,COL_HEIGHT;
 	bit          COL_DIRY;
 	bit          SPR_ROW_ENLARGE,SPR_COL_ENLARGE;
@@ -233,15 +239,26 @@ module VDP1 (
 	bit          COL_DRAW_STEP;
 	bit          TEXT_READ_STEP;
 	bit          TEXTY_READ_STEP;
-	bit  [11: 0] NEXT_ROW_D,NEXT_COL_D;
-	bit  [ 3: 0] GRD_CALC_STEP;
+	bit  [ 3: 0] GRD_CALC_STATE;
+	
+	bit  [11: 0] COL_TEXT_DY;//1.11
+	bit  [10: 0] COL_TEXT_ACC;//0.11
+	bit  [11: 0] NEW_COL_TEXT_ACC;//1.11
+//	bit  [11: 0] LINE_DX;//1.11
+//	bit  [10: 0] LINE_ACC;//0.11
+	bit  [11: 0] NEW_LINE_ACC;//1.11
+	bit  [11: 0] LINE_TEXT_DX;//1.11
+	bit  [10: 0] LINE_TEXT_ACC;//0.11
+	bit  [11: 0] NEW_LINE_TEXT_ACC;//1.11
 	always_comb begin
 		LINE_DRAW_STEP = 0;
 		COL_DRAW_STEP = 0;
 		TEXT_READ_STEP = 0;
 		TEXTY_READ_STEP = 0;
-		NEXT_ROW_D = '0;
-		NEXT_COL_D = '0;
+		
+		NEW_COL_TEXT_ACC = {1'b0,COL_TEXT_ACC} + COL_TEXT_DY;
+//		NEW_LINE_ACC = {1'b0,LINE_ACC} + LINE_DX;
+		NEW_LINE_TEXT_ACC = {1'b0,LINE_TEXT_ACC} + LINE_TEXT_DX;
 		case (CMD_ST) 
 			CMDS_NSPR_DRAW: begin		
 				LINE_DRAW_STEP = 1;		
@@ -251,18 +268,13 @@ module VDP1 (
 			CMDS_SSPR_DRAW: begin
 				if (SPR_ROW_ENLARGE) begin
 					LINE_DRAW_STEP = 1;
-					
-					NEXT_ROW_D = ROW_D + {1'b0,ORIG_WIDTH};
-					if (NEXT_ROW_D >= {1'b0,ROW_WIDTH}) begin
-						NEXT_ROW_D = ROW_D + {1'b0,ORIG_WIDTH} - {1'b0,ROW_WIDTH};
+					if (NEW_LINE_TEXT_ACC[11]) begin
 						TEXT_READ_STEP = 1;
 					end
-				end else begin
-					NEXT_ROW_D = ROW_D + {1'b0,ROW_WIDTH};
-					if (NEXT_ROW_D >= {1'b0,ORIG_WIDTH}) begin
-						NEXT_ROW_D = ROW_D + {1'b0,ROW_WIDTH} - {1'b0,ORIG_WIDTH};
+				end else begin	
+					if (NEW_LINE_TEXT_ACC[11]) begin
 						LINE_DRAW_STEP = 1;
-					end					
+					end				
 					TEXT_READ_STEP = 1;
 				end
 			end
@@ -272,15 +284,11 @@ module VDP1 (
 					LINE_DRAW_STEP = 1;
 				end else if (SPR_ROW_ENLARGE) begin
 					LINE_DRAW_STEP = 1;
-					NEXT_ROW_D = ROW_D + {1'b0,ORIG_WIDTH};
-					if (NEXT_ROW_D >= {1'b0,ROW_WIDTH}) begin
-						NEXT_ROW_D = ROW_D + {1'b0,ORIG_WIDTH} - {1'b0,ROW_WIDTH};
+					if (NEW_LINE_TEXT_ACC[11]) begin
 						TEXT_READ_STEP = 1;
 					end
 				end else begin
-					NEXT_ROW_D = ROW_D + {1'b0,ROW_WIDTH};
-					if (NEXT_ROW_D >= {1'b0,ORIG_WIDTH}) begin
-						NEXT_ROW_D = ROW_D + {1'b0,ROW_WIDTH} - {1'b0,ORIG_WIDTH};
+					if (NEW_LINE_TEXT_ACC[11]) begin
 						LINE_DRAW_STEP = 1;
 					end
 					TEXT_READ_STEP = 1;
@@ -302,15 +310,11 @@ module VDP1 (
 				4'h1: begin
 					if (SPR_COL_ENLARGE) begin
 						COL_DRAW_STEP = 1;
-						NEXT_COL_D = COL_D + {1'b0,ORIG_HEIGHT};
-						if (NEXT_COL_D >= COL_HEIGHT) begin
-							NEXT_COL_D = COL_D + {1'b0,ORIG_HEIGHT} - {1'b0,COL_HEIGHT};
+						if (NEW_COL_TEXT_ACC[11]) begin
 							TEXTY_READ_STEP = 1;
 						end
 					end else begin
-						NEXT_COL_D = COL_D + {1'b0,COL_HEIGHT};
-						if (NEXT_COL_D > ORIG_HEIGHT) begin
-							NEXT_COL_D = COL_D + {1'b0,COL_HEIGHT} - {1'b0,ORIG_HEIGHT};
+						if (NEW_COL_TEXT_ACC[11]) begin
 							COL_DRAW_STEP = 1;
 						end
 						TEXTY_READ_STEP = 1;
@@ -321,15 +325,11 @@ module VDP1 (
 				4'h3: begin
 					if (SPR_COL_ENLARGE) begin
 						COL_DRAW_STEP = 1;
-						NEXT_COL_D = COL_D + {1'b0,ORIG_HEIGHT};
-						if (NEXT_COL_D >= COL_HEIGHT) begin
-							NEXT_COL_D = COL_D + {1'b0,ORIG_HEIGHT} - {1'b0,COL_HEIGHT};
+						if (NEW_COL_TEXT_ACC[11]) begin
 							TEXTY_READ_STEP = 1;
 						end
 					end else begin
-						NEXT_COL_D = COL_D + {1'b0,COL_HEIGHT};
-						if (NEXT_COL_D > ORIG_HEIGHT) begin
-							NEXT_COL_D = COL_D + {1'b0,COL_HEIGHT} - {1'b0,ORIG_HEIGHT};
+						if (NEW_COL_TEXT_ACC[11]) begin
 							COL_DRAW_STEP = 1;
 						end
 						TEXTY_READ_STEP = 1;
@@ -351,27 +351,17 @@ module VDP1 (
 	wire TEXT_DIRX = (CMD.CMDCTRL.DIR[0] ^ DIR[0]);
 	wire TEXT_DIRY = (CMD.CMDCTRL.DIR[1] ^ DIR[1]);
 	
+	
+	bit  [10: 0] DIV_A;//11.0
+	bit  [10: 0] DIV_B;//11.0
+	bit  [20: 0] DIV_Q;//11.11
+	VDP1_DIV DIV(.numer({DIV_A,11'b00000000000}), .denom(DIV_B), .quotient(DIV_Q));
+	bit  [ 1: 0] DIV_STATE;
+	
 	RGB_t        GHCOLOR_A,GHCOLOR_B,GHCOLOR_C,GHCOLOR_D;
-	RGB_t        LEFT_GHCOLOR,RIGHT_GHCOLOR,LINE_GHCOLOR;
-	bit  [15: 0] LEFT_GHCOLOR_DR,LEFT_GHCOLOR_DG,LEFT_GHCOLOR_DB;//5.11 unsigned
-	bit  [15: 0] RIGHT_GHCOLOR_DR,RIGHT_GHCOLOR_DG,RIGHT_GHCOLOR_DB;//5.11 unsigned
-	bit  [15: 0] LINE_GHCOLOR_DR,LINE_GHCOLOR_DG,LINE_GHCOLOR_DB;//5.11 unsigned
-	bit          LEFT_GHCOLOR_DIRR,LEFT_GHCOLOR_DIRG,LEFT_GHCOLOR_DIRB;
-	bit          RIGHT_GHCOLOR_DIRR,RIGHT_GHCOLOR_DIRG,RIGHT_GHCOLOR_DIRB;
-	bit          LINE_GHCOLOR_DIRR,LINE_GHCOLOR_DIRG,LINE_GHCOLOR_DIRB;
-	bit  [10: 0] LEFT_GHCOLOR_FR,LEFT_GHCOLOR_FG,LEFT_GHCOLOR_FB;
-	bit  [10: 0] RIGHT_GHCOLOR_FR,RIGHT_GHCOLOR_FG,RIGHT_GHCOLOR_FB;
-	bit  [10: 0] LINE_GHCOLOR_FR,LINE_GHCOLOR_FG,LINE_GHCOLOR_FB;
-	
-	assign GHCOLOR_A = GRD_TBL[0][14:0];
-	assign GHCOLOR_B = GRD_TBL[1][14:0];
-	assign GHCOLOR_C = GRD_TBL[2][14:0];
-	assign GHCOLOR_D = GRD_TBL[3][14:0];
-	
-	bit  [15:11] GHCOLOR_DIV_A;//5.0 unsigned
-	bit  [10: 0] GHCOLOR_DIV_B;//11.0 unsigned
-	bit  [15: 0] GHCOLOR_DELTA;//5.11 unsigned
-	VDP1_DIV DIV(.numer({GHCOLOR_DIV_A,11'b00000000000}), .denom(GHCOLOR_DIV_B), .quotient(GHCOLOR_DELTA));
+	assign {GHCOLOR_A,GHCOLOR_B,GHCOLOR_C,GHCOLOR_D} = {GRD_TBL[0][14:0],GRD_TBL[1][14:0],GRD_TBL[2][14:0],GRD_TBL[3][14:0]};
+	RGBFP_t      LEFT_GHCOLOR,RIGHT_GHCOLOR,LINE_GHCOLOR;
+	RGBFP_t      LEFT_GHCOLOR_STEP,RIGHT_GHCOLOR_STEP,LINE_GHCOLOR_STEP;
 	
 `ifdef DEBUG
 	assign DBG_GHCOLOR_C = GRD_TBL[2][14:0];
@@ -401,10 +391,13 @@ module VDP1 (
 		bit [10: 0] NEXT_POLY_RDY;
 		bit         CLIP_H;
 		bit         EC_FIND;
+		RGB_t       GRD_CALC_1,GRD_CALC_2;
+		bit [10: 0] GRD_CALC_S;
+		RGBFP_t     GRD_CALC_STEP;
+		bit         GRD_CALC_DIR;
 		CMDCRD_t    CMD_SSPR_LEFT,CMD_SSPR_RIGHT,CMD_SSPR_TOP,CMD_SSPR_BOTTOM;
 		bit [11: 0] SSPR_WIDTH_ABS,SSPR_HEIGHT_ABS;
 		bit         SSPR_DIRX,SSPR_DIRY;
-		bit         GHCOLOR_DIR;
 		bit [10: 0] SYS_CLIP_X1,SYS_CLIP_X2,SYS_CLIP_Y1,SYS_CLIP_Y2;
 		bit [ 3: 0] CMD_COORD_LEFT_OVER,CMD_COORD_RIGHT_OVER,CMD_COORD_TOP_OVER,CMD_COORD_BOTTOM_OVER;
 		bit         CMD_NSPR_LEFT_OVER,CMD_NSPR_TOP_OVER;
@@ -444,11 +437,11 @@ module VDP1 (
 		end else if (EN) begin
 			case (CMD.CMDPMOD.CM)
 				3'b000,
-				3'b001: begin TEXT_DX = 9'h001; TEXT_SX = {2'b00,CMD.CMDSIZE.SX,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b00; end
+				3'b001: begin TEXT_INCX = 9'h001; TEXT_WX = {2'b00,CMD.CMDSIZE.SX,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b00; end
 				3'b010,
 				3'b011,
-				3'b100: begin TEXT_DX = 9'h002; TEXT_SX = {1'b0,CMD.CMDSIZE.SX,1'b0,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b01; end
-				default:begin TEXT_DX = 9'h004; TEXT_SX = {CMD.CMDSIZE.SX,2'b00,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b11; end
+				3'b100: begin TEXT_INCX = 9'h002; TEXT_WX = {1'b0,CMD.CMDSIZE.SX,1'b0,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b01; end
+				default:begin TEXT_INCX = 9'h004; TEXT_WX = {CMD.CMDSIZE.SX,2'b00,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b11; end
 			endcase
 
 			SYS_CLIP_X1 <= 11'd0 - $signed(LOC_COORD.X);
@@ -530,6 +523,22 @@ module VDP1 (
 
 			ORIG_WIDTH <= {2'b00,CMD.CMDSIZE.SX,3'b000} | ~|CMD.CMDSIZE.SX;
 			ORIG_HEIGHT <= {3'b000,CMD.CMDSIZE.SY} | ~|CMD.CMDSIZE.SY;
+			
+			if (CMD_ST == CMDS_GRD_CALC_LEFT || CMD_ST == CMDS_GRD_CALC_RIGHT || CMD_ST == CMDS_GRD_CALC_LINE) begin
+				GRD_CALC_STATE <= GRD_CALC_STATE + 4'd1;
+				DIV_A[10:5] <= '0;
+				case (GRD_CALC_STATE)
+					4'd0: {GRD_CALC_DIR,DIV_A[4:0]} <= GRD_CALC_2.R >= GRD_CALC_1.R ? {1'b0,GRD_CALC_2.R - GRD_CALC_1.R} : {1'b1,GRD_CALC_1.R - GRD_CALC_2.R};
+					4'd2: {GRD_CALC_DIR,DIV_A[4:0]} <= GRD_CALC_2.G >= GRD_CALC_1.G ? {1'b0,GRD_CALC_2.G - GRD_CALC_1.G} : {1'b1,GRD_CALC_1.G - GRD_CALC_2.G};
+					4'd4: {GRD_CALC_DIR,DIV_A[4:0]} <= GRD_CALC_2.B >= GRD_CALC_1.B ? {1'b0,GRD_CALC_2.B - GRD_CALC_1.B} : {1'b1,GRD_CALC_1.B - GRD_CALC_2.B};
+				endcase
+				DIV_B <= GRD_CALC_S;
+				case (GRD_CALC_STATE)
+					4'd2: GRD_CALC_STEP.R <= {GRD_CALC_DIR,DIV_Q[15:0]};
+					4'd4: GRD_CALC_STEP.G <= {GRD_CALC_DIR,DIV_Q[15:0]};
+					4'd6: GRD_CALC_STEP.B <= {GRD_CALC_DIR,DIV_Q[15:0]};
+				endcase
+			end
 									
 			if (CE_R) DRAW_END <= 0;
 			if (FBD_ST == FBDS_WRITE) DRAW_ENABLE <= 0;
@@ -743,28 +752,20 @@ module VDP1 (
 					RIGHT_VERT.X <= CMD.CMDXA[11:0] - 12'd1 + ORIG_WIDTH;
 					RIGHT_VERT.Y <= CMD.CMDYA[11:0];
 					BOTTOM_VERT.Y <= CMD.CMDYA[11:0] - 12'd1 + ORIG_HEIGHT;
-					TEXT_X <= '0;
-					TEXT_Y <= '0;
 					DIR[1] <= 0;
 					ROW_WIDTH <= ORIG_WIDTH;
 					COL_HEIGHT <= ORIG_HEIGHT;
 					COL_DIRY <= 0;
-					COL_D <= '0;
 					SPR_COL_ENLARGE <= 0;
 					CMD_ST <= CMDS_NSPR_CALCY;
 				end
 				
 				CMDS_NSPR_CALCY: begin
-//					if (ORIG_HEIGHT <= COL_HEIGHT) begin
-//						SPR_COL_ENLARGE <= 1;
-//						COL_D <= {2'b00,ORIG_HEIGHT[10:1]};
-//					end else begin
-//						SPR_COL_ENLARGE <= 0;
-//						COL_D <= {2'b00,COL_HEIGHT[10:1]};
-//					end
 					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT[7:0] - 8'd1) * ORIG_WIDTH[8:3] : '0;
-					GRD_CALC_STEP <= '0;
-					CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_LEFT : CMDS_NSPR_CALCX;
+					GRD_CALC_STATE <= '0;
+					TEXT_X <= '0;
+					TEXT_Y <= '0;
+					CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_COL : CMDS_NSPR_CALCX;
 				end
 				
 				CMDS_SSPR_START: begin
@@ -817,22 +818,34 @@ module VDP1 (
 							DIR[1] <= CMD.CMDYB[11];
 						end
 					endcase
-					TEXT_X <= '0;
-					TEXT_Y <= '0;
-					CMD_ST <= CMDS_SSPR_CALCY;
+					CMD_ST <= CMDS_SSPR_CALCTY;
 				end
 				
-				CMDS_SSPR_CALCY: begin
-					if (ORIG_HEIGHT <= COL_HEIGHT) begin
-						SPR_COL_ENLARGE <= 1;
-						COL_D <= {2'b00,ORIG_HEIGHT[10:1]};
-					end else begin
-						SPR_COL_ENLARGE <= 0;
-						COL_D <= {2'b00,COL_HEIGHT[10:1]};
+				CMDS_SSPR_CALCTY: begin
+					DIV_STATE <= DIV_STATE + 2'd1;
+					if (DIV_STATE == 2'd0) begin
+						if (ORIG_HEIGHT <= COL_HEIGHT) begin
+							SPR_COL_ENLARGE <= 1;
+							DIV_A <= ORIG_HEIGHT;
+							DIV_B <= COL_HEIGHT;
+						end else begin
+							SPR_COL_ENLARGE <= 0;
+							DIV_A <= COL_HEIGHT;
+							DIV_B <= ORIG_HEIGHT;
+						end
 					end
-					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT[7:0] - 8'd1) * ORIG_WIDTH[8:3] : '0;
-					GRD_CALC_STEP <= '0;
-					CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_LEFT : CMDS_SSPR_CALCX;
+					else if (DIV_STATE == 2'd2) begin
+						DIV_STATE <= '0;
+						
+						COL_TEXT_DY <= DIV_Q[11:0];
+						COL_TEXT_ACC <= SPR_COL_ENLARGE ? 11'h000 : 11'h400;
+						
+						SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT[7:0] - 8'd1) * ORIG_WIDTH[8:3] : '0;
+						TEXT_Y <= '0;
+						TEXT_X <= '0;
+						
+						CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_COL : CMDS_SSPR_CALCX;
+					end
 				end
 				
 				CMDS_DSPR_START,
@@ -854,21 +867,21 @@ module VDP1 (
 					POLY_RDIRY <= NEW_POLY_RSY[12];
 					
 					DIR <= '0;
-					TEXT_X <= '0;
-					TEXT_Y <= '0;
 					
 					CLIP_H <= 0;
 					if (($signed(CMD.CMDXA[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && $signed(CMD.CMDXD[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1})) ||
-					    ($signed(CMD.CMDXB[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && $signed(CMD.CMDXC[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}))) begin
+					    ($signed(CMD.CMDXB[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && $signed(CMD.CMDXC[11:0]) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1})) ||
+						 ($signed(CMD.CMDXA[11:0]) > $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X2}) && $signed(CMD.CMDXD[11:0]) > $signed({{1{SYS_CLIP_X2[10]}},SYS_CLIP_X1})) ||
+						 ($signed(CMD.CMDXB[11:0]) > $signed({{1{SYS_CLIP_X2[10]}},SYS_CLIP_X2}) && $signed(CMD.CMDXC[11:0]) > $signed({{1{SYS_CLIP_X2[10]}},SYS_CLIP_X2}))) begin
 						CLIP_H <= 1;
 					end
 										
 					/*CMD_DELAY <= CMD_DELAY - 1'd1;
 					if (!CMD_DELAY)*/
-						CMD_ST <= CMDS_POLYGON_CALCD;
+						CMD_ST <= CMDS_POLYGON_CALCS;
 				end
 				
-				CMDS_POLYGON_CALCD: begin
+				CMDS_POLYGON_CALCS: begin
 					if (POLY_LSX >= POLY_LSY && POLY_LSX >= POLY_RSX && POLY_LSX >= POLY_RSY) begin
 						POLY_S <= 2'b00;
 						COL_HEIGHT <= POLY_LSX;
@@ -888,81 +901,83 @@ module VDP1 (
 					POLY_RDX <= '0;
 					POLY_RDY <= '0;
 					
-					CMD_ST <= CMDS_POLYGON_CALCTDY;
+					CMD_ST <= CMDS_POLYGON_CALCTY;
 				end
 				
-				CMDS_POLYGON_CALCTDY: begin
-					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT[7:0] - 8'd1) * ORIG_WIDTH[8:3] : '0;
-					if (ORIG_HEIGHT <= COL_HEIGHT) begin
-						SPR_COL_ENLARGE <= 1;
-						COL_D <= '0;//{1'b0,ORIG_HEIGHT};
-					end else begin
-						SPR_COL_ENLARGE <= 0;
-						COL_D <= '0;//{1'b0,COL_HEIGHT};
+				CMDS_POLYGON_CALCTY: begin
+					DIV_STATE <= DIV_STATE + 2'd1;
+					if (DIV_STATE == 2'd0) begin
+						if (ORIG_HEIGHT <= COL_HEIGHT) begin
+							SPR_COL_ENLARGE <= 1;
+							DIV_A <= ORIG_HEIGHT;
+							DIV_B <= COL_HEIGHT;
+						end else begin
+							SPR_COL_ENLARGE <= 0;
+							DIV_A <= COL_HEIGHT;
+							DIV_B <= ORIG_HEIGHT;
+						end
 					end
-					GRD_CALC_STEP <= '0;
-					CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_LEFT : CMDS_LINE_CALC;
+					else if (DIV_STATE == 2'd2) begin
+						DIV_STATE <= '0;
+						
+						COL_TEXT_DY <= DIV_Q[11:0];
+						COL_TEXT_ACC <= SPR_COL_ENLARGE ? 11'h000 : 11'h400;
+						
+						SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT[7:0] - 8'd1) * ORIG_WIDTH[8:3] : '0;
+						TEXT_Y <= '0;
+						TEXT_X <= '0;
+						
+						CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_COL : CMDS_LINE_CALC;
+					end
 				end
 				
 				CMDS_POLYLINE_START: begin
 					LEFT_VERT <= {CMD.CMDXA[11:0],CMD.CMDYA[11:0]};
 					RIGHT_VERT <= {CMD.CMDXB[11:0],CMD.CMDYB[11:0]};
 					POLY_S <= 2'b00;
-					LEFT_GHCOLOR <= GHCOLOR_A;
-					RIGHT_GHCOLOR <= GHCOLOR_B;
+					TEXT_X <= '0;
+					LEFT_GHCOLOR <= RGBItoF(GHCOLOR_A);
+					RIGHT_GHCOLOR <= RGBItoF(GHCOLOR_B);
 					CMD_ST <= CMDS_LINE_CALC;
 				end
 				
 				CMDS_LINE_START: begin
 					LEFT_VERT <= {CMD.CMDXA[11:0],CMD.CMDYA[11:0]};
 					RIGHT_VERT <= {CMD.CMDXB[11:0],CMD.CMDYB[11:0]};
-					LEFT_GHCOLOR <= GHCOLOR_A;
-					RIGHT_GHCOLOR <= GHCOLOR_B;
+					TEXT_X <= '0;
+					LEFT_GHCOLOR <= RGBItoF(GHCOLOR_A);
+					RIGHT_GHCOLOR <= RGBItoF(GHCOLOR_B);
 					CMD_ST <= CMDS_LINE_CALC;
 				end
 				
-				CMDS_GRD_CALC_LEFT: begin
-					LEFT_GHCOLOR <= GHCOLOR_A;
-					{LEFT_GHCOLOR_FR,LEFT_GHCOLOR_FG,LEFT_GHCOLOR_FB} <= '0;
-
-					GRD_CALC_STEP <= GRD_CALC_STEP + 4'd1;
-					case (GRD_CALC_STEP)
-						4'd0: {GHCOLOR_DIR,GHCOLOR_DIV_A} <= GHCOLOR_D.R >= GHCOLOR_A.R ? {1'b0,GHCOLOR_D.R - GHCOLOR_A.R} : {1'b1,GHCOLOR_A.R - GHCOLOR_D.R};
-						4'd2: {GHCOLOR_DIR,GHCOLOR_DIV_A} <= GHCOLOR_D.G >= GHCOLOR_A.G ? {1'b0,GHCOLOR_D.G - GHCOLOR_A.G} : {1'b1,GHCOLOR_A.G - GHCOLOR_D.G};
-						4'd4: {GHCOLOR_DIR,GHCOLOR_DIV_A} <= GHCOLOR_D.B >= GHCOLOR_A.B ? {1'b0,GHCOLOR_D.B - GHCOLOR_A.B} : {1'b1,GHCOLOR_A.B - GHCOLOR_D.B};
-					endcase
-					GHCOLOR_DIV_B <= COL_HEIGHT - 11'd1;
-					case (GRD_CALC_STEP)
-						4'd2: {LEFT_GHCOLOR_DIRR,LEFT_GHCOLOR_DR} <= {GHCOLOR_DIR,GHCOLOR_DELTA};
-						4'd4: {LEFT_GHCOLOR_DIRG,LEFT_GHCOLOR_DG} <= {GHCOLOR_DIR,GHCOLOR_DELTA};
-						4'd6: {LEFT_GHCOLOR_DIRB,LEFT_GHCOLOR_DB} <= {GHCOLOR_DIR,GHCOLOR_DELTA};
-					endcase
+				CMDS_GRD_CALC_COL: begin
+					LEFT_GHCOLOR <= RGBItoF(GHCOLOR_A);
+					RIGHT_GHCOLOR <= RGBItoF(GHCOLOR_B);
 					
-					if (GRD_CALC_STEP == 4'd6) begin
-						GRD_CALC_STEP <= '0;
+					GRD_CALC_1 <= GHCOLOR_A;
+					GRD_CALC_2 <= GHCOLOR_D;
+					GRD_CALC_S <= COL_HEIGHT - 11'd1;
+					GRD_CALC_STATE <= '0;
+					CMD_ST <= CMDS_GRD_CALC_LEFT;
+				end
+				
+				CMDS_GRD_CALC_LEFT: begin
+					if (GRD_CALC_STATE == 4'd7) begin
+						GRD_CALC_STATE <= '0;
+						LEFT_GHCOLOR_STEP <= GRD_CALC_STEP;
+						
+						GRD_CALC_1 <= GHCOLOR_B;
+						GRD_CALC_2 <= GHCOLOR_C;
+						GRD_CALC_S <= COL_HEIGHT - 11'd1;
 						CMD_ST <= CMDS_GRD_CALC_RIGHT;
 					end
 				end
 				
 				CMDS_GRD_CALC_RIGHT: begin
-					RIGHT_GHCOLOR <= GHCOLOR_B;
-					{RIGHT_GHCOLOR_FR,RIGHT_GHCOLOR_FG,RIGHT_GHCOLOR_FB} <= '0;
-
-					GRD_CALC_STEP <= GRD_CALC_STEP + 4'd1;
-					case (GRD_CALC_STEP)
-						4'd0: {GHCOLOR_DIR,GHCOLOR_DIV_A} <= GHCOLOR_C.R >= GHCOLOR_B.R ? {1'b0,GHCOLOR_C.R - GHCOLOR_B.R} : {1'b1,GHCOLOR_B.R - GHCOLOR_C.R};
-						4'd2: {GHCOLOR_DIR,GHCOLOR_DIV_A} <= GHCOLOR_C.G >= GHCOLOR_B.G ? {1'b0,GHCOLOR_C.G - GHCOLOR_B.G} : {1'b1,GHCOLOR_B.G - GHCOLOR_C.G};
-						4'd4: {GHCOLOR_DIR,GHCOLOR_DIV_A} <= GHCOLOR_C.B >= GHCOLOR_B.B ? {1'b0,GHCOLOR_C.B - GHCOLOR_B.B} : {1'b1,GHCOLOR_B.B - GHCOLOR_C.B};
-					endcase
-					GHCOLOR_DIV_B <= COL_HEIGHT - 11'd1;
-					case (GRD_CALC_STEP)
-						4'd2: {RIGHT_GHCOLOR_DIRR,RIGHT_GHCOLOR_DR} <= {GHCOLOR_DIR,GHCOLOR_DELTA};
-						4'd4: {RIGHT_GHCOLOR_DIRG,RIGHT_GHCOLOR_DG} <= {GHCOLOR_DIR,GHCOLOR_DELTA};
-						4'd6: {RIGHT_GHCOLOR_DIRB,RIGHT_GHCOLOR_DB} <= {GHCOLOR_DIR,GHCOLOR_DELTA};
-					endcase
-					
-					if (GRD_CALC_STEP == 4'd6) begin
-						GRD_CALC_STEP <= '0;
+					if (GRD_CALC_STATE == 4'd7) begin
+						GRD_CALC_STATE <= '0;
+						RIGHT_GHCOLOR_STEP <= GRD_CALC_STEP;
+						TEXT_X <= '0;
 						case (CMD.CMDCTRL.COMM) 
 							4'h0: CMD_ST <= CMDS_NSPR_CALCX;
 							4'h1: CMD_ST <= CMDS_SSPR_CALCX;
@@ -997,7 +1012,6 @@ module VDP1 (
 						LINE_DIRY <= 0;
 						DIR[0] <= 0;
 					end
-					ROW_D <= '0;
 					SPR_ROW_ENLARGE <= 0;
 					LINE_D <= '0;
 					EC_FIND <= 0;
@@ -1006,13 +1020,13 @@ module VDP1 (
 						CMD_ST <= CMDS_LINE_NEXT;
 					end else begin
 						SPR_READ <= 1;
-						CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_LINE : CMDS_NSPR_DRAW;
+						CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_ROW : CMDS_NSPR_DRAW;
 					end
 				end
 				
 				CMDS_SSPR_CALCX: begin
-					NEW_LINE_SX = {RIGHT_VERT.X[11],RIGHT_VERT.X} - {LEFT_VERT.X[11],LEFT_VERT.X};
-					NEW_LINE_SY = {RIGHT_VERT.Y[11],RIGHT_VERT.Y} - {LEFT_VERT.Y[11],LEFT_VERT.Y};
+					NEW_LINE_SX = $signed({RIGHT_VERT.X[11],RIGHT_VERT.X}) - $signed({LEFT_VERT.X[11],LEFT_VERT.X});
+					NEW_LINE_SY = $signed({RIGHT_VERT.Y[11],RIGHT_VERT.Y}) - $signed({LEFT_VERT.Y[11],LEFT_VERT.Y});
 					/*if ($signed(LEFT_VERT.X + LOC_COORD.X) < 0 && !CMD.CMDPMOD.PCLP) begin
 						LINE_VERTA.X <= RIGHT_VERT.X;
 						LINE_VERTA.Y <= RIGHT_VERT.Y;
@@ -1039,27 +1053,43 @@ module VDP1 (
 						DIR[0] <= 0;
 					end
 					LINE_D <= '0;
-					
-					if (ORIG_WIDTH <= ROW_WIDTH) begin
-						SPR_ROW_ENLARGE <= 1;
-						ROW_D <= {2'b00,ORIG_WIDTH[10:1]};
-					end else begin
-						SPR_ROW_ENLARGE <= 0;
-						ROW_D <= {2'b00,ROW_WIDTH[10:1]};
-					end
+
 					EC_FIND <= 0;
 					
 					if ((LINE_LEFT_OVER || LINE_RIGHT_OVER || LINE_TOP_OVER || LINE_BOTTOM_OVER) && !CMD.CMDPMOD.PCLP) begin
 						CMD_ST <= CMDS_LINE_NEXT;
 					end else begin
 						SPR_READ <= 1;
-						CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_LINE : CMDS_SSPR_DRAW;
+						CMD_ST <= CMDS_SSPR_CALCTX;
+					end
+				end
+				
+				CMDS_SSPR_CALCTX: begin
+					DIV_STATE <= DIV_STATE + 2'd1;
+					if (DIV_STATE == 2'd0) begin
+						if (ORIG_WIDTH <= ROW_WIDTH) begin
+							SPR_ROW_ENLARGE <= 1;
+							DIV_A <= ORIG_WIDTH;
+							DIV_B <= ROW_WIDTH;
+						end else begin
+							SPR_ROW_ENLARGE <= 0;
+							DIV_A <= ROW_WIDTH;
+							DIV_B <= ORIG_WIDTH;
+						end
+					end
+					else if (DIV_STATE == 2'd2) begin
+						DIV_STATE <= '0;
+						
+						LINE_TEXT_DX <= DIV_Q[11:0];
+						LINE_TEXT_ACC <= SPR_ROW_ENLARGE ? 11'h000 : 11'h400;
+
+						CMD_ST <= /*CMD.CMDPMOD.CCB[2] ?*/ CMDS_GRD_CALC_ROW /*: CMDS_SSPR_DRAW*/;
 					end
 				end
 				
 				CMDS_LINE_CALC: begin
-					NEW_LINE_SX = {RIGHT_VERT.X[11],RIGHT_VERT.X} - {LEFT_VERT.X[11],LEFT_VERT.X};
-					NEW_LINE_SY = {RIGHT_VERT.Y[11],RIGHT_VERT.Y} - {LEFT_VERT.Y[11],LEFT_VERT.Y};
+					NEW_LINE_SX = $signed({RIGHT_VERT.X[11],RIGHT_VERT.X}) - $signed({LEFT_VERT.X[11],LEFT_VERT.X});
+					NEW_LINE_SY = $signed({RIGHT_VERT.Y[11],RIGHT_VERT.Y}) - $signed({LEFT_VERT.Y[11],LEFT_VERT.Y});
 					NEW_LINE_ASX = Abs(NEW_LINE_SX[11:0]);
 					NEW_LINE_ASY = Abs(NEW_LINE_SY[11:0]);
 					if ($signed(LEFT_VERT.X) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
@@ -1069,14 +1099,16 @@ module VDP1 (
 						LINE_VERTB.Y <= LEFT_VERT.Y[10:0];
 						LINE_DIRX <= ~NEW_LINE_SX[12];
 						LINE_DIRY <= ~NEW_LINE_SY[12];
+						LINE_CLIP <= 1;
 						DIR[0] <= 1;
-					end else if ($signed(LEFT_VERT.X) > $signed({{1{SYS_CLIP_X2[10]}},SYS_CLIP_X2}) && !CMD.CMDPMOD.PCLP) begin
+					end else if ($signed(LEFT_VERT.X) > $signed({{1{SYS_CLIP_X2[10]}},SYS_CLIP_X2}) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
 						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
 						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
 						LINE_VERTB.X <= SYS_CLIP_X2;
 						LINE_VERTB.Y <= LEFT_VERT.Y[10:0];
 						LINE_DIRX <= ~NEW_LINE_SX[12];
 						LINE_DIRY <= ~NEW_LINE_SY[12];
+						LINE_CLIP <= 1;
 						DIR[0] <= 1;
 					end else if ($signed(RIGHT_VERT.X) < $signed({{1{SYS_CLIP_X1[10]}},SYS_CLIP_X1}) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
 						LINE_VERTA.X <= LEFT_VERT.X[10:0];
@@ -1085,14 +1117,16 @@ module VDP1 (
 						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_DIRY <= NEW_LINE_SY[12];
+						LINE_CLIP <= 1;
 						DIR[0] <= 0;
-					end else if ($signed(RIGHT_VERT.X) > $signed({{1{SYS_CLIP_X2[10]}},SYS_CLIP_X2}) && !CMD.CMDPMOD.PCLP) begin
+					end else if ($signed(RIGHT_VERT.X) > $signed({{1{SYS_CLIP_X2[10]}},SYS_CLIP_X2}) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
 						LINE_VERTA.X <= LEFT_VERT.X[10:0];
 						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
 						LINE_VERTB.X <= SYS_CLIP_X2;
 						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_DIRY <= NEW_LINE_SY[12];
+						LINE_CLIP <= 1;
 						DIR[0] <= 0;
 					end else begin
 						LINE_VERTA.X <= LEFT_VERT.X[10:0];
@@ -1101,61 +1135,85 @@ module VDP1 (
 						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_DIRY <= NEW_LINE_SY[12];
+						LINE_CLIP <= 0;
 						DIR[0] <= 0;
 					end
 					LINE_SX <= NEW_LINE_ASX + 11'd1;
 					LINE_SY <= NEW_LINE_ASY + 11'd1;
 
 					ROW_WIDTH <= NEW_LINE_ASX >= NEW_LINE_ASY ? NEW_LINE_ASX + 11'd1 : NEW_LINE_ASY + 11'd1;
-					CMD_ST <= CMDS_LINE_CALCD;
+					CMD_ST <= CMDS_LINE_CALCTX;
+				end
+				
+				CMDS_LINE_CALCTX: begin
+					DIV_STATE <= DIV_STATE + 2'd1;
+					if (DIV_STATE == 2'd0) begin
+						if (ORIG_WIDTH <= ROW_WIDTH) begin
+							SPR_ROW_ENLARGE <= 1;
+							DIV_A <= ORIG_WIDTH;
+							DIV_B <= ROW_WIDTH;
+						end else begin
+							SPR_ROW_ENLARGE <= 0;
+							DIV_A <= ROW_WIDTH;
+							DIV_B <= ORIG_WIDTH;
+						end
+					end
+					else if (DIV_STATE == 2'd2) begin
+						DIV_STATE <= '0;
+						
+						LINE_TEXT_DX <= DIV_Q[11:0];
+						LINE_TEXT_ACC <= SPR_ROW_ENLARGE ? 11'h000 : 11'h400;
+
+						CMD_ST <= CMDS_LINE_CALCD;
+					end
 				end
 				
 				CMDS_LINE_CALCD: begin
-					if (ORIG_WIDTH <= ROW_WIDTH) begin
-						SPR_ROW_ENLARGE <= 1;
-						ROW_D <= {2'b00,ORIG_WIDTH[10:1]};
-					end else begin
-						SPR_ROW_ENLARGE <= 0;
-						ROW_D <= {2'b00,ROW_WIDTH[10:1]};
-					end
-				
-					if (LINE_SX >= LINE_SY) begin
-						LINE_S <= 0;
-						LINE_D <= '0;//{1'b0,LINE_SY};
-					end else begin
-						LINE_S <= 1;
-						LINE_D <= '0;//{1'b0,LINE_SX};
-					end
-					EC_FIND <= 0;
-//					AA <= 0;
+//					DIV_STATE <= DIV_STATE + 2'd1;
+//					if (DIV_STATE == 2'd0) begin
+						if (LINE_SY < LINE_SX) begin
+							LINE_S <= 0;
+							LINE_D <= '0;;
+//							DIV_A <= LINE_SY;
+//							DIV_B <= LINE_SX;
+						end else begin
+							LINE_S <= 1;
+							LINE_D <= '0;;
+//							DIV_A <= LINE_SX;
+//							DIV_B <= LINE_SY;
+						end
+//					end
+//					else if (DIV_STATE == 2'd2) begin
+//						DIV_STATE <= '0;
+//					
+//						LINE_DX <= DIV_Q[11:0];
+//						LINE_ACC <= '0;
+						
+						EC_FIND <= 0;
+						AA <= 0;
 					
-					if ((LINE_LEFT_OVER || LINE_RIGHT_OVER || LINE_TOP_OVER || LINE_BOTTOM_OVER) && !CMD.CMDPMOD.PCLP) begin
-						CMD_ST <= CMDS_LINE_NEXT;
-					end else begin
-						SPR_READ <= ~CMD.CMDCTRL.COMM[2];
-						CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_LINE : CMDS_LINE_DRAW;
-					end
+						if ((LINE_LEFT_OVER || LINE_RIGHT_OVER || LINE_TOP_OVER || LINE_BOTTOM_OVER) && !CMD.CMDPMOD.PCLP) begin
+							CMD_ST <= CMDS_LINE_NEXT;
+						end else begin
+							SPR_READ <= ~CMD.CMDCTRL.COMM[2];
+							CMD_ST <= CMD.CMDPMOD.CCB[2] ? CMDS_GRD_CALC_ROW : CMDS_LINE_DRAW;
+						end
+//					end
+				end
+				
+				CMDS_GRD_CALC_ROW: begin
+					LINE_GHCOLOR <= DIR[0] ? RIGHT_GHCOLOR : LEFT_GHCOLOR;
+					GRD_CALC_1 <= RGBFtoI(LEFT_GHCOLOR);
+					GRD_CALC_2 <= RGBFtoI(RIGHT_GHCOLOR);
+					GRD_CALC_S <= ROW_WIDTH - 11'd1;
+					CMD_ST <= CMDS_GRD_CALC_LINE;
 				end
 				
 				CMDS_GRD_CALC_LINE: begin
-					LINE_GHCOLOR <= DIR[0] ? RIGHT_GHCOLOR : LEFT_GHCOLOR;
-					{LINE_GHCOLOR_FR,LINE_GHCOLOR_FG,LINE_GHCOLOR_FB} <= '0;
-
-					GRD_CALC_STEP <= GRD_CALC_STEP + 3'd1;
-					case (GRD_CALC_STEP)
-						3'd0: {GHCOLOR_DIR,GHCOLOR_DIV_A} <= RIGHT_GHCOLOR.R >= LEFT_GHCOLOR.R ? {1'b0,RIGHT_GHCOLOR.R - LEFT_GHCOLOR.R} : {1'b1,LEFT_GHCOLOR.R - RIGHT_GHCOLOR.R};
-						3'd2: {GHCOLOR_DIR,GHCOLOR_DIV_A} <= RIGHT_GHCOLOR.G >= LEFT_GHCOLOR.G ? {1'b0,RIGHT_GHCOLOR.G - LEFT_GHCOLOR.G} : {1'b1,LEFT_GHCOLOR.G - RIGHT_GHCOLOR.G};
-						3'd4: {GHCOLOR_DIR,GHCOLOR_DIV_A} <= RIGHT_GHCOLOR.B >= LEFT_GHCOLOR.B ? {1'b0,RIGHT_GHCOLOR.B - LEFT_GHCOLOR.B} : {1'b1,LEFT_GHCOLOR.B - RIGHT_GHCOLOR.B};
-					endcase
-					GHCOLOR_DIV_B <= ROW_WIDTH - 11'd1;
-					case (GRD_CALC_STEP)
-						3'd2: {LINE_GHCOLOR_DIRR,LINE_GHCOLOR_DR} <= {DIR[0]^GHCOLOR_DIR,GHCOLOR_DELTA};
-						3'd4: {LINE_GHCOLOR_DIRG,LINE_GHCOLOR_DG} <= {DIR[0]^GHCOLOR_DIR,GHCOLOR_DELTA};
-						3'd6: {LINE_GHCOLOR_DIRB,LINE_GHCOLOR_DB} <= {DIR[0]^GHCOLOR_DIR,GHCOLOR_DELTA};
-					endcase
-					
-					if (GRD_CALC_STEP == 3'd6) begin
-						GRD_CALC_STEP <= '0;
+					if (GRD_CALC_STATE == 3'd7) begin
+						GRD_CALC_STATE <= '0;
+						LINE_GHCOLOR_STEP <= GRD_CALC_STEP;
+						
 						case (CMD.CMDCTRL.COMM) 
 							4'h0: CMD_ST <= CMDS_NSPR_DRAW;
 							4'h1: CMD_ST <= CMDS_SSPR_DRAW;
@@ -1168,19 +1226,19 @@ module VDP1 (
 				CMDS_SSPR_DRAW: if (!DRAW_WAIT && SPR_DATA_READY) begin
 					DRAW_ENABLE <= LINE_DRAW_STEP;
 					
-					ROW_D <= NEXT_ROW_D;
 					if (TEXT_READ_STEP) begin
-						TEXT_X <= TEXT_X + TEXT_DX;
+						TEXT_X <= TEXT_X + TEXT_INCX;
 						if (!CMD.CMDPMOD.ECD && PAT.EC) EC_FIND <= 1;
 					end
 					
 					if (LINE_DRAW_STEP) begin
 						LINE_VERTA.X <= LINE_VERTA.X + {{10{LINE_DIRX}},1'b1};
 						
-						{LINE_GHCOLOR.R,LINE_GHCOLOR_FR} <= {LINE_GHCOLOR.R,LINE_GHCOLOR_FR} + (LINE_GHCOLOR_DR^{16{LINE_GHCOLOR_DIRR}}) + LINE_GHCOLOR_DIRR;
-						{LINE_GHCOLOR.G,LINE_GHCOLOR_FG} <= {LINE_GHCOLOR.G,LINE_GHCOLOR_FG} + (LINE_GHCOLOR_DG^{16{LINE_GHCOLOR_DIRG}}) + LINE_GHCOLOR_DIRG;
-						{LINE_GHCOLOR.B,LINE_GHCOLOR_FB} <= {LINE_GHCOLOR.B,LINE_GHCOLOR_FB} + (LINE_GHCOLOR_DB^{16{LINE_GHCOLOR_DIRB}}) + LINE_GHCOLOR_DIRB;
+						{LINE_GHCOLOR.R.INT,LINE_GHCOLOR.R.FRAC} <= {LINE_GHCOLOR.R.INT,LINE_GHCOLOR.R.FRAC} + ({LINE_GHCOLOR_STEP.R.INT,LINE_GHCOLOR_STEP.R.FRAC}^{16{DIR[0]^LINE_GHCOLOR_STEP.R.DIR}}) + (DIR[0]^LINE_GHCOLOR_STEP.R.DIR);
+						{LINE_GHCOLOR.G.INT,LINE_GHCOLOR.G.FRAC} <= {LINE_GHCOLOR.G.INT,LINE_GHCOLOR.G.FRAC} + ({LINE_GHCOLOR_STEP.G.INT,LINE_GHCOLOR_STEP.G.FRAC}^{16{DIR[0]^LINE_GHCOLOR_STEP.G.DIR}}) + (DIR[0]^LINE_GHCOLOR_STEP.G.DIR);
+						{LINE_GHCOLOR.B.INT,LINE_GHCOLOR.B.FRAC} <= {LINE_GHCOLOR.B.INT,LINE_GHCOLOR.B.FRAC} + ({LINE_GHCOLOR_STEP.B.INT,LINE_GHCOLOR_STEP.B.FRAC}^{16{DIR[0]^LINE_GHCOLOR_STEP.B.DIR}}) + (DIR[0]^LINE_GHCOLOR_STEP.B.DIR);
 					end
+					LINE_TEXT_ACC <= NEW_LINE_TEXT_ACC[10:0];
 					  
 					if ((LINE_VERTA.X == LINE_VERTB.X && LINE_DRAW_STEP) || (!CMD.CMDPMOD.ECD && PAT.EC && EC_FIND && TEXT_READ_STEP)) begin
 						SPR_READ <= 0;
@@ -1191,9 +1249,8 @@ module VDP1 (
 				CMDS_LINE_DRAW: if (!DRAW_WAIT && (SPR_DATA_READY || CMD.CMDCTRL.COMM >= 4'h4)) begin
 					DRAW_ENABLE <= LINE_DRAW_STEP;
 					
-					ROW_D <= NEXT_ROW_D;
 					if (TEXT_READ_STEP) begin
-						TEXT_X <= TEXT_X + TEXT_DX;
+						TEXT_X <= TEXT_X + TEXT_INCX;
 						if (CMD.CMDCTRL.COMM <= 4'h3 && !CMD.CMDPMOD.ECD && PAT.EC) EC_FIND <= 1;
 					end
 					
@@ -1210,6 +1267,13 @@ module VDP1 (
 								CMD_ST <= CMDS_AA_DRAW;
 							end
 							LINE_D <= NEXT_LINE_D;
+//							if (NEW_LINE_ACC[11]) begin
+//								LINE_VERTA.Y <= LINE_VERTA.Y + {{10{LINE_DIRY}},1'b1};
+//								AA_X <= LINE_VERTA.X;
+//								AA_Y <= LINE_VERTA.Y;
+//								AA <= 1;
+//								CMD_ST <= CMDS_AA_DRAW;
+//							end
 						end else begin
 							NEXT_LINE_D = LINE_D + {1'b0,LINE_SX};
 							if (NEXT_LINE_D >= {1'b0,LINE_SY}) begin
@@ -1221,18 +1285,26 @@ module VDP1 (
 								CMD_ST <= CMDS_AA_DRAW;
 							end
 							LINE_D <= NEXT_LINE_D;
+//							if (NEW_LINE_ACC[11]) begin
+//								LINE_VERTA.X <= LINE_VERTA.X + {{10{LINE_DIRX}},1'b1};
+//								AA_X <= LINE_VERTA.X;
+//								AA_Y <= LINE_VERTA.Y;
+//								AA <= 1;
+//								CMD_ST <= CMDS_AA_DRAW;
+//							end
 							LINE_VERTA.Y <= LINE_VERTA.Y + {{10{LINE_DIRY}},1'b1};
 						end
+//						LINE_ACC <= NEW_LINE_ACC[10:0];
 					
-						{LINE_GHCOLOR.R,LINE_GHCOLOR_FR} <= {LINE_GHCOLOR.R,LINE_GHCOLOR_FR} + (LINE_GHCOLOR_DR^{16{LINE_GHCOLOR_DIRR}}) + LINE_GHCOLOR_DIRR;
-						{LINE_GHCOLOR.G,LINE_GHCOLOR_FG} <= {LINE_GHCOLOR.G,LINE_GHCOLOR_FG} + (LINE_GHCOLOR_DG^{16{LINE_GHCOLOR_DIRG}}) + LINE_GHCOLOR_DIRG;
-						{LINE_GHCOLOR.B,LINE_GHCOLOR_FB} <= {LINE_GHCOLOR.B,LINE_GHCOLOR_FB} + (LINE_GHCOLOR_DB^{16{LINE_GHCOLOR_DIRB}}) + LINE_GHCOLOR_DIRB;
+						{LINE_GHCOLOR.R.INT,LINE_GHCOLOR.R.FRAC} <= {LINE_GHCOLOR.R.INT,LINE_GHCOLOR.R.FRAC} + ({LINE_GHCOLOR_STEP.R.INT,LINE_GHCOLOR_STEP.R.FRAC}^{16{DIR[0]^LINE_GHCOLOR_STEP.R.DIR}}) + (DIR[0]^LINE_GHCOLOR_STEP.R.DIR);
+						{LINE_GHCOLOR.G.INT,LINE_GHCOLOR.G.FRAC} <= {LINE_GHCOLOR.G.INT,LINE_GHCOLOR.G.FRAC} + ({LINE_GHCOLOR_STEP.G.INT,LINE_GHCOLOR_STEP.G.FRAC}^{16{DIR[0]^LINE_GHCOLOR_STEP.G.DIR}}) + (DIR[0]^LINE_GHCOLOR_STEP.G.DIR);
+						{LINE_GHCOLOR.B.INT,LINE_GHCOLOR.B.FRAC} <= {LINE_GHCOLOR.B.INT,LINE_GHCOLOR.B.FRAC} + ({LINE_GHCOLOR_STEP.B.INT,LINE_GHCOLOR_STEP.B.FRAC}^{16{DIR[0]^LINE_GHCOLOR_STEP.B.DIR}}) + (DIR[0]^LINE_GHCOLOR_STEP.B.DIR);
 					end
+					LINE_TEXT_ACC <= NEW_LINE_TEXT_ACC[10:0];
 
 					if ((LINE_VERTA.X == LINE_VERTB.X && !LINE_S && LINE_DRAW_STEP) || (LINE_VERTA.Y == LINE_VERTB.Y && LINE_S && LINE_DRAW_STEP) || 
 					    (CMD.CMDCTRL.COMM <= 4'h3 && !CMD.CMDPMOD.ECD && PAT.EC && EC_FIND && TEXT_READ_STEP)) begin
-						SPR_READ <= DIR[0];
-						CMD_ST <= DIR[0] ? CMDS_LINE_END : CMDS_LINE_NEXT;
+						CMD_ST <= LINE_CLIP ? CMDS_LINE_END : CMDS_LINE_NEXT;
 					end
 				end
 				
@@ -1245,11 +1317,11 @@ module VDP1 (
 				CMDS_LINE_END: if (!DRAW_WAIT && (SPR_DATA_READY || CMD.CMDCTRL.COMM >= 4'h4)) begin
 					DRAW_ENABLE <= AA;
 					AA <= 0;
-					SPR_READ <= 0;
 					CMD_ST <= CMDS_LINE_NEXT;
 				end
 				
 				CMDS_LINE_NEXT: begin
+					SPR_READ <= 0;
 					TEXT_X <= '0;
 					if (TEXTY_READ_STEP) begin
 						TEXT_Y <= TEXT_Y + 8'd1;
@@ -1262,19 +1334,19 @@ module VDP1 (
 							LEFT_VERT.Y <= LEFT_VERT.Y + {{11{COL_DIRY}},1'b1};
 							RIGHT_VERT.Y <= RIGHT_VERT.Y + {{11{COL_DIRY}},1'b1};
 							
-							{LEFT_GHCOLOR.R,LEFT_GHCOLOR_FR} <= {LEFT_GHCOLOR.R,LEFT_GHCOLOR_FR} + (LEFT_GHCOLOR_DR^{16{LEFT_GHCOLOR_DIRR}}) + LEFT_GHCOLOR_DIRR;
-							{LEFT_GHCOLOR.G,LEFT_GHCOLOR_FG} <= {LEFT_GHCOLOR.G,LEFT_GHCOLOR_FG} + (LEFT_GHCOLOR_DG^{16{LEFT_GHCOLOR_DIRG}}) + LEFT_GHCOLOR_DIRG;
-							{LEFT_GHCOLOR.B,LEFT_GHCOLOR_FB} <= {LEFT_GHCOLOR.B,LEFT_GHCOLOR_FB} + (LEFT_GHCOLOR_DB^{16{LEFT_GHCOLOR_DIRB}}) + LEFT_GHCOLOR_DIRB;
-							{RIGHT_GHCOLOR.R,RIGHT_GHCOLOR_FR} <= {RIGHT_GHCOLOR.R,RIGHT_GHCOLOR_FR} + (RIGHT_GHCOLOR_DR^{16{RIGHT_GHCOLOR_DIRR}}) + RIGHT_GHCOLOR_DIRR;
-							{RIGHT_GHCOLOR.G,RIGHT_GHCOLOR_FG} <= {RIGHT_GHCOLOR.G,RIGHT_GHCOLOR_FG} + (RIGHT_GHCOLOR_DG^{16{RIGHT_GHCOLOR_DIRG}}) + RIGHT_GHCOLOR_DIRG;
-							{RIGHT_GHCOLOR.B,RIGHT_GHCOLOR_FB} <= {RIGHT_GHCOLOR.B,RIGHT_GHCOLOR_FB} + (RIGHT_GHCOLOR_DB^{16{RIGHT_GHCOLOR_DIRB}}) + RIGHT_GHCOLOR_DIRB;
+							{LEFT_GHCOLOR.R.INT, LEFT_GHCOLOR.R.FRAC } <= {LEFT_GHCOLOR.R.INT, LEFT_GHCOLOR.R.FRAC } + ({LEFT_GHCOLOR_STEP.R.INT, LEFT_GHCOLOR_STEP.R.FRAC }^{16{LEFT_GHCOLOR_STEP.R.DIR }}) + LEFT_GHCOLOR_STEP.R.DIR;
+							{LEFT_GHCOLOR.G.INT, LEFT_GHCOLOR.G.FRAC } <= {LEFT_GHCOLOR.G.INT, LEFT_GHCOLOR.G.FRAC } + ({LEFT_GHCOLOR_STEP.G.INT, LEFT_GHCOLOR_STEP.G.FRAC }^{16{LEFT_GHCOLOR_STEP.G.DIR }}) + LEFT_GHCOLOR_STEP.G.DIR;
+							{LEFT_GHCOLOR.B.INT, LEFT_GHCOLOR.B.FRAC } <= {LEFT_GHCOLOR.B.INT, LEFT_GHCOLOR.B.FRAC } + ({LEFT_GHCOLOR_STEP.B.INT, LEFT_GHCOLOR_STEP.B.FRAC }^{16{LEFT_GHCOLOR_STEP.B.DIR }}) + LEFT_GHCOLOR_STEP.B.DIR;
+							{RIGHT_GHCOLOR.R.INT,RIGHT_GHCOLOR.R.FRAC} <= {RIGHT_GHCOLOR.R.INT,RIGHT_GHCOLOR.R.FRAC} + ({RIGHT_GHCOLOR_STEP.R.INT,RIGHT_GHCOLOR_STEP.R.FRAC}^{16{RIGHT_GHCOLOR_STEP.R.DIR}}) + RIGHT_GHCOLOR_STEP.R.DIR;
+							{RIGHT_GHCOLOR.G.INT,RIGHT_GHCOLOR.G.FRAC} <= {RIGHT_GHCOLOR.G.INT,RIGHT_GHCOLOR.G.FRAC} + ({RIGHT_GHCOLOR_STEP.G.INT,RIGHT_GHCOLOR_STEP.G.FRAC}^{16{RIGHT_GHCOLOR_STEP.G.DIR}}) + RIGHT_GHCOLOR_STEP.G.DIR;
+							{RIGHT_GHCOLOR.B.INT,RIGHT_GHCOLOR.B.FRAC} <= {RIGHT_GHCOLOR.B.INT,RIGHT_GHCOLOR.B.FRAC} + ({RIGHT_GHCOLOR_STEP.B.INT,RIGHT_GHCOLOR_STEP.B.FRAC}^{16{RIGHT_GHCOLOR_STEP.B.DIR}}) + RIGHT_GHCOLOR_STEP.B.DIR;
 							
 							CMD_ST <= CMD.CMDCTRL.COMM == 4'h0 ? CMDS_NSPR_CALCX : CMDS_SSPR_CALCX;
 							if (LEFT_VERT.Y == BOTTOM_VERT.Y) begin
 								CMD_ST <= CMDS_END;
 							end
 						end
-						COL_D <= NEXT_COL_D;
+						COL_TEXT_ACC <= NEW_COL_TEXT_ACC[10:0];
 					end else if (CMD.CMDCTRL.COMM == 4'h2 || CMD.CMDCTRL.COMM == 4'h3 || CMD.CMDCTRL.COMM == 4'h4) begin 
 						CMD_ST <= CMDS_LINE_NEXT;
 						if (COL_DRAW_STEP) begin
@@ -1397,34 +1469,34 @@ module VDP1 (
 							end
 							endcase
 							
-							{LEFT_GHCOLOR.R,LEFT_GHCOLOR_FR} <= {LEFT_GHCOLOR.R,LEFT_GHCOLOR_FR} + (LEFT_GHCOLOR_DR^{16{LEFT_GHCOLOR_DIRR}}) + LEFT_GHCOLOR_DIRR;
-							{LEFT_GHCOLOR.G,LEFT_GHCOLOR_FG} <= {LEFT_GHCOLOR.G,LEFT_GHCOLOR_FG} + (LEFT_GHCOLOR_DG^{16{LEFT_GHCOLOR_DIRG}}) + LEFT_GHCOLOR_DIRG;
-							{LEFT_GHCOLOR.B,LEFT_GHCOLOR_FB} <= {LEFT_GHCOLOR.B,LEFT_GHCOLOR_FB} + (LEFT_GHCOLOR_DB^{16{LEFT_GHCOLOR_DIRB}}) + LEFT_GHCOLOR_DIRB;
-							{RIGHT_GHCOLOR.R,RIGHT_GHCOLOR_FR} <= {RIGHT_GHCOLOR.R,RIGHT_GHCOLOR_FR} + (RIGHT_GHCOLOR_DR^{16{RIGHT_GHCOLOR_DIRR}}) + RIGHT_GHCOLOR_DIRR;
-							{RIGHT_GHCOLOR.G,RIGHT_GHCOLOR_FG} <= {RIGHT_GHCOLOR.G,RIGHT_GHCOLOR_FG} + (RIGHT_GHCOLOR_DG^{16{RIGHT_GHCOLOR_DIRG}}) + RIGHT_GHCOLOR_DIRG;
-							{RIGHT_GHCOLOR.B,RIGHT_GHCOLOR_FB} <= {RIGHT_GHCOLOR.B,RIGHT_GHCOLOR_FB} + (RIGHT_GHCOLOR_DB^{16{RIGHT_GHCOLOR_DIRB}}) + RIGHT_GHCOLOR_DIRB;
+							{LEFT_GHCOLOR.R.INT, LEFT_GHCOLOR.R.FRAC } <= {LEFT_GHCOLOR.R.INT, LEFT_GHCOLOR.R.FRAC } + ({LEFT_GHCOLOR_STEP.R.INT, LEFT_GHCOLOR_STEP.R.FRAC }^{16{LEFT_GHCOLOR_STEP.R.DIR }}) + LEFT_GHCOLOR_STEP.R.DIR;
+							{LEFT_GHCOLOR.G.INT, LEFT_GHCOLOR.G.FRAC } <= {LEFT_GHCOLOR.G.INT, LEFT_GHCOLOR.G.FRAC } + ({LEFT_GHCOLOR_STEP.G.INT, LEFT_GHCOLOR_STEP.G.FRAC }^{16{LEFT_GHCOLOR_STEP.G.DIR }}) + LEFT_GHCOLOR_STEP.G.DIR;
+							{LEFT_GHCOLOR.B.INT, LEFT_GHCOLOR.B.FRAC } <= {LEFT_GHCOLOR.B.INT, LEFT_GHCOLOR.B.FRAC } + ({LEFT_GHCOLOR_STEP.B.INT, LEFT_GHCOLOR_STEP.B.FRAC }^{16{LEFT_GHCOLOR_STEP.B.DIR }}) + LEFT_GHCOLOR_STEP.B.DIR;
+							{RIGHT_GHCOLOR.R.INT,RIGHT_GHCOLOR.R.FRAC} <= {RIGHT_GHCOLOR.R.INT,RIGHT_GHCOLOR.R.FRAC} + ({RIGHT_GHCOLOR_STEP.R.INT,RIGHT_GHCOLOR_STEP.R.FRAC}^{16{RIGHT_GHCOLOR_STEP.R.DIR}}) + RIGHT_GHCOLOR_STEP.R.DIR;
+							{RIGHT_GHCOLOR.G.INT,RIGHT_GHCOLOR.G.FRAC} <= {RIGHT_GHCOLOR.G.INT,RIGHT_GHCOLOR.G.FRAC} + ({RIGHT_GHCOLOR_STEP.G.INT,RIGHT_GHCOLOR_STEP.G.FRAC}^{16{RIGHT_GHCOLOR_STEP.G.DIR}}) + RIGHT_GHCOLOR_STEP.G.DIR;
+							{RIGHT_GHCOLOR.B.INT,RIGHT_GHCOLOR.B.FRAC} <= {RIGHT_GHCOLOR.B.INT,RIGHT_GHCOLOR.B.FRAC} + ({RIGHT_GHCOLOR_STEP.B.INT,RIGHT_GHCOLOR_STEP.B.FRAC}^{16{RIGHT_GHCOLOR_STEP.B.DIR}}) + RIGHT_GHCOLOR_STEP.B.DIR;
 						end
-						COL_D <= NEXT_COL_D;
+						COL_TEXT_ACC <= NEW_COL_TEXT_ACC[10:0];
 					end else if (CMD.CMDCTRL.COMM == 4'h5 || CMD.CMDCTRL.COMM == 4'h7) begin
 						CMD_ST <= CMDS_LINE_CALC;
 						case (POLY_S)
 							2'd0: begin
 								LEFT_VERT <= {CMD.CMDXB[11:0],CMD.CMDYB[11:0]};
 								RIGHT_VERT <= {CMD.CMDXC[11:0],CMD.CMDYC[11:0]};
-								LEFT_GHCOLOR <= GHCOLOR_B;
-								RIGHT_GHCOLOR <= GHCOLOR_C;
+								LEFT_GHCOLOR <= RGBItoF(GHCOLOR_B);
+								RIGHT_GHCOLOR <= RGBItoF(GHCOLOR_C);
 							end
 							2'd1: begin
 								LEFT_VERT <= {CMD.CMDXC[11:0],CMD.CMDYC[11:0]};
 								RIGHT_VERT <= {CMD.CMDXD[11:0],CMD.CMDYD[11:0]};
-								LEFT_GHCOLOR <= GHCOLOR_C;
-								RIGHT_GHCOLOR <= GHCOLOR_D;
+								LEFT_GHCOLOR <= RGBItoF(GHCOLOR_C);
+								RIGHT_GHCOLOR <= RGBItoF(GHCOLOR_D);
 							end
 							2'd2: begin
 								LEFT_VERT <= {CMD.CMDXD[11:0],CMD.CMDYD[11:0]};
 								RIGHT_VERT <= {CMD.CMDXA[11:0],CMD.CMDYA[11:0]};
-								LEFT_GHCOLOR <= GHCOLOR_D;
-								RIGHT_GHCOLOR <= GHCOLOR_A;
+								LEFT_GHCOLOR <= RGBItoF(GHCOLOR_D);
+								RIGHT_GHCOLOR <= RGBItoF(GHCOLOR_A);
 							end
 						endcase
 						POLY_S <= POLY_S + 2'd01;
@@ -1519,7 +1591,7 @@ module VDP1 (
 								DRAW_Y <= LOC_COORD.Y + LINE_VERTA.Y;
 							end
 							DRAW_PAT <= PAT;
-							DRAW_GHCOLOR <= LINE_GHCOLOR;
+							DRAW_GHCOLOR <= RGBFtoI(LINE_GHCOLOR);
 							
 							if (LINE_DRAW_STEP) begin
 								if (CMD.CMDPMOD.CCB[0] || CMD.CMDPMOD.MON) begin
@@ -1643,12 +1715,14 @@ module VDP1 (
 	always @(posedge CLK or negedge RST_N) begin
 		bit          HTIM_N_OLD;
 		bit          VTIM_N_OLD;
+		bit  [ 8: 0] HTIM_PIPE;
 		bit  [ 2: 0] RP_POS;
 		bit          RP_FIRST;
 		
 		if (!RST_N) begin
 			OUT_X <= '0;
 			OUT_Y <= '0;
+			OUT_EN <= 0;
 		end
 		else begin
 			HTIM_N_OLD <= HTIM_N;
@@ -1696,10 +1770,13 @@ module VDP1 (
 				endcase
 			end
 			
-			if (!HTIM_N) begin
-				RDX <= '0;
-				RDY <= '0;
-			end else if (DCE_F) begin
+			if (DCE_R) begin
+				if (HTIM_PIPE[8:7] == 2'b01) begin
+					RDX <= '0;
+					RDY <= '0;
+				end
+			end
+			if (DCE_F) begin
 				RDX <= $signed(RDX) + $signed(ScrnIncToRC(RP_DX));
 				RDY <= $signed(RDY) + $signed(ScrnIncToRC(RP_DY));
 			end
@@ -1708,13 +1785,17 @@ module VDP1 (
 				OUT_RY <= $signed(RYst) + $signed(RDY);
 			end
 			
-			if (!HTIM_N) begin
-				OUT_X <= '0;
-			end else if (DCE_R) begin
-				if (OUT_X < 9'd352) OUT_X <= OUT_X + 9'd1;
+			if (DCE_R) begin
+				HTIM_PIPE <= {HTIM_PIPE[7:0],HTIM_N};
+				
+				if (HTIM_PIPE[8:7] == 2'b01) OUT_X <= '0;
+				else if (OUT_X < 9'd352) OUT_X <= OUT_X + 9'd1;
+				
+				if (HTIM_PIPE[8:7] == 2'b01 && VTIM_N) OUT_EN <= 1;
+				else if (OUT_X == 9'd351) OUT_EN <= 0;
 			end
 			
-			if (HTIM_N && !HTIM_N_OLD && VTIM_N) begin
+			if (HTIM_PIPE[8:7] == 2'b01 && VTIM_N && DCE_R) begin
 				OUT_Y <= OUT_Y + 9'd1;
 			end
 			if (HTIM_N && !HTIM_N_OLD && !VTIM_N) begin
@@ -1755,11 +1836,13 @@ module VDP1 (
 	always @(posedge CLK) begin
 		if      (DCE_R) DCLK <= 1;
 		else if (DCE_F) DCLK <= 0;
+		
+		VOUTO <= TVMR.TVM[1:0] == 2'b01 ? (DCLK ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
+	            TVMR.TVM[1:0] == 2'b10 ? (OUT_RX.INT[10:9] || OUT_RY.INT[10:8] ? 16'h0000 : FB_DISP_Q) :
+				   TVMR.TVM[1:0] == 2'b11 ? (OUT_RX.INT[10:9] || OUT_RY.INT[10:9] ? 16'h0000 : !OUT_X[0] ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
+					FB_DISP_Q;
 	end
-	assign VOUTO = TVMR.TVM[1:0] == 2'b01 ? (DCLK ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
-	               TVMR.TVM[1:0] == 2'b10 ? (OUT_RX.INT[10:9] || OUT_RY.INT[10:8] ? 16'h0000 : FB_DISP_Q) :
-						TVMR.TVM[1:0] == 2'b11 ? (OUT_RX.INT[10:9] || OUT_RY.INT[10:9] ? 16'h0000 : !OUT_X[0] ? {8'h00,FB_DISP_Q[15:8]} : {8'h00,FB_DISP_Q[7:0]}) :
-					   FB_DISP_Q;
+
 	
 	//VRAM
 	typedef enum bit [3:0] {
@@ -1807,7 +1890,7 @@ module VDP1 (
 	VDP1_PAT_FIFO PAT_FIFO(CLK, PAT_FIFO_RST, VRAM_Q, PAT_FIFO_WRREQ, PAT_FIFO_RDREQ, PAT_FIFO_Q, PAT_FIFO_EMPTY, PAT_FIFO_FULL);
 	
 	assign SPR_DATA = PAT_FIFO_Q;
-	assign SPR_DATA_READY = !PAT_FIFO_EMPTY || PAT_WORD_CNT == TEXT_SX;
+	assign SPR_DATA_READY = !PAT_FIFO_EMPTY || PAT_WORD_CNT == TEXT_WX;
 	
 	bit  [15: 0] MEM_DO;
 	bit  [ 8: 0] PAT_WORD_CNT;
@@ -1966,8 +2049,8 @@ module VDP1 (
 						VRAM_WE <= '0;
 						VRAM_RD <= 1;
 						VRAM_ST <= VS_CMD_READ;
-					end else if (SPR_READ && !PAT_FIFO_FULL && PAT_WORD_CNT < TEXT_SX && !FRAME_START && !BURST) begin
-						VRAM_A <= !TEXT_DIRX ? SPR_ADDR + PAT_WORD_CNT : SPR_ADDR + (TEXT_SX - PAT_WORD_CNT - 9'd1);
+					end else if (SPR_READ && !PAT_FIFO_FULL && PAT_WORD_CNT < TEXT_WX && !FRAME_START && !BURST) begin
+						VRAM_A <= !TEXT_DIRX ? SPR_ADDR + PAT_WORD_CNT : SPR_ADDR + (TEXT_WX - PAT_WORD_CNT - 9'd1);
 						VRAM_WE <= '0;
 						VRAM_RD <= 1;
 						VRAM_ST <= VS_PAT_READ;
@@ -2456,14 +2539,14 @@ module VDP1_DIV (
 	remain);
 
 	input	[10:0]  denom;
-	input	[15:0]  numer;
-	output	[15:0]  quotient;
+	input	[21:0]  numer;
+	output	[21:0]  quotient;
 	output	[10:0]  remain;
 
-	wire [15:0] sub_wire0;
+	wire [21:0] sub_wire0;
 	wire [10:0] sub_wire1;
-	wire [15:0] quotient = sub_wire0[15:0];
-	wire [10:0] remain = sub_wire1[10:0];
+	wire [21:0] quotient = sub_wire0;
+	wire [10:0] remain = sub_wire1;
 
 	lpm_divide	LPM_DIVIDE_component (
 				.denom (denom),
@@ -2479,6 +2562,7 @@ module VDP1_DIV (
 		LPM_DIVIDE_component.lpm_nrepresentation = "UNSIGNED",
 		LPM_DIVIDE_component.lpm_type = "LPM_DIVIDE",
 		LPM_DIVIDE_component.lpm_widthd = 11,
-		LPM_DIVIDE_component.lpm_widthn = 16;
+		LPM_DIVIDE_component.lpm_widthn = 22;
 
 endmodule
+
