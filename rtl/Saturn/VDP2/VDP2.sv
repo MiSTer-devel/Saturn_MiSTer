@@ -350,7 +350,7 @@ module VDP2 (
 	assign HINT_N = ~HINT;
 	
 	wire [8:0] HTIM_START = !HRES[0] ? 9'h18B : 9'h1A8;
-	wire [8:0] HTIM_END = !HRES[0] ? 9'h001 : 9'h001;
+	wire [8:0] HTIM_END = !HRES[0] ? 9'h1A3 : 9'h1BF;
 	bit VTIM;
 	bit HTIM;
 	always @(posedge CLK or negedge RST_N) begin
@@ -1909,8 +1909,8 @@ module VDP2 (
 	assign RxKA[1] = $signed(KAy[1]) + $signed(KAx[1]);
 				
 	//Rotattion parameter window
-	wire RPW0_HIT = W0_HIT_PIPE[3*2];
-	wire RPW1_HIT = W1_HIT_PIPE[3*2];
+	wire RPW0_HIT = W0_HIT_PIPE[3*2+1];
+	wire RPW1_HIT = W1_HIT_PIPE[3*2+1];
 	wire RPW_EN = WinTest(RPW0_HIT ^ REGS.WCTLD.RPW0A, RPW1_HIT ^ REGS.WCTLD.RPW1A, 0, REGS.WCTLD.RPW0E, REGS.WCTLD.RPW1E, 0, REGS.WCTLD.RPLOG);
 	
 	//Rotattion parameter select
@@ -3138,7 +3138,7 @@ module VDP2 (
 			if (DOT_CE_R) begin
 				HBLANK2 <= HBLANK;
 			end
-			if ((HBLANK && DOT_CE_R) || (HBLANK2 && DOT_CE_F)) begin
+			if (HBLANK2 && DOT_CE_F) begin
 				CFST <= DC_NULL;
 				CSEC <= DC_NULL;
 				CTHD <= DC_NULL;
@@ -3180,7 +3180,7 @@ module VDP2 (
 			
 			if (!DISP) begin
 				DCOL <= REGS.TVMD.BDCLMD ? BACK_DC : DC_NULL;
-			end else if ((HBLANK2 && DOT_CE_R) || (HBLANK3 && DOT_CE_F)) begin
+			end else if (HBLANK3 && DOT_CE_F) begin
 				DCOL <= DC_NULL;
 			end
 		end
