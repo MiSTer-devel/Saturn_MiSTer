@@ -72,6 +72,7 @@ module SMPC (
 		CS_WAIT, 
 		CS_COMMAND,
 		CS_RESET, 
+		CS_RESET_WAIT,
 		CS_EXEC,
 		CS_INTBACK_PERI,
 		CS_INTBACK_BREAK, 
@@ -208,6 +209,7 @@ module SMPC (
 		bit         RW_N_OLD;
 		bit         CS_N_OLD;
 		bit         IRQV_N_OLD;
+		bit [ 1: 0] FRAME_CNT;
 		bit [15: 0] WAIT_CNT;
 		bit [15: 0] INTBACK_WAIT_CNT;
 		bit         SRES_EXEC;
@@ -519,11 +521,18 @@ module SMPC (
 							
 							default: ;
 						endcase
-						
+						COMM_ST <= CS_RESET_WAIT;
+					end
+					
+					CS_RESET_WAIT: begin
 						if (!IRQV_N && IRQV_N_OLD) begin
-							WAIT_CNT <= 16'd4000;
-							NEXT_COMM_ST <= CS_EXEC;
-							COMM_ST <= CS_WAIT;
+							FRAME_CNT <= FRAME_CNT + 2'd1;
+							if (FRAME_CNT == 2'd2) begin
+								FRAME_CNT <= '0;
+								WAIT_CNT <= 16'd4000;
+								NEXT_COMM_ST <= CS_EXEC;
+								COMM_ST <= CS_WAIT;
+							end
 						end
 					end
 					
@@ -921,7 +930,7 @@ module SMPC (
 					PS_MOUSE_5: begin
 						OREG_DATA <= 8'hE3;
 						OREG_WRITE <= 1;
-						PORT_DATA_CNT <= 3'd3 - 1;
+						PORT_DATA_CNT <= 3'd3 - 3'd1;
 						PORT_ST <= PS_MOUSE_6;
 					end
 					
