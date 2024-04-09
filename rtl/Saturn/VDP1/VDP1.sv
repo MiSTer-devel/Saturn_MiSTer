@@ -1924,12 +1924,12 @@ module VDP1 (
 	always @(posedge CLK or negedge RST_N) begin
 //		bit         VRAM_PAGE_BREAK;
 		bit [18: 1] CPU_RA;
-		bit [18: 1] CPU_WA;
-		bit [15: 0] CPU_D;
-		bit [ 1: 0] CPU_WE;
-		bit [18: 1] SAVE_WA;
-		bit [15: 0] SAVE_D;
-		bit [ 1: 0] SAVE_WE;
+		bit [18: 1] CPU_WA,CPU_FB_WA;
+		bit [15: 0] CPU_D,CPU_FB_D;
+		bit [ 1: 0] CPU_WE,CPU_FB_WE;
+		bit [18: 1] SAVE_WA,SAVE_FB_WA;
+		bit [15: 0] SAVE_D,SAVE_FB_D;
+		bit [ 1: 0] SAVE_WE,SAVE_FB_WE;
 		bit         CMD_READ_PEND;
 		bit         CLT_READ_PEND;
 		bit         GRD_READ_PEND;
@@ -2024,22 +2024,22 @@ module VDP1 (
 			
 			if (CPU_FB_REQ && !WE_N && !DTEN_N) begin
 				if (CPU_FB_REQ && !CPU_FB_WPEND) begin
-					CPU_WA <= A[18:1];
-					CPU_D <= DI;
-					CPU_WE <= ~{2{WE_N}} & ~DQM;
+					CPU_FB_WA <= A[18:1];
+					CPU_FB_D <= DI;
+					CPU_FB_WE <= ~{2{WE_N}} & ~DQM;
 					CPU_FB_WPEND <= 1;
 				end else begin
-					SAVE_WA <= A[18:1];
-					SAVE_D <= DI;
-					SAVE_WE <= ~{2{WE_N}} & ~DQM;
+					SAVE_FB_WA <= A[18:1];
+					SAVE_FB_D <= DI;
+					SAVE_FB_WE <= ~{2{WE_N}} & ~DQM;
 					CPU_FB_WRDY <= 0;
 				end
 				A <= A + 20'd1;
 			end
 			if (!CPU_FB_WRDY && !CPU_FB_WPEND) begin
-				CPU_WA <= SAVE_WA;
-				CPU_D <= SAVE_D;
-				CPU_WE <= SAVE_WE;
+				CPU_FB_WA <= SAVE_FB_WA;
+				CPU_FB_D <= SAVE_FB_D;
+				CPU_FB_WE <= SAVE_FB_WE;
 				CPU_FB_WPEND <= 1;
 				CPU_FB_WRDY <= 1;
 			end
@@ -2182,9 +2182,9 @@ module VDP1 (
 				FS_IDLE: begin
 					if (CPU_FB_WPEND && !FB_WE) begin
 						if (FB_RDY) begin
-							FB_A <= CPU_WA[17:1];
-							FB_D <= CPU_D;
-							FB_WE <= CPU_WE;
+							FB_A <= CPU_FB_WA[17:1];
+							FB_D <= CPU_FB_D;
+							FB_WE <= CPU_FB_WE;
 							CPU_FB_WPEND <= 0;
 							FB_ST <= FS_CPU_WRITE;
 						end
