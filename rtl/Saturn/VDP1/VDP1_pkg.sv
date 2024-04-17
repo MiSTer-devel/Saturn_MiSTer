@@ -236,6 +236,31 @@ package VDP1_PKG;
 		return ADDR;
 	endfunction
 	
+	function bit [15:0] GetSprData(input bit [15:0] DATA, input bit [2:0] CM, input bit [1:0] OFFSX);
+		bit [15:0] D;
+		
+		case (CM)
+			3'b000,
+			3'b001:
+				case (OFFSX)
+					2'b00: D = {12'h000,DATA[15:12]};
+					2'b01: D = {12'h000,DATA[11: 8]};
+					2'b10: D = {12'h000,DATA[ 7: 4]};
+					2'b11: D = {12'h000,DATA[ 3: 0]};
+				endcase
+			3'b010,
+			3'b011,
+			3'b100:
+				case (OFFSX[0])
+					1'b0: D = {8'h00,DATA[15: 8]};
+					1'b1: D = {8'h00,DATA[ 7: 0]};
+				endcase
+			default: D = DATA;
+		endcase
+
+		return D;
+	endfunction
+	
 	typedef struct packed
 	{
 		bit [15: 0] C;
@@ -244,27 +269,17 @@ package VDP1_PKG;
 	} Pattern_t;
 	parameter Pattern_t PATTERN_NULL = {16'h0000,1'b0,1'b0};
 	
-	function Pattern_t GetPattern(input bit [15:0] DATA, input bit [2:0] CM, input bit [1:0] OFFSX);
+	function Pattern_t GetPattern(input bit [15:0] DATA, input bit [2:0] CM);
 		bit [15:0] C;
 		bit        TP;
 		bit        EC;
 		
 		case (CM)
 			3'b000,
-			3'b001:
-				case (OFFSX)
-					2'b00: begin C = {12'h000,DATA[15:12]}; TP = ~|DATA[15:12]; EC = &DATA[15:12]; end
-					2'b01: begin C = {12'h000,DATA[11: 8]}; TP = ~|DATA[11: 8]; EC = &DATA[11: 8]; end
-					2'b10: begin C = {12'h000,DATA[ 7: 4]}; TP = ~|DATA[ 7: 4]; EC = &DATA[ 7: 4]; end
-					2'b11: begin C = {12'h000,DATA[ 3: 0]}; TP = ~|DATA[ 3: 0]; EC = &DATA[ 3: 0]; end
-				endcase
+			3'b001: begin C = {12'h000,DATA[3:0]}; TP = ~|DATA[3:0]; EC = &DATA[3:0]; end
 			3'b010,
 			3'b011,
-			3'b100:
-				case (OFFSX[1])
-					1'b0: begin C = {8'h00,DATA[15: 8]}; TP = ~|DATA[15: 8]; EC = &DATA[15: 8]; end
-					1'b1: begin C = {8'h00,DATA[ 7: 0]}; TP = ~|DATA[ 7: 0]; EC = &DATA[ 7: 0]; end
-				endcase
+			3'b100: begin C = {8'h00,DATA[7:0]}; TP = ~|DATA[7:0]; EC = &DATA[7:0]; end
 			default: begin C = DATA; TP = ~DATA[15]; EC = (DATA == 16'h7FFF); end
 		endcase
 
