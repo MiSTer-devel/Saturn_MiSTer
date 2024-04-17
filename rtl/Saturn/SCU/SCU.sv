@@ -125,13 +125,13 @@ module SCU (
 	wire        ABUS_SEL = (~CCS1_N | (CA[24:20] <  5'h1A                      & ~CCS2_N));				//02000000-059FFFFF
 	wire        BBUS_SEL = (          (CA[24:20] >= 5'h1A & CA[24:16] < 9'h1FE & ~CCS2_N));				//05A00000-05FDFFFF
 	wire        ABBUS_SEL = (ABUS_SEL | BBUS_SEL) & (~CRD_N | ~&CDQM_N);
-	bit  [24:0] CPU_CACHE_CA[2] = '{2{'1}};
-	bit  [31:0] CPU_CACHE_CDI[2] = '{2{'1}};
-	bit  [ 3:0] CPU_CACHE_CDQMN[2] = '{2{'1}};
-	bit         CPU_CACHE_CRDN[2] = '{2{1}};
-	bit         CPU_CACHE_CCS1N[2] = '{2{1}};
-	bit         CPU_CACHE_CCS2N[2] = '{2{1}};
-	bit         CPU_CACHE_FILL[2] = '{2{0}};
+	bit  [24:0] CPU_CACHE_CA = '1;
+	bit  [31:0] CPU_CACHE_CDI = '1;
+	bit  [ 3:0] CPU_CACHE_CDQMN = '1;
+	bit         CPU_CACHE_CRDN = 1;
+	bit         CPU_CACHE_CCS1N = 1;
+	bit         CPU_CACHE_CCS2N = 1;
+	bit         CPU_CACHE_FILL = 0;
 	bit         CPU_CACHE_WPOS;
 	bit         CPU_CACHE_RPOS;
 	
@@ -439,13 +439,13 @@ module SCU (
 			
 			DSTA <= DSTA_INIT;
 			
-			CPU_CACHE_CA = '{2{'1}};
-			CPU_CACHE_CDI = '{2{'1}};
-			CPU_CACHE_CDQMN = '{2{'1}};
-			CPU_CACHE_CRDN = '{2{1}};
-			CPU_CACHE_CCS1N = '{2{1}};
-			CPU_CACHE_CCS2N = '{2{1}};
-			CPU_CACHE_FILL = '{2{0}};
+			CPU_CACHE_CA = '1;
+			CPU_CACHE_CDI = '1;
+			CPU_CACHE_CDQMN = '1;
+			CPU_CACHE_CRDN = 1;
+			CPU_CACHE_CCS1N = 1;
+			CPU_CACHE_CCS2N = 1;
+			CPU_CACHE_FILL = 0;
 			CPU_CACHE_WPOS <= 0;
 			CPU_CACHE_RPOS <= 0;
 			
@@ -541,15 +541,15 @@ module SCU (
 //			DMA_READ_DSP <= 0;
 //			DMA_WRITE_DSP <= 0;
 		end else begin
-			CA_INNER = CPU_CACHE_CA[CPU_CACHE_RPOS];
-			CDI_INNER = CPU_CACHE_CDI[CPU_CACHE_RPOS];
-			CDQMN_INNER = CPU_CACHE_CDQMN[CPU_CACHE_RPOS];
-			CRDN_INNER = CPU_CACHE_CRDN[CPU_CACHE_RPOS];
-			CCS1N_INNER = CPU_CACHE_CCS1N[CPU_CACHE_RPOS];
-			CCS2N_INNER = CPU_CACHE_CCS2N[CPU_CACHE_RPOS];
+			CA_INNER = CPU_CACHE_CA;
+			CDI_INNER = CPU_CACHE_CDI;
+			CDQMN_INNER = CPU_CACHE_CDQMN;
+			CRDN_INNER = CPU_CACHE_CRDN;
+			CCS1N_INNER = CPU_CACHE_CCS1N;
+			CCS2N_INNER = CPU_CACHE_CCS2N;
 			
-			ABUS_SEL_INNER = (~CCS1N_INNER | (CA_INNER[24:20] < 5'h19 & ~CCS2N_INNER)) & CPU_CACHE_FILL[CPU_CACHE_RPOS];				//02000000-058FFFFF
-			BBUS_SEL_INNER = CA_INNER[24:16] >= 9'h1A0 & CA_INNER[24:16] < 9'h1FE & ~CCS2N_INNER & CPU_CACHE_FILL[CPU_CACHE_RPOS];	//05A00000-05FDFFFF
+			ABUS_SEL_INNER = (~CCS1N_INNER | (CA_INNER[24:20] < 5'h19 & ~CCS2N_INNER)) & CPU_CACHE_FILL;				//02000000-058FFFFF
+			BBUS_SEL_INNER = CA_INNER[24:16] >= 9'h1A0 & CA_INNER[24:16] < 9'h1FE & ~CCS2N_INNER & CPU_CACHE_FILL;	//05A00000-05FDFFFF
 			
 			ABBUS_SEL_OLD <= ABBUS_SEL;
 			if (CE_F) begin
@@ -558,36 +558,33 @@ module SCU (
 				end
 			end
 			if (CE_R) begin
-				if (ABBUS_SEL && !CRD_WR_N && !CPU_CACHE_FILL[CPU_CACHE_WPOS] && CBUS_WAIT) begin
-					CPU_CACHE_CA[CPU_CACHE_WPOS] <= CA;
-					CPU_CACHE_CDI[CPU_CACHE_WPOS] <= CDI;
-					CPU_CACHE_CDQMN[CPU_CACHE_WPOS] <= CDQM_N;
-					CPU_CACHE_CRDN[CPU_CACHE_WPOS] <= CRD_N;
-					CPU_CACHE_CCS1N[CPU_CACHE_WPOS] <= CCS1_N;
-					CPU_CACHE_CCS2N[CPU_CACHE_WPOS] <= CCS2_N;
-					CPU_CACHE_FILL[CPU_CACHE_WPOS] <= 1;
-					CPU_CACHE_WPOS <= ~CPU_CACHE_WPOS;
+				if (ABBUS_SEL && !CRD_WR_N && !CPU_CACHE_FILL && CBUS_WAIT) begin
+					CPU_CACHE_CA <= CA;
+					CPU_CACHE_CDI <= CDI;
+					CPU_CACHE_CDQMN <= CDQM_N;
+					CPU_CACHE_CRDN <= CRD_N;
+					CPU_CACHE_CCS1N <= CCS1_N;
+					CPU_CACHE_CCS2N <= CCS2_N;
+					CPU_CACHE_FILL <= 1;
 					CBUS_WAIT <= 0;
-				end else if (ABBUS_SEL && CRD_WR_N && !CPU_CACHE_FILL[0] && !CPU_CACHE_FILL[1] && CBUS_WAIT) begin
-					CPU_CACHE_CA[CPU_CACHE_WPOS] <= CA;
-					CPU_CACHE_CDI[CPU_CACHE_WPOS] <= CDI;
-					CPU_CACHE_CDQMN[CPU_CACHE_WPOS] <= CDQM_N;
-					CPU_CACHE_CRDN[CPU_CACHE_WPOS] <= CRD_N;
-					CPU_CACHE_CCS1N[CPU_CACHE_WPOS] <= CCS1_N;
-					CPU_CACHE_CCS2N[CPU_CACHE_WPOS] <= CCS2_N;
-					CPU_CACHE_FILL[CPU_CACHE_WPOS] <= 1;
-					CPU_CACHE_WPOS <= ~CPU_CACHE_WPOS;
+				end else if (ABBUS_SEL && CRD_WR_N && !CPU_CACHE_FILL && CBUS_WAIT) begin
+					CPU_CACHE_CA <= CA;
+					CPU_CACHE_CDI <= CDI;
+					CPU_CACHE_CDQMN <= CDQM_N;
+					CPU_CACHE_CRDN <= CRD_N;
+					CPU_CACHE_CCS1N <= CCS1_N;
+					CPU_CACHE_CCS2N <= CCS2_N;
+					CPU_CACHE_FILL <= 1;
 				end 
-				if (CPU_CACHE_FILL[CPU_CACHE_RPOS] && !CPU_ABBUS_PEND && !CPU_ABUS_REQ && !CPU_ABUS_ACT && !CPU_BBUS_REQ && !CPU_BBUS_ACT) begin
+				if (CPU_CACHE_FILL && !CPU_ABBUS_PEND && !CPU_ABUS_REQ && !CPU_ABUS_ACT && !CPU_BBUS_REQ && !CPU_BBUS_ACT) begin
 					CPU_ABUS_REQ <= ABUS_SEL_INNER;
 					CPU_BBUS_REQ <= BBUS_SEL_INNER;
 					CPU_ABBUS_PEND <= 1;
 				end
 				
-				if (CPU_WAIT_CLR && CPU_CACHE_FILL[CPU_CACHE_RPOS]) begin
-					CPU_CACHE_FILL[CPU_CACHE_RPOS] <= 0;
-					CPU_CACHE_RPOS <= ~CPU_CACHE_RPOS;
-					if (!CPU_CACHE_CRDN[CPU_CACHE_RPOS]) CBUS_WAIT <= 0;
+				if (CPU_WAIT_CLR && CPU_CACHE_FILL) begin
+					CPU_CACHE_FILL <= 0;
+					if (!CPU_CACHE_CRDN) CBUS_WAIT <= 0;
 					CPU_ABBUS_PEND <= 0;
 					CPU_WAIT_CLR <= 0;
 				end
@@ -916,15 +913,17 @@ module SCU (
 				end
 				
 				BBUS_ADDR16_L: if (CE_R) begin
-					if (!CRDN_INNER) 
-						BDO <= {2'b10,2'b00,4'b0000,CA_INNER[8:2],BBUS_A1};
-					else if (!(&CDQMN_INNER[3:2])) 
-						BDO <= {2'b10,CDQMN_INNER[3:2],4'b0000,CA_INNER[8:1]};
-					else
-						BDO <= {2'b10,CDQMN_INNER[1:0],4'b0000,CA_INNER[8:1]};
-					BDTEN_N <= 1;
-					BADDT_N <= 1;
-					BBUS_ST <= BBUS_RD ? BBUS_READ16 : BBUS_WORD[1] ? BBUS_WRITE16_H : BBUS_WRITE16_L;
+					if (BBUS_RDY) begin
+						if (!CRDN_INNER) 
+							BDO <= {2'b10,2'b00,4'b0000,CA_INNER[8:2],BBUS_A1};
+						else if (!(&CDQMN_INNER[3:2])) 
+							BDO <= {2'b10,CDQMN_INNER[3:2],4'b0000,CA_INNER[8:1]};
+						else
+							BDO <= {2'b10,CDQMN_INNER[1:0],4'b0000,CA_INNER[8:1]};
+						BDTEN_N <= 1;
+						BADDT_N <= 1;
+						BBUS_ST <= BBUS_RD ? BBUS_READ16 : BBUS_WORD[1] ? BBUS_WRITE16_H : BBUS_WRITE16_L;
+					end
 				end
 				
 				BBUS_ADDR8_HH: if (CE_R) begin
@@ -960,10 +959,10 @@ module SCU (
 `ifdef DEBUG
 					DBG_BBUS_WAIT_CNT <= DBG_BBUS_WAIT_CNT + 1'd1;
 `endif
+					BADDT_N <= 0;
 					if (BBUS_RDY) begin
 						BDO <= CDI_INNER[31:16];
 						BDTEN_N <= 0;
-						BADDT_N <= 0;
 						BREQ_N <= 0;
 						BBUS_WORD[1] <= 0;
 						if (BBUS_WORD[0]) begin
@@ -980,10 +979,10 @@ module SCU (
 				end
 				
 				BBUS_WRITE16_L: if (CE_R) begin
+					BADDT_N <= 0;
 					if (BBUS_RDY) begin
 						BDO <= CDI_INNER[15:0];
 						BDTEN_N <= 0;
-						BADDT_N <= 0;
 						BREQ_N <= 0;
 						BBUS_WORD[0] <= 0;
 						CPU_BBUS_ACT <= 0;
@@ -1340,7 +1339,7 @@ module SCU (
 				end
 				
 				CBUS_READ_END: if (CE_R) begin
-					if (ECWAIT_N) begin
+					if ((DSTA.DACSA || DSTA.DACSB || DSTA.DACSD ) && ECWAIT_N) begin
 						CBUS_DMA_START <= 0;
 						CBUS_CS <= 0;
 						CBUS_ST <= CBUS_RELEASE;
