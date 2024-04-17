@@ -229,7 +229,7 @@ module VDP2 (
 	
 	wire LAST_DOT = (H_CNT == HRES_320 - 1 && !HRES[0]) || (H_CNT == HRES_352 - 1 && HRES[0]);
 //	wire PRELAST_DOT = (H_CNT == HRES_320 - 2 && !HRES[0]) || (H_CNT == HRES_352 - 2 && HRES[0]);
-//	wire [8:0] HBL_START = !HRES[0] ? HBL_START_320 : HBL_START_352;
+	wire [8:0] VBL_HPOS = !HRES[0] ? 9'h15B : 9'h177;
 	wire [8:0] HS_START = (!HRES[0] ? HS_START_320 : HS_START_352) - (!PAL ? 9'd0 : 9'd4);
 	wire [8:0] HS_END =  HS_START + 9'd32; 
 	wire [8:0] HBL_END = !HRES[0] ? HBL_END_320 - 9'd2 : HBL_END_352 - 9'd2;
@@ -292,9 +292,9 @@ module VDP2 (
 				end
 			end
 			
-			if (H_CNT == 9'h176 - 1 && V_CNT == VBL_START - 1) begin
+			if (H_CNT == VBL_HPOS - 1 && V_CNT == VBL_START - 1) begin
 				VBLANK <= 1;
-			end else if (H_CNT == 9'h180 && V_CNT == LAST_LINE) begin
+			end else if (H_CNT == VBL_HPOS - 1 && V_CNT == LAST_LINE) begin
 				VBLANK <= 0;
 			end
 			
