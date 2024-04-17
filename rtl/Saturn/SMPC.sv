@@ -84,13 +84,14 @@ module SMPC (
 	`define TH 6
 	`define TR 5
 	
-	typedef enum bit [4:0] {
+	typedef enum bit [5:0] {
 		PS_IDLE,
 		PS_START,
 		PS_ID1_0,PS_ID1_1,PS_ID1_2,PS_ID1_3,PS_ID1_4,
 		PS_TYPE_SEL, 
 		PS_DPAD_0,PS_DPAD_1,PS_DPAD_2,PS_DPAD_3,PS_DPAD_4,PS_DPAD_5,PS_DPAD_6,PS_DPAD_7,
 		PS_MOUSE_0,PS_MOUSE_1,PS_MOUSE_2,PS_MOUSE_3,PS_MOUSE_4,PS_MOUSE_5,PS_MOUSE_6,PS_MOUSE_7,PS_MOUSE_8,PS_MOUSE_9,PS_MOUSE_10,
+		PS_ID5_0,PS_ID5_1,PS_ID5_2,PS_ID5_3,PS_ID5_4,PS_ANALOG_5,PS_ANALOG_6,PS_ANALOG_7,PS_ANALOG_8,PS_ANALOG_9,PS_ANALOG_10,
 		PS_NEXT,
 		PS_END
 	} PortState_t;
@@ -837,6 +838,8 @@ module SMPC (
 //							PORT_ST <= PS_MD_0;
 						else if (MD_ID == 4'h3)
 							PORT_ST <= PS_MOUSE_0;
+						else if (MD_ID == 4'h5)
+							PORT_ST <= PS_ID5_0;
 						else if (MD_ID == 4'hF)
 							PORT_ST <= PS_NEXT;
 						else 
@@ -892,7 +895,7 @@ module SMPC (
 						PORT_ST <= PS_NEXT;
 					end
 					
-					//Mouse
+					//Mouse,Wheel(Arcade racer)
 					PS_MOUSE_0: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b00;
@@ -967,6 +970,87 @@ module SMPC (
 						OREG_WRITE <= 1;
 						PORT_DATA_CNT <= PORT_DATA_CNT - 3'd1; 
 						PORT_ST <= !PORT_DATA_CNT ? PS_NEXT : PS_MOUSE_6;
+					end
+					
+					//Analog joystick, 3D Pad
+					PS_ID5_0: begin
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b00;
+						PORT_DELAY <= 16'd60;
+						PORT_ST <= PS_ID5_1;
+					end
+					
+					PS_ID5_1: begin
+						if (!PDR_I[PORT_NUM][4]) begin
+							ID2[7:4] <= PDR_I[PORT_NUM][3:0];
+							PORT_ST <= PS_ID5_2;
+						end
+					end
+					
+					PS_ID5_2: begin
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b01;
+						PORT_DELAY <= 16'd60;
+						PORT_ST <= PS_ID5_3;
+					end
+					
+					PS_ID5_3: begin
+						if (PDR_I[PORT_NUM][4]) begin
+							ID2[3:0] <= PDR_I[PORT_NUM][3:0];
+							PORT_ST <= PS_ID5_4;
+						end
+					end
+					
+					PS_ID5_4: begin
+						if (ID2 == 8'h15 || ID2 == 8'h16) begin
+							OREG_DATA <= 8'hF1;
+							OREG_WRITE <= 1;
+							PORT_ST <= PS_ANALOG_5;
+						end else begin //TODO: keyboard,multitap
+							PORT_ST <= PS_NEXT;
+						end
+					end
+					
+					PS_ANALOG_5: begin
+						OREG_DATA <= ID2;
+						OREG_WRITE <= 1;
+						PORT_DATA_CNT <= ID2[3:0] - 3'd1;
+						PORT_ST <= PS_ANALOG_6;
+					end
+					
+					PS_ANALOG_6: begin
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b00;
+						PORT_DELAY <= 16'd60;
+						PORT_ST <= PS_ANALOG_7;
+					end
+					
+					PS_ANALOG_7: begin
+						if (!PDR_I[PORT_NUM][4]) begin
+							JOY_DATA[7:4] <= PDR_I[PORT_NUM][3:0];
+							PORT_ST <= PS_MOUSE_8;
+						end
+					end
+					
+					PS_MOUSE_8: begin
+						DDR[PORT_NUM][`THTR] <= 2'b11;
+						PDR_O[PORT_NUM][`THTR] <= 2'b01;
+						PORT_DELAY <= 16'd60;
+						PORT_ST <= PS_ANALOG_9;
+					end
+					
+					PS_ANALOG_9: begin
+						if (PDR_I[PORT_NUM][4]) begin
+							JOY_DATA[3:0] <= PDR_I[PORT_NUM][3:0];
+							PORT_ST <= PS_ANALOG_10;
+						end
+					end
+					
+					PS_ANALOG_10: begin
+						OREG_DATA <= JOY_DATA[7:0];
+						OREG_WRITE <= 1;
+						PORT_DATA_CNT <= PORT_DATA_CNT - 3'd1; 
+						PORT_ST <= !PORT_DATA_CNT ? PS_NEXT : PS_ANALOG_6;
 					end
 					
 					
