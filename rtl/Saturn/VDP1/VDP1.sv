@@ -1504,8 +1504,8 @@ module VDP1 (
 					NEXT_ADDR = CMD_ADDR + 18'h10;
 					case (CMD.CMDCTRL.JP[1:0])
 						2'b00: begin CMD_ADDR <= NEXT_ADDR; end
-						2'b01: begin CMD_ADDR <= {CMD.CMDLINK,2'b00}; end
-						2'b10: begin CMD_ADDR <= {CMD.CMDLINK,2'b00}; CMD_RET_ADDR <= NEXT_ADDR; CMD_SUB_RUN <= 1; end
+						2'b01: begin CMD_ADDR <= {CMD.CMDLINK[15:2],2'b00,2'b00}; end
+						2'b10: begin CMD_ADDR <= {CMD.CMDLINK[15:2],2'b00,2'b00}; CMD_RET_ADDR <= NEXT_ADDR; CMD_SUB_RUN <= 1; end
 						2'b11: begin CMD_ADDR <= CMD_SUB_RUN ? CMD_RET_ADDR : NEXT_ADDR; CMD_SUB_RUN <= 0; end
 					endcase
 					
