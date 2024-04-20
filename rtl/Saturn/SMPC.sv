@@ -461,7 +461,7 @@ module SMPC (
 										INTBACK_PERI <= 1;
 										INTBACK_OPTIM_EN <= ~IREG[1][1];
 										CONT_PREV <= 0;
-										COMM_ST <= CS_IDLE;
+										COMM_ST <= CS_END;
 									end
 								end else begin
 									COMM_ST <= CS_END;
@@ -526,11 +526,11 @@ module SMPC (
 					end
 					
 					CS_RESET_WAIT: begin
-						if (!IRQV_N && IRQV_N_OLD) begin
+						if (IRQV_N && !IRQV_N_OLD) begin
 							FRAME_CNT <= FRAME_CNT + 2'd1;
 							if (FRAME_CNT == 2'd2) begin
 								FRAME_CNT <= '0;
-								WAIT_CNT <= 16'd4000;
+								WAIT_CNT <= 16'd32700;
 								NEXT_COMM_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
@@ -1063,7 +1063,7 @@ module SMPC (
 						if (!PORT_NUM) begin
 							PORT_ST <= PS_START;
 						end else begin
-							OREG_DATA <= 8'h00;
+							OREG_DATA <= 8'hF0;
 							OREG_WRITE <= 1;
 							PORT_ST <= PS_END;
 						end
