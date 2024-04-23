@@ -225,7 +225,7 @@ module SMPC (
 		bit         JOY_START;
 		bit [15: 0] JOY_DATA;
 		bit         PORT_NUM;
-		bit [ 2: 0] PORT_DATA_CNT;
+		bit [ 3: 0] PORT_DATA_CNT;
 		bit [ 3: 0] MD_ID;
 		bit [ 7: 0] ID2;
 		
@@ -461,7 +461,7 @@ module SMPC (
 										INTBACK_PERI <= 1;
 										INTBACK_OPTIM_EN <= ~IREG[1][1];
 										CONT_PREV <= 0;
-										COMM_ST <= CS_END;
+										COMM_ST <= CS_IDLE;
 									end
 								end else begin
 									COMM_ST <= CS_END;
@@ -933,7 +933,7 @@ module SMPC (
 					PS_MOUSE_5: begin
 						OREG_DATA <= 8'hE3;
 						OREG_WRITE <= 1;
-						PORT_DATA_CNT <= 3'd3 - 3'd1;
+						PORT_DATA_CNT <= 4'd3 - 4'd1;
 						PORT_ST <= PS_MOUSE_6;
 					end
 					
@@ -968,7 +968,7 @@ module SMPC (
 					PS_MOUSE_10: begin
 						OREG_DATA <= JOY_DATA[7:0];
 						OREG_WRITE <= 1;
-						PORT_DATA_CNT <= PORT_DATA_CNT - 3'd1; 
+						PORT_DATA_CNT <= PORT_DATA_CNT - 4'd1; 
 						PORT_ST <= !PORT_DATA_CNT ? PS_NEXT : PS_MOUSE_6;
 					end
 					
@@ -1014,7 +1014,7 @@ module SMPC (
 					PS_ANALOG_5: begin
 						OREG_DATA <= ID2;
 						OREG_WRITE <= 1;
-						PORT_DATA_CNT <= ID2[3:0] - 3'd1;
+						PORT_DATA_CNT <= ID2[3:0] - 4'd1;
 						PORT_ST <= PS_ANALOG_6;
 					end
 					
@@ -1049,7 +1049,7 @@ module SMPC (
 					PS_ANALOG_10: begin
 						OREG_DATA <= JOY_DATA[7:0];
 						OREG_WRITE <= 1;
-						PORT_DATA_CNT <= PORT_DATA_CNT - 3'd1; 
+						PORT_DATA_CNT <= PORT_DATA_CNT - 4'd1; 
 						PORT_ST <= !PORT_DATA_CNT ? PS_NEXT : PS_ANALOG_6;
 					end
 					
@@ -1108,7 +1108,7 @@ module SMPC (
 				else
 					case ({A,1'b1})
 						7'h61: REG_DO <= SR;
-						7'h63: REG_DO <= {7'b0000000,SF};
+						7'h63: REG_DO <= {7'b1111000,SF};
 						7'h75: REG_DO <= {PDR_O[0][7],PDR1I};
 						7'h77: REG_DO <= {PDR_O[1][7],PDR2I};
 						default: REG_DO <= '0;
