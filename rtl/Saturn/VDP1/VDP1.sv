@@ -736,20 +736,20 @@ module VDP1 (
 							4'h8,
 							4'hB: begin	
 								USR_CLIP.X1 <= {1'b0,CMD.CMDXA[9:0]}; 
-								USR_CLIP.Y1 <= {2'b00,CMD.CMDYA[8:0]}; 
+								USR_CLIP.Y1 <= {1'b0,CMD.CMDYA[9:0]}; 
 								USR_CLIP.X2 <= {1'b0,CMD.CMDXC[9:0]};
-								USR_CLIP.Y2 <= {2'b00,CMD.CMDYC[8:0]};
+								USR_CLIP.Y2 <= {1'b0,CMD.CMDYC[9:0]};
 								CMD_ST <= CMDS_END;
 							end
 							
 							4'h9: begin	
 								SYS_CLIP.X2 <= {1'b0,CMD.CMDXC[9:0]};
-								SYS_CLIP.Y2 <= {2'b00,CMD.CMDYC[8:0]};
+								SYS_CLIP.Y2 <= {1'b0,CMD.CMDYC[9:0]};
 								//TODO: check on original hw
 								USR_CLIP.X1 <= '0; 
 								USR_CLIP.Y1 <= '0; 
 								USR_CLIP.X2 <= {1'b0,CMD.CMDXC[9:0]};
-								USR_CLIP.Y2 <= {2'b00,CMD.CMDYC[8:0]};
+								USR_CLIP.Y2 <= {1'b0,CMD.CMDYC[9:0]};
 								//
 								CMD_ST <= CMDS_END;
 							end
@@ -1694,8 +1694,8 @@ module VDP1 (
 		end
 		CALC_C = CMD.CMDPMOD.MON ? {1'b1,DRAW_BACK_C[14:0]} : !TVMR.TVM[0] ? ColorCalc(ORIG_C, DRAW_BACK_C, DRAW_GHCOLOR, CMD.CMDPMOD.CCB) : ORIG_C;
 			
-		SCLIP = !DRAW_X[10] && DRAW_X[9:0] <= SYS_CLIP.X2[9:0] && !DRAW_Y[10] && !DRAW_Y[9] && DRAW_Y[8:0] <= SYS_CLIP.Y2[8:0];
-		UCLIP = !DRAW_X[10] && DRAW_X[9:0] >= USR_CLIP.X1[9:0] && DRAW_X[9:0] <= USR_CLIP.X2[9:0] && !DRAW_Y[10] && !DRAW_Y[9] && DRAW_Y[8:0] >= USR_CLIP.Y1[8:0] && DRAW_Y[8:0] <= USR_CLIP.Y2[8:0];
+		SCLIP = !DRAW_X[10]                                    && DRAW_X[9:0] <= SYS_CLIP.X2[9:0] && !DRAW_Y[10]                                    && DRAW_Y[9:0] <= SYS_CLIP.Y2[9:0];
+		UCLIP = !DRAW_X[10] && DRAW_X[9:0] >= USR_CLIP.X1[9:0] && DRAW_X[9:0] <= USR_CLIP.X2[9:0] && !DRAW_Y[10] && DRAW_Y[9:0] >= USR_CLIP.Y1[9:0] && DRAW_Y[9:0] <= USR_CLIP.Y2[9:0];
 		MESH = ~(DRAW_X[0] ^ DRAW_Y[0]);
 		IDRAW = ~(DIL ^ DRAW_Y[0]);
 		FB_DRAW_D = CALC_C;
