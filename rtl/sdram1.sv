@@ -61,7 +61,7 @@ module sdram1
 	localparam BURST_2        = 3'd1; // 0=1, 1=2, 2=4, 3=8, 7=full page
 	localparam ACCESS_TYPE    = 1'd0; // 0=sequential, 1=interleaved
 	localparam CAS_LATENCY_1  = 3'd3; // 2/3 allowed
-	localparam CAS_LATENCY_2  = 3'd2; // 2/3 allowed
+	localparam CAS_LATENCY_2  = 3'd3; // 2/3 allowed
 	localparam OP_MODE        = 2'd0; // only 0 (standard operation) allowed
 	localparam NO_WRITE_BURST = 1'd1; // 0=write burst enabled, 1=only single access write
 
@@ -130,7 +130,7 @@ module sdram1
 		bit [ 1:0] BE;		//write byte enable
 		bit        RFS;	//refresh	
 	} state_t;
-	state_t state[6];
+	state_t state[7];
 	reg [ 3: 0] st_num;
 	
 	reg [19: 1] raddr0[2];
@@ -297,6 +297,7 @@ module sdram1
 		state[3] <= state[2];
 		state[4] <= state[3];
 		state[5] <= state[4];
+		state[6] <= state[5];
 	end
 	
 	wire [ 1:0] ctrl_cmd   = state[0].CMD;
@@ -309,15 +310,15 @@ module sdram1
 	wire        ctrl_rfs   = state[0].RFS;
 	wire        ctrl_chip  = state[0].CHIP;
 	
-	wire       data0_read = state[3].RD;
-	wire       out0_read  = state[4].RD;
-	wire [1:0] out0_bank  = state[4].BANK;
-	wire       out0_chip  = state[4].CHIP;
+	wire       data0_read = state[4].RD;
+	wire       out0_read  = state[5].RD;
+	wire [1:0] out0_bank  = state[5].BANK;
+	wire       out0_chip  = state[5].CHIP;
 	
-	wire       data1_read = state[4].RD;
-	wire       out1_read  = state[5].RD;
-	wire [1:0] out1_bank  = state[5].BANK;
-	wire       out1_chip  = state[5].CHIP;
+	wire       data1_read = state[5].RD;
+	wire       out1_read  = state[6].RD;
+	wire [1:0] out1_bank  = state[6].BANK;
+	wire       out1_chip  = state[6].CHIP;
 	
 	reg [15:0] rbuf;
 	reg [31:0] dout[4] = '{4{'1}};
@@ -327,7 +328,7 @@ module sdram1
 
 		if (out0_read && !out0_chip) dout[out0_bank][31:16] <= rbuf;
 		if (out1_read && !out1_chip) dout[out1_bank][15: 0] <= rbuf;
-		if (out1_read && out1_chip) dout2 <= rbuf;
+		if (out0_read && out0_chip) dout2 <= rbuf;
 	end
 		
 	assign {dout_a0,dout_a1,dout_b0,dout_b1} = {dout[0],dout[1],dout[2],dout[3]};
