@@ -1610,6 +1610,8 @@ module emu
 	assign SCRN_EN2 = ~status[42:36];
 	assign SND_EN2 = ~status[45:43];
 `endif
+`ifdef DEBUG
 	assign SLOT_EN = {~status[31:28],~status[63:36]};
+`endif
 
 endmodule
