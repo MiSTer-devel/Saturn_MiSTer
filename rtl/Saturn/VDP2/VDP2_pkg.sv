@@ -1166,6 +1166,7 @@ package VDP2_PKG;
 		bit         LZMX;
 		bit         VCSC;
 		bit [ 1: 0] LSS;
+		bit [18: 1] LWTA;
 		bit         TPON;
 		bit         ON;
 		bit [ 2: 0] CAOS;
@@ -1210,6 +1211,7 @@ package VDP2_PKG;
 		bit [ 1: 0] KMD;
 		bit [ 2: 0] KTAOS;
 		bit         KDBS;
+		bit         KLCE;
 		bit [ 1: 0] PLSZ;
 		bit [ 1: 0] OVR;
 		bit [15: 0] OVPNR;
@@ -1341,6 +1343,11 @@ package VDP2_PKG;
 		S[1].LSS = REGS.SCRCTL.N1LSS;
 		S[2].LSS = '0;
 		S[3].LSS = '0;
+		
+		S[0].LWTA = {REGS.LWTA0U.WxLWTA,REGS.LWTA0L.WxLWTA};
+		S[1].LWTA = {REGS.LWTA1U.WxLWTA,REGS.LWTA1L.WxLWTA};
+		S[2].LWTA = '0;
+		S[3].LWTA = '0;
 		
 		S[0].LZMX = REGS.SCRCTL.N0LZMX;
 		S[1].LZMX = REGS.SCRCTL.N1LZMX;
@@ -1511,6 +1518,9 @@ package VDP2_PKG;
 		S[0].KDBS = REGS.KTCTL.RAKDBS;
 		S[1].KDBS = REGS.KTCTL.RBKDBS;
 		
+		S[0].KLCE = REGS.KTCTL.RAKLCE;
+		S[1].KLCE = REGS.KTCTL.RBKLCE;
+		
 		S[0].PLSZ = REGS.PLSZ.RAPLSZ;
 		S[1].PLSZ = REGS.PLSZ.RBPLSZ;
 		
@@ -1572,7 +1582,7 @@ package VDP2_PKG;
 	typedef struct packed
 	{
 		bit         TP;
-		bit [ 7: 0] LCSD;
+		bit [ 6: 0] LCSD;
 		bit [15: 0] INT;
 		bit [15: 0] FRAC;
 	} CT_t;
@@ -1635,6 +1645,7 @@ package VDP2_PKG;
 		bit         NxA1CPU;
 		bit         NxB0CPU;
 		bit         NxB1CPU;
+		NxPNEN_t    NxPN_FETCH;
 		bit [ 1: 0] RxA0PN;
 		bit [ 1: 0] RxA1PN;
 		bit [ 1: 0] RxB0PN;
@@ -1697,17 +1708,11 @@ package VDP2_PKG;
 	typedef PN_t        NxPND_t[6];
 	typedef NxPND_t     PNPipe_t [6];
 	
-	typedef ScrollData_t NxVS_t [2];
-	typedef NxVS_t      VSPipe_t [5];
-	
 	typedef bit [31: 0] NxCHD_t[4];
 	typedef NxCHD_t     CHPipe_t [2];
 	
 	typedef PN_t        RxPND_t[2];
 	typedef RxPND_t     RPNPipe_t [5];
-	
-//	typedef bit [31: 0] RxCHD_t[2];
-//	typedef RxCHD_t     RCHPipe_t [4];
 	
 	typedef CT_t        RxCTD_t[2];
 	typedef RxCTD_t     RCTPipe_t [4];
