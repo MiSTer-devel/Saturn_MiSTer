@@ -257,15 +257,15 @@ module VDP1 (
 		
 		ROW_STEP = 0;
 		if (SPR_ROW_ENLARGE) begin
-			NEXT_ROW_TEXT_D = ROW_TEXT_D + {1'b0,4'b0000,ORIG_WIDTH};
+			NEXT_ROW_TEXT_D = ROW_TEXT_D + ({1'b0,4'b0000,ORIG_WIDTH} >> HSS_EN);
 			if (NEXT_ROW_TEXT_D >= {1'b0,ROW_WIDTH}) begin
-				NEXT_ROW_TEXT_D = ROW_TEXT_D + {1'b0,4'b0000,ORIG_WIDTH} - {1'b0,ROW_WIDTH};
+				NEXT_ROW_TEXT_D = ROW_TEXT_D + ({1'b0,4'b0000,ORIG_WIDTH} >> HSS_EN) - {1'b0,ROW_WIDTH};
 				ROW_STEP = 1;
 			end
 		end else begin
 			NEXT_ROW_TEXT_D = ROW_TEXT_D + {1'b0,ROW_WIDTH};
-			if (NEXT_ROW_TEXT_D >= {1'b0,4'b0000,ORIG_WIDTH}) begin
-				NEXT_ROW_TEXT_D = ROW_TEXT_D + {1'b0,ROW_WIDTH} - {1'b0,4'b0000,ORIG_WIDTH};
+			if (NEXT_ROW_TEXT_D >= ({1'b0,4'b0000,ORIG_WIDTH} >> HSS_EN)) begin
+				NEXT_ROW_TEXT_D = ROW_TEXT_D + {1'b0,ROW_WIDTH} - ({1'b0,4'b0000,ORIG_WIDTH} >> HSS_EN);
 				ROW_STEP = 1;
 			end
 		end
@@ -378,6 +378,7 @@ module VDP1 (
 	assign DBG_GHCOLOR_D = GRD_TBL[3][14:0];
 	assign DBG_LINE_DRAW_STEP = LINE_DRAW_STEP;
 	assign DBG_TEXT_READ_STEP = TEXT_READ_STEP;
+	assign DBG_TEXT_X = TEXT_X;
 	assign DBG_TEXT_Y = TEXT_Y;
 `endif
 	
@@ -617,8 +618,10 @@ module VDP1 (
 										CMD_ST <= CMDS_END;
 									end else if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
+										CMD_DELAY <= 8'd10 * 8'd2;
 										CMD_ST <= CMDS_GRD_LOAD;
 									end else begin
+										CMD_DELAY <= 8'd23 * 8'd2;
 										CMD_ST <= CMDS_EXEC;
 									end
 								end
@@ -628,6 +631,7 @@ module VDP1 (
 										CMD_ST <= CMDS_END;
 									end else if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
+										CMD_DELAY <= 8'd10 * 8'd2;
 										CMD_ST <= CMDS_GRD_LOAD;
 									end else begin
 										CMD_ST <= CMDS_EXEC;
@@ -640,8 +644,10 @@ module VDP1 (
 										CMD_ST <= CMDS_END;
 									end else if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
+										CMD_DELAY <= 8'd10 * 8'd2;
 										CMD_ST <= CMDS_GRD_LOAD;
 									end else begin
+										CMD_DELAY <= 8'd23 * 8'd2;
 										CMD_ST <= CMDS_EXEC;
 									end
 								end
@@ -653,8 +659,10 @@ module VDP1 (
 										CMD_ST <= CMDS_END;
 									end else if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
+										CMD_DELAY <= 8'd0;
 										CMD_ST <= CMDS_GRD_LOAD;
 									end else begin
+										CMD_DELAY <= 8'd0;
 										CMD_ST <= CMDS_EXEC;
 									end
 								end
@@ -664,8 +672,10 @@ module VDP1 (
 										CMD_ST <= CMDS_END;
 									end else if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
+										CMD_DELAY <= 8'd0;
 										CMD_ST <= CMDS_GRD_LOAD;
 									end else begin
+										CMD_DELAY <= 8'd0;
 										CMD_ST <= CMDS_EXEC;
 									end
 								end
@@ -674,6 +684,7 @@ module VDP1 (
 								4'hB,
 								4'h9,
 								4'hA: begin	
+									CMD_DELAY <= 8'd0;
 									CMD_ST <= CMDS_EXEC;
 								end
 							
@@ -708,7 +719,6 @@ module VDP1 (
 							4'h1,			//scaled sprite
 							4'h2,
 							4'h3: begin	//distored sprite
-								CMD_DELAY <= 8'd23 * 8'd2;
 								if (CMD.CMDPMOD.CM == 3'b001) begin
 									CLT_READ <= 1;
 									CMD_ST <= CMDS_CLT_LOAD;
@@ -718,18 +728,15 @@ module VDP1 (
 							end
 							
 							4'h4: begin	//polygon
-								CMD_DELAY <= 8'd0;
 								CMD_ST <= CMDS_DELAY;
 							end
 							
 							4'h5,
 							4'h7: begin	//polyline
-								CMD_DELAY <= 8'd0;
 								CMD_ST <= CMDS_DELAY;
 							end
 							
 							4'h6: begin	//line
-								CMD_DELAY <= 8'd0;
 								CMD_ST <= CMDS_DELAY;
 							end
 							
@@ -875,7 +882,7 @@ module VDP1 (
 						COL_TEXT_D <= {5'b00000,ORIG_HEIGHT} >> 1;
 					end else begin
 						SPR_COL_ENLARGE <= 0;
-						COL_TEXT_D <= COL_HEIGHT>>1;
+						COL_TEXT_D <= COL_HEIGHT >> 1;
 					end
 					
 					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT - 8'd1) * ORIG_WIDTH[8:3] : '0;
@@ -944,7 +951,7 @@ module VDP1 (
 						COL_TEXT_D <= {5'b00000,ORIG_HEIGHT} >> 1;
 					end else begin
 						SPR_COL_ENLARGE <= 0;
-						COL_TEXT_D <= COL_HEIGHT>>1;
+						COL_TEXT_D <= COL_HEIGHT >> 1;
 					end
 					
 					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT - 8'd1) * ORIG_WIDTH[8:3] : '0;
@@ -1110,10 +1117,19 @@ module VDP1 (
 						SPR_ROW_ENLARGE <= 1;
 						ROW_TEXT_D <= {4'b0000,ORIG_WIDTH} >> 1;
 						HSS_EN <= 0;
-					end else begin
+					end else if (!CMD.CMDPMOD.HSS) begin
 						SPR_ROW_ENLARGE <= 0;
-						ROW_TEXT_D <= ROW_WIDTH>>1;
-						HSS_EN <= CMD.CMDPMOD.HSS;
+						ROW_TEXT_D <= ROW_WIDTH >> 1;
+						HSS_EN <= 0;
+					end else begin
+						if ({5'b00000,ORIG_WIDTH[8:1]} <= ROW_WIDTH) begin
+							SPR_ROW_ENLARGE <= 1;
+							ROW_TEXT_D <= {5'b00000,ORIG_WIDTH[8:1]} >> 1;
+						end else begin
+							SPR_ROW_ENLARGE <= 0;
+							ROW_TEXT_D <= ROW_WIDTH >> 1;
+						end
+						HSS_EN <= 1;
 					end
 
 					CMD_ST <= CMDS_GRD_CALC_ROW;
@@ -1175,7 +1191,8 @@ module VDP1 (
 					
 					ROW_WIDTH <= NEW_LINE_ASX >= NEW_LINE_ASY ? NEW_LINE_ASX + 13'd1 : NEW_LINE_ASY + 13'd1;
 					
-					CMD_ST <= CMDS_LINE_CALCTX;
+					HSS_EN <= 0;
+					CMD_ST <= !CMD.CMDCTRL.COMM[2] ? CMDS_LINE_CALCTX : CMDS_LINE_CALCD;
 				end
 				
 				CMDS_LINE_CALCTX: begin
@@ -1183,12 +1200,20 @@ module VDP1 (
 						SPR_ROW_ENLARGE <= 1;
 						ROW_TEXT_D <= {4'b0000,ORIG_WIDTH} >> 1;
 						HSS_EN <= 0;
-					end else begin
+					end else if (!CMD.CMDPMOD.HSS) begin
 						SPR_ROW_ENLARGE <= 0;
-						ROW_TEXT_D <= ROW_WIDTH>>1;
-						HSS_EN <= CMD.CMDPMOD.HSS;
+						ROW_TEXT_D <= ROW_WIDTH >> 1;
+						HSS_EN <= 0;
+					end else begin
+						if ({5'b00000,ORIG_WIDTH[8:1]} <= ROW_WIDTH) begin
+							SPR_ROW_ENLARGE <= 1;
+							ROW_TEXT_D <= {5'b00000,ORIG_WIDTH[8:1]} >> 1;
+						end else begin
+							SPR_ROW_ENLARGE <= 0;
+							ROW_TEXT_D <= ROW_WIDTH >> 1;
+						end
+						HSS_EN <= 1;
 					end
-
 					CMD_ST <= CMDS_LINE_CALCD;
 				end
 				
@@ -1238,7 +1263,7 @@ module VDP1 (
 					DRAW_ENABLE <= LINE_DRAW_STEP;
 					
 					if (TEXT_READ_STEP) begin
-						TEXT_X <= TEXT_X + 1'd1;
+						TEXT_X <= TEXT_X + (HSS_EN ? 2'd2 : 2'd1);
 						if (!CMD.CMDPMOD.ECD && !HSS_EN && PAT.EC) EC_FIND <= 1;
 					end
 					
@@ -1261,10 +1286,12 @@ module VDP1 (
 					DRAW_ENABLE <= LINE_DRAW_STEP;
 					
 					if (TEXT_READ_STEP) begin
-						TEXT_X <= TEXT_X + 1'd1;
-						if (CMD.CMDCTRL.COMM <= 4'h3 && !HSS_EN && !CMD.CMDPMOD.HSS && PAT.EC) EC_FIND <= 1;
+						TEXT_X <= TEXT_X + (HSS_EN ? 2'd2 : 2'd1);
+						if (CMD.CMDCTRL.COMM <= 4'h3 && !CMD.CMDPMOD.ECD && !HSS_EN && PAT.EC) EC_FIND <= 1;
 					end
 					
+					AA_X <= LINE_VERTA.X;
+					AA_Y <= LINE_VERTA.Y;
 					if (LINE_DRAW_STEP) begin
 						if (!LINE_S) begin
 							LINE_VERTA.X <= LINE_VERTA.X + {{10{LINE_DIRX}},1'b1};
@@ -1272,8 +1299,6 @@ module VDP1 (
 							if (NEXT_LINE_D >= {1'b0,LINE_SX}) begin
 								NEXT_LINE_D = LINE_D + {1'b0,LINE_SY} - {1'b0,LINE_SX};
 								LINE_VERTA.Y <= LINE_VERTA.Y + {{10{LINE_DIRY}},1'b1};
-								AA_X <= LINE_VERTA.X;
-								AA_Y <= LINE_VERTA.Y;
 								AA <= 1;
 								CMD_ST <= CMDS_AA_DRAW;
 							end
@@ -1283,8 +1308,6 @@ module VDP1 (
 							if (NEXT_LINE_D >= {1'b0,LINE_SY}) begin
 								NEXT_LINE_D = LINE_D + {1'b0,LINE_SX} - {1'b0,LINE_SY};
 								LINE_VERTA.X <= LINE_VERTA.X + {{10{LINE_DIRX}},1'b1};
-								AA_X <= LINE_VERTA.X;
-								AA_Y <= LINE_VERTA.Y;
 								AA <= 1;
 								CMD_ST <= CMDS_AA_DRAW;
 							end
@@ -1559,15 +1582,15 @@ module VDP1 (
 	bit          PAT_NEXT;
 	always @(posedge CLK or negedge RST_N) begin
 		bit  [ 1: 0] RAS_DELAY;
-		bit  [ 3: 0] DRAW_WRITE_CNT;
+		bit          FB_RAS;
 		
 		if (!RST_N) begin
 			FBD_ST <= FBDS_IDLE;
 			FB_DRAW_PEND <= 0;
 			FB_READ_PEND <= 0;
 			PAT_NEXT <= 0;
-			DRAW_WRITE_CNT <= '0;
 			RAS_DELAY <= '0;
+			FB_RAS <= 0;
 		end
 		else begin
 			PAT_NEXT <= 0;
@@ -1591,28 +1614,20 @@ module VDP1 (
 							end else begin
 								DRAW_X <= LOC_COORD.X + LINE_VERTA.X;
 								DRAW_Y <= LOC_COORD.Y + LINE_VERTA.Y;
+								FB_RAS <= LINE_DRAW_STEP && &LINE_VERTA.X[3:0];
 							end
 							DRAW_PAT <= PAT;
 							DRAW_GHCOLOR <= RGBFtoI(LINE_GHCOLOR);
 							
-							if (LINE_DRAW_STEP) begin
-								if (CMD.CMDPMOD.CCB[0] || CMD.CMDPMOD.MON) begin
-									FB_READ_PEND <= 1;
-									FBD_ST <= FBDS_READ;
-								end else begin
-									FB_DRAW_PEND <= 1;
-									FBD_ST <= FBDS_WRITE;
-								end
-							end
-							else begin
-								FBD_ST <= FBDS_SKIP;
+							if (CMD.CMDPMOD.CCB[0] || CMD.CMDPMOD.MON) begin
+								FB_READ_PEND <= 1;
+								FBD_ST <= FBDS_READ;
+							end else begin
+								FB_DRAW_PEND <= 1;
+								FBD_ST <= FBDS_WRITE;
 							end
 						end
-						PAT_NEXT <= TEXT_READ_STEP && (HSS_EN ? TEXT_X[0] : 1'b1);
-					end
-					
-					if (CMD_ST == CMDS_NSPR_CALCX || CMD_ST == CMDS_SSPR_CALCX || CMD_ST == CMDS_LINE_CALC) begin
-						DRAW_WRITE_CNT <= '0;
+						PAT_NEXT <= TEXT_READ_STEP;
 					end
 				end
 				
@@ -1636,11 +1651,7 @@ module VDP1 (
 				FBDS_WRITE: begin
 					if (!FB_DRAW_WAIT) begin
 						FB_DRAW_PEND <= 0;
-						DRAW_WRITE_CNT <= DRAW_WRITE_CNT + 4'd1;
-						if (DRAW_WRITE_CNT == 4'd15)
-							FBD_ST <= FBDS_RAS;
-						else
-							FBD_ST <= FBDS_IDLE;
+						FBD_ST <= FB_RAS ? FBDS_RAS : FBDS_IDLE;
 					end
 				end
 				
@@ -1648,6 +1659,7 @@ module VDP1 (
 					RAS_DELAY <= RAS_DELAY + 2'd1;
 					if (RAS_DELAY == 2'd2) begin
 						RAS_DELAY <= 2'd0;
+						FB_RAS <= 0;
 						FBD_ST <= FBDS_IDLE;
 					end
 				end
