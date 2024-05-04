@@ -14,9 +14,7 @@ Current status is WIP/Beta
 Known issues:
 
 - 3D Baseball - minor graphic gliches
-- Galaxy Fight - minor graphic gliches (VDP2 screen in hires mode)
 - Space Jam - freeze in demo
-- Tenchi Muyou! Rensa Hitsuyou (JP) - graphic gliches (VDP2 screen)
 - Battle Monsters (EU) - graphic gliches
 - Dragon Ball Z (EU) - freeze
 
