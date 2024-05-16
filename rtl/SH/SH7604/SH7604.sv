@@ -1,4 +1,6 @@
-module SH7604 (
+module SH7604 
+#(parameter bit UBC_DISABLE=0, bit SCI_DISABLE=0, bit WDT_DISABLE=0)
+(
 	input             CLK,
 	input             RST_N,
 	input             CE_R,
@@ -322,7 +324,7 @@ module SH7604 (
 	                              DMAC_BUSY;
 
 	
-	SH7604_UBC UBC
+	SH7604_UBC #(UBC_DISABLE) UBC
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -589,7 +591,7 @@ module SH7604 (
 		end
 	end
 
-	SH7604_SCI sci
+	SH7604_SCI #(SCI_DISABLE) sci
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -659,7 +661,7 @@ module SH7604 (
 		.OVI_IRQ(OVI_IRQ)
 	);
 	
-	SH7604_WDT wdt
+	SH7604_WDT #(WDT_DISABLE) wdt
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),

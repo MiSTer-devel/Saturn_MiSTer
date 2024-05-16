@@ -1,6 +1,6 @@
 module SH7034
 #(
-	parameter rom_file = "sh7034.mif"
+	parameter rom_file = "sh7034.mif", bit UBC_DISABLE=0, bit SCI0_DISABLE=0, bit SCI1_DISABLE=0, bit WDT_DISABLE=0
 )
 (
 	input             CLK,
@@ -339,7 +339,7 @@ module SH7034
 						             DMAC_DO;
 	assign IBUS_WAIT = DMAC_BUSY;
 	
-	SH7034_UBC ubc
+	SH7034_UBC #(UBC_DISABLE) ubc
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -587,7 +587,7 @@ module SH7034
 		end
 	end
 
-	SH7034_SCI #(0) sci0
+	SH7034_SCI #(0,SCI0_DISABLE) sci0
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -620,7 +620,7 @@ module SH7034
 		.ERI_IRQ(ERI0_IRQ)
 	);
 
-	SH7034_SCI #(1) sci1
+	SH7034_SCI #(1,SCI1_DISABLE) sci1
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -691,7 +691,7 @@ module SH7034
 		.OVI_IRQ(OVI_IRQ)
 	);
 	
-	SH7034_WDT wdt
+	SH7034_WDT #(WDT_DISABLE) wdt
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),

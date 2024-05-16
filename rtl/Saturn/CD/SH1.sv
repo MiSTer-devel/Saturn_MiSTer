@@ -48,7 +48,7 @@ module SH1
 	input             WAITN
 );
 
-	SH7034 #(rom_file) sh7034
+	SH7034 #(.rom_file(rom_file), .UBC_DISABLE(1), .SCI0_DISABLE(0), .SCI1_DISABLE(1), .WDT_DISABLE(1)) sh7034
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
