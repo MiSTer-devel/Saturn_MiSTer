@@ -1028,11 +1028,11 @@ module SMPC (
 					PS_ANALOG_7: begin
 						if (!PDR_I[PORT_NUM][4]) begin
 							JOY_DATA[7:4] <= PDR_I[PORT_NUM][3:0];
-							PORT_ST <= PS_MOUSE_8;
+							PORT_ST <= PS_ANALOG_8;
 						end
 					end
 					
-					PS_MOUSE_8: begin
+					PS_ANALOG_8: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b01;
 						PORT_DELAY <= 16'd60;
