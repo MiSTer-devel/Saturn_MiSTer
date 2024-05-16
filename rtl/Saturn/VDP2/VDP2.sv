@@ -457,7 +457,7 @@ module VDP2 (
 			end
 			if (H_CNT == NBG_FETCH_START - 1 - 8 && (V_CNT < VBL_START || V_CNT == LAST_LINE) && DISP) begin
 				NVCS_FETCH <= 1;
-			end else if (H_CNT == NBG_FETCH_END - 8) begin
+			end else if (H_CNT == NBG_FETCH_END) begin
 				NVCS_FETCH <= 0;
 			end
 			
@@ -872,7 +872,7 @@ module VDP2 (
 		NxCH_ADDR[0] = !NSxREG[0].BMEN ? NxCHAddr('{PN_PIPE[1][0],PN_PIPE[1][4]}, NBG_CH_CNT[0], VA_PIPE[4].NxX[0], VA_PIPE[4].NxY[0], NSxREG[0].CHCN, NSxREG[0].CHSZ, NSxREG[0].ZMHF, NSxREG[0].ZMQT) :
 													NxBMAddr(NSxREG[0].MP,                   NBG_CH_CNT[0], VA_PIPE[!HRES[1]?4:2].NxX[0], VA_PIPE[!HRES[1]?4:2].NxY[0], NSxREG[0].CHCN, NSxREG[0].BMSZ, NSxREG[0].ZMHF, NSxREG[0].ZMQT);
 		NxCH_ADDR[1] = !NSxREG[1].BMEN ? NxCHAddr('{PN_PIPE[1][1],PN_PIPE[1][5]}, NBG_CH_CNT[1], VA_PIPE[4].NxX[1], VA_PIPE[4].NxY[1], NSxREG[1].CHCN, NSxREG[1].CHSZ, NSxREG[1].ZMHF, NSxREG[1].ZMQT) :
-													NxBMAddr(NSxREG[1].MP,                   NBG_CH_CNT[1], VA_PIPE[!HRES[1]?4:2].NxX[1], VA_PIPE[!HRES[1]?4:2].NxY[1], NSxREG[1].CHCN, NSxREG[1].BMSZ, NSxREG[1].ZMHF, NSxREG[1].ZMQT);
+													NxBMAddr(NSxREG[1].MP,                   NBG_CH_CNT[1], VA_PIPE[4].NxX[1], VA_PIPE[4].NxY[1], NSxREG[1].CHCN, NSxREG[1].BMSZ, NSxREG[1].ZMHF, NSxREG[1].ZMQT);
 //		NxCH_ADDR[2] =                   NxCHAddr('{PN_PIPE[1][2],PN_PIPE[1][2]}, NBG_CH_CNT[2], VA_PIPE[4].NxX[2], VA_PIPE[4].NxY[2], NSxREG[2].CHCN, NSxREG[2].CHSZ, 1'b0          , 1'b0);
 //		NxCH_ADDR[3] =                   NxCHAddr('{PN_PIPE[1][3],PN_PIPE[1][3]}, NBG_CH_CNT[3], VA_PIPE[4].NxX[3], VA_PIPE[4].NxY[3], NSxREG[3].CHCN, NSxREG[3].CHSZ, 1'b0          , 1'b0);
 		NxCH_ADDR[2] =                   NxCHAddr2(NBG2_PN_PIPE,                  NBG_CH_CNT[2], VA_PIPE[4].NxX[2], VA_PIPE[4].NxY[2], NSxREG[2].CHCN, NSxREG[2].CHSZ, 1'b0          , 1'b0);
@@ -1750,7 +1750,7 @@ module VDP2 (
 						
 					CT_D = CTData(RPxREG[CT_RP].KMD, RPxREG[CT_RP].KDBS, RCT_WD);
 					CTD[0] <= CT_D;
-					if (R0RP_PIPE[2]) CTD[1] <= CT_D;
+					if (CT_RP) CTD[1] <= CT_D;
 				end
 				
 				SUMX = $signed(ACCX) + $signed(MultRC(MULXA, ($signed(SUBXA) - $signed(SUBXB))));
@@ -2050,9 +2050,9 @@ module VDP2 (
 	wire [ 8: 0] WxEY[2] = '{REGS.WPEY0.WxEY,REGS.WPEY1.WxEY};
 	
 	wire W0_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[0][9:1],WxSX[0][0]&HRES[1]} || {WxSX[0][9:1],WxSX[0][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[0][9:1],WxEX[0][0]&HRES[1]} && {WxEX[0][9:1],WxEX[0][0]&HRES[1]} <= 10'h380 &&
-	               WSCRNY                 >= {WxSY[0][8:1],WxSY[0][0]&~DDI}                                                      && WSCRNY                 <= {WxEY[0][8:1],WxEY[0][0]&~DDI};
+	               WSCRNY                 >= {WxSY[0][8:1],WxSY[0][0]&~DDI}                                                      && WSCRNY                 <= {WxEY[0][8:1],WxEY[0][0]&~DDI}    && WxEY[0][8:0] < 9'h1FC;
 	wire W1_HIT = ({SCRNX,SCRNX0|HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]&HRES[1]} || {WxSX[1][9:1],WxSX[1][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]&HRES[1]} && {WxEX[1][9:1],WxEX[1][0]&HRES[1]} <= 10'h380 &&
-	               WSCRNY                 >= {WxSY[1][8:1],WxSY[1][0]&~DDI}                                                      && WSCRNY                 <= {WxEY[1][8:1],WxEY[1][0]&~DDI};
+	               WSCRNY                 >= {WxSY[1][8:1],WxSY[1][0]&~DDI}                                                      && WSCRNY                 <= {WxEY[1][8:1],WxEY[1][0]&~DDI}    && WxEY[1][8:0] < 9'h1FC;
 					  
 	bit          W0_HIT_PIPE[17*2];
 	bit          W1_HIT_PIPE[17*2];
