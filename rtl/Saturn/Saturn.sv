@@ -26,6 +26,7 @@ module Saturn (
 	input      [15:0] VDP1_VRAM_Q,
 	output      [1:0] VDP1_VRAM_WE,
 	output            VDP1_VRAM_RD,
+	output      [8:0] VDP1_VRAM_BLEN,
 	input             VDP1_VRAM_RDY,
 	
 	output     [17:1] VDP1_FB0_A,
@@ -305,7 +306,7 @@ module Saturn (
 	bit  [15:0] CD_SL;
 	bit  [15:0] CD_SR;
 	
-	SH7604 MSH
+	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .WDT_DISABLE(1)) MSH
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -372,7 +373,7 @@ module Saturn (
 `endif
 	);
 	
-	SH7604 SSH
+	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .WDT_DISABLE(1)) SSH
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -695,6 +696,7 @@ module Saturn (
 		.VRAM_D(VDP1_VRAM_D),
 		.VRAM_WE(VDP1_VRAM_WE),
 		.VRAM_RD(VDP1_VRAM_RD),
+		.VRAM_BLEN(VDP1_VRAM_BLEN),
 		.VRAM_Q(VDP1_VRAM_Q),
 		.VRAM_RDY(VDP1_VRAM_RDY),
 		
