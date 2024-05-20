@@ -197,9 +197,6 @@ module VDP1 (
 	Pattern_t    PAT;
 	bit  [ 8: 0] TEXT_X;
 	bit  [ 7: 0] TEXT_Y;
-	bit  [ 8: 0] TEXT_INCX;
-	bit  [ 8: 0] TEXT_WX;
-	bit  [ 1: 0] TEXT_MASK;
 	bit  [16: 3] SPR_OFFSY;
 	bit  [12: 0] POLY_LSX;
 	bit  [12: 0] POLY_LSY;
@@ -249,6 +246,7 @@ module VDP1 (
 	wire [ 7: 0] ORIG_HEIGHT = {CMD.CMDSIZE.SY} | ~|CMD.CMDSIZE.SY;
 	wire         TEXT_DIRX = (CMD.CMDCTRL.DIR[0] ^ DIR[0]);
 	wire         TEXT_DIRY = (CMD.CMDCTRL.DIR[1] ^ DIR[1]);
+	wire         IS_PAT_EC = (CMD.CMDCTRL.COMM <= 4'h3 && !CMD.CMDPMOD.ECD && PAT.EC && !HSS_EN);
 	
 	bit  [13: 0] ROW_TEXT_D;
 	bit  [13: 0] NEXT_ROW_TEXT_D;
@@ -461,14 +459,6 @@ module VDP1 (
 			GRD_READ <= 0;
 			CMD_ST <= CMDS_IDLE;
 		end else if (EN) begin
-			case (CMD.CMDPMOD.CM)
-				3'b000,
-				3'b001: begin TEXT_INCX = 9'h001; TEXT_WX = {2'b00,CMD.CMDSIZE.SX,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b00; end
-				3'b010,
-				3'b011,
-				3'b100: begin TEXT_INCX = 9'h002; TEXT_WX = {1'b0,CMD.CMDSIZE.SX,1'b0,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b01; end
-				default:begin TEXT_INCX = 9'h004; TEXT_WX = {CMD.CMDSIZE.SX,2'b00,~|CMD.CMDSIZE.SX}; TEXT_MASK = 2'b11; end
-			endcase
 			SPR_OFFSY_NEXT = TEXT_DIRY ? SPR_OFFSY - ORIG_WIDTH[8:3] : SPR_OFFSY + ORIG_WIDTH[8:3];
 		
 			SYS_CLIP_X1 <= 13'd0 - $signed({{2{LOC_COORD.X[10]}},LOC_COORD.X});
@@ -500,10 +490,7 @@ module VDP1 (
 								           $signed(CMD.CMDYC[12:0]) > $signed(SYS_CLIP_Y2),
 								           $signed(CMD.CMDYB[12:0]) > $signed(SYS_CLIP_Y2),
 								           $signed(CMD.CMDYA[12:0]) > $signed(SYS_CLIP_Y2)};
-											  
-//			CMD_NSPR_LEFT_OVER <= $signed(CMD.CMDXA[12:0]) + $signed({4'h00,CMD.CMDSIZE.SX,3'b000}) < $signed(SYS_CLIP_X1);
-//			CMD_NSPR_TOP_OVER  <= $signed(CMD.CMDYA[12:0]) + $signed({5'h00,CMD.CMDSIZE.SY}) < $signed(SYS_CLIP_Y1);
-			
+											  			
 			if (CMD.CMDCTRL.COMM == 4'h0) begin
 				CMD_SSPR_LEFT = CMD.CMDXA[12:0]; 
 				CMD_SSPR_RIGHT = CMD.CMDXA[12:0] + {4'h00,CMD.CMDSIZE.SX,3'b000};
@@ -1288,7 +1275,7 @@ module VDP1 (
 					
 					if (TEXT_READ_STEP) begin
 						TEXT_X <= TEXT_X + (HSS_EN ? 2'd2 : 2'd1);
-						if (!CMD.CMDPMOD.ECD && !HSS_EN && PAT.EC) EC_FIND <= 1;
+						if (IS_PAT_EC) EC_FIND <= 1;
 					end
 					
 					if (LINE_DRAW_STEP) begin
@@ -1300,7 +1287,7 @@ module VDP1 (
 					end
 					ROW_TEXT_D <= NEXT_ROW_TEXT_D;
 					  
-					if ((LINE_VERTA.X == LINE_VERTB.X && LINE_DRAW_STEP) || (!CMD.CMDPMOD.ECD && PAT.EC && EC_FIND && TEXT_READ_STEP)) begin
+					if ((LINE_VERTA.X == LINE_VERTB.X && LINE_DRAW_STEP) || (IS_PAT_EC && EC_FIND && TEXT_READ_STEP)) begin
 						SPR_READ <= 0;
 						CMD_ST <= CMDS_LINE_NEXT;
 					end
@@ -1311,7 +1298,7 @@ module VDP1 (
 					
 					if (TEXT_READ_STEP) begin
 						TEXT_X <= TEXT_X + (HSS_EN ? 2'd2 : 2'd1);
-						if (CMD.CMDCTRL.COMM <= 4'h3 && !CMD.CMDPMOD.ECD && !HSS_EN && PAT.EC) EC_FIND <= 1;
+						if (IS_PAT_EC) EC_FIND <= 1;
 					end
 					
 					{LINE_VERTA_X_OVR,LINE_VERTA_Y_OVR} = '0;
@@ -1351,7 +1338,7 @@ module VDP1 (
 					ROW_TEXT_D <= NEXT_ROW_TEXT_D;
 
 					if (((LINE_VERTA_X_OVR || LINE_VERTA_Y_OVR) && LINE_DRAW_STEP) || 
-					    (CMD.CMDCTRL.COMM <= 4'h3 && !CMD.CMDPMOD.ECD && PAT.EC && EC_FIND && TEXT_READ_STEP)) begin
+					    (IS_PAT_EC && EC_FIND && TEXT_READ_STEP)) begin
 						CMD_ST <= LINE_CLIP ? CMDS_LINE_END : CMDS_LINE_NEXT;
 					end
 				end
@@ -1611,7 +1598,7 @@ module VDP1 (
 	bit          PAT_NEXT;
 	always @(posedge CLK or negedge RST_N) begin
 		bit  [ 1: 0] RAS_DELAY;
-		bit          FB_RAS;
+		bit          FBD_RAS;
 		
 		if (!RST_N) begin
 			FBD_ST <= FBDS_IDLE;
@@ -1619,7 +1606,7 @@ module VDP1 (
 			FB_READ_PEND <= 0;
 			PAT_NEXT <= 0;
 			RAS_DELAY <= '0;
-			FB_RAS <= 0;
+			FBD_RAS <= 0;
 		end
 		else begin
 			PAT_NEXT <= 0;
@@ -1643,15 +1630,15 @@ module VDP1 (
 							end else begin
 								DRAW_X <= LOC_COORD.X + LINE_VERTA.X;
 								DRAW_Y <= LOC_COORD.Y + LINE_VERTA.Y;
-								FB_RAS <= LINE_DRAW_STEP && (CMD.CMDCTRL.COMM <= 4'h1) && &LINE_VERTA.X[3:0];
+								FBD_RAS <= LINE_DRAW_STEP && (CMD.CMDCTRL.COMM <= 4'h1) && &LINE_VERTA.X[3:0];
 							end
 							
-							if (!(CMD.CMDCTRL.COMM <= 4'h3 && !CMD.CMDPMOD.ECD && PAT.EC /*&& EC_FIND*/ && TEXT_READ_STEP)) begin
+							if (!(TEXT_READ_STEP && EC_FIND && IS_PAT_EC)) begin
 								DRAW_PAT <= PAT;
 								DRAW_GHCOLOR <= RGBFtoI(LINE_GHCOLOR);
 							end
 							
-							if (LINE_DRAW_STEP || (CMD.CMDCTRL.COMM <= 4'h3 && !CMD.CMDPMOD.ECD && PAT.EC && EC_FIND && TEXT_READ_STEP)) begin
+							if ((LINE_DRAW_STEP && !IS_PAT_EC) || (TEXT_READ_STEP && EC_FIND && IS_PAT_EC)) begin
 								if (CMD.CMDPMOD.CCB[0] || CMD.CMDPMOD.MON) begin
 									FB_READ_PEND <= 1;
 									FBD_ST <= FBDS_READ;
@@ -1664,7 +1651,7 @@ module VDP1 (
 							end
 						end
 						if (CMD_ST == CMDS_ROW_DRAW) begin
-							FB_RAS <= 1;
+							FBD_RAS <= 1;
 						end
 						PAT_NEXT <= TEXT_READ_STEP;
 					end
@@ -1691,7 +1678,7 @@ module VDP1 (
 				FBDS_WRITE: begin
 					if (!FB_DRAW_WAIT) begin
 						FB_DRAW_PEND <= 0;
-						if (FB_RAS)
+						if (FBD_RAS)
 							if (PENALTY_CNT < 10'd3) begin
 								FBD_ST <= FBDS_RAS;
 							end else begin
@@ -1707,7 +1694,7 @@ module VDP1 (
 					RAS_DELAY <= RAS_DELAY + 2'd1;
 					if (RAS_DELAY == 2'd2) begin
 						RAS_DELAY <= 2'd0;
-						FB_RAS <= 0;
+						FBD_RAS <= 0;
 						FBD_ST <= FBDS_IDLE;
 					end
 				end
@@ -1981,7 +1968,7 @@ module VDP1 (
 	bit         	CPU_VRAM_ACCESS;
 	always @(posedge CLK or negedge RST_N) begin
 		bit         AD_N_OLD;
-		bit         VRAM_PAGE_BREAK;
+//		bit         VRAM_PAGE_BREAK;
 		bit [18: 1] CPU_RA;
 		bit [18: 1] CPU_WA,CPU_FB_WA;
 		bit [15: 0] CPU_D,CPU_FB_D;
@@ -2200,13 +2187,13 @@ module VDP1 (
 				end
 				
 				VS_RAS: begin
-					VRAM_PAGE_BREAK <= 0;
+//					VRAM_PAGE_BREAK <= 0;
 					VRAM_ST <= VS_IDLE;
 				end
 				
 				VS_CPU_WRITE: begin
 					VRAM_WE <= '0;
-					VRAM_PAGE_BREAK <= 1;
+//					VRAM_PAGE_BREAK <= 1;
 					DRAW_ACCESS_WAIT <= 5'd13;
 					VRAM_ST <= VS_IDLE;
 				end
@@ -2215,7 +2202,7 @@ module VDP1 (
 					if (VRAM_RDY && CE_R) begin
 						MEM_DO <= VRAM_Q;
 						VRAM_RD <= 0;
-						VRAM_PAGE_BREAK <= 1;
+//						VRAM_PAGE_BREAK <= 1;
 						DRAW_ACCESS_WAIT <= 5'd13;
 						CPU_VRAM_RRDY <= 1;
 						VRAM_ST <= VS_IDLE;
@@ -2436,7 +2423,6 @@ module VDP1 (
 			if (START_DRAW_PEND) begin
 				FRAME_START <= 1;
 				EDSR.CEF <= 0;
-				EDSR.BEF <= EDSR.CEF;
 				DIE <= FBCR.DIE;
 				DIL <= FBCR.DIL;
 			end
@@ -2456,6 +2442,7 @@ module VDP1 (
 					if (PTMR.PTM[1] || DBG_DRAW_EN) begin
 						FRAME_START <= 1;
 					end
+					MANUAL_ERASECHANGE_PEND <= 0;
 `ifdef DEBUG
 					FRAMES_DBG <= 8'd0;
 `endif
@@ -2468,14 +2455,16 @@ module VDP1 (
 					if (PTMR.PTM[1]) begin
 						FRAME_START <= 1;
 					end
+					MANUAL_ERASECHANGE_PEND <= 0;
 `ifdef DEBUG
 					FRAMES_DBG <= 8'd0;
 `endif
 				end else if (MANUAL_ERASECHANGE_PEND && !FBCR.FCT) begin
 					FRAME_ERASE <= ~TVMR.TVM[1];
 					VBERASE_PEND <= TVMR.TVM[1];
+					MANUAL_ERASECHANGE_PEND <= 0;
 				end;
-				MANUAL_ERASECHANGE_PEND <= 0;
+//				MANUAL_ERASECHANGE_PEND <= 0;
 //				FRAME <= 1;//~FRAME;
 			end
 			
