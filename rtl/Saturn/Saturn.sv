@@ -306,7 +306,7 @@ module Saturn (
 	bit  [15:0] CD_SL;
 	bit  [15:0] CD_SR;
 	
-	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .WDT_DISABLE(1)) MSH
+	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .WDT_DISABLE(0)) MSH
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -373,7 +373,7 @@ module Saturn (
 `endif
 	);
 	
-	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .WDT_DISABLE(1)) SSH
+	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .WDT_DISABLE(0)) SSH
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
