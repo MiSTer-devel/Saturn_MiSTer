@@ -1705,8 +1705,8 @@ package VDP2_PKG;
 	} RBGState_t;
 	typedef RBGState_t RBGPipeline_t [4];
 	
-	typedef PN_t        NxPND_t[6];
-	typedef NxPND_t     PNPipe_t [6];
+	typedef PN_t        NxPND_t[8];
+	typedef NxPND_t     PNPipe_t [5];
 	
 	typedef bit [31: 0] NxCHD_t[4];
 	typedef NxCHD_t     CHPipe_t [2];
@@ -1754,10 +1754,12 @@ package VDP2_PKG;
 	                             input bit [8:6] NxMP, input bit [5:0] NxMPn[4], 
 										  input bit [1:0] NxPLSZ, input bit NxCHSZ, input bit NxPNB, input bit NxZMHF, input bit NxZMQT);
 		bit  [19: 1] addr;
+		bit  [ 1: 0] ZM_MASK;
 		bit  [10: 0] OFFX;
 		bit  [ 8: 0] map_addr;
 		
-		OFFX = NxOFFX + {NxZMHF&NxPN_CNT[0],3'b000};
+		ZM_MASK = {NxZMQT,NxZMQT|NxZMHF};
+		OFFX = NxOFFX + {NxPN_CNT&ZM_MASK,3'b000};
 		case (NxPLSZ)
 			2'b00: map_addr = {NxMP,NxMPn[{NxOFFY[ 9],OFFX[ 9]}][5:0]};
 			2'b01: map_addr = {NxMP,NxMPn[{NxOFFY[ 9],OFFX[10]}][5:1],OFFX[9]};
@@ -1774,9 +1776,10 @@ package VDP2_PKG;
 		return addr;
 	endfunction
 	
-	function bit [19:1] NxCHAddr(input PN_t NxPN[2], input bit [2:0] NxCH_CNT, input bit [10:0] NxOFFX, input bit [10:0] NxOFFY, 
+	function bit [19:1] NxCHAddr(input PN_t NxPN[4], input bit [2:0] NxCH_CNT, input bit [10:0] NxOFFX, input bit [10:0] NxOFFY, 
 	                             input bit [2:0] NxCHCN, input bit NxCHSZ, input bit NxZMHF, input bit NxZMQT);
 		bit  [19: 1] addr;
+		bit  [ 1: 0] ZM_MASK;
 		PN_t         PN;
 		bit  [10: 0] OFFX;
 		bit  [ 4: 0] cell_offs;
@@ -1784,15 +1787,16 @@ package VDP2_PKG;
 		bit  [ 3: 0] y_offs;
 		bit  [ 2: 0] ch_cnt;
 		
+		ZM_MASK = {NxZMQT,NxZMQT|NxZMHF};
 		case (NxCHCN)
-			3'b000:  PN = NxPN[NxZMHF&NxCH_CNT[0]];	//4bits/dot, 16 colors
-			3'b001:  PN = NxPN[NxZMHF&NxCH_CNT[1]];	//8bits/dot, 256 colors
+			3'b000:  PN = NxPN[      NxCH_CNT[1:0]&ZM_MASK[1:0] ];	//4bits/dot, 16 colors
+			3'b001:  PN = NxPN[{1'b0,NxCH_CNT[1:1]&ZM_MASK[0:0]}];	//8bits/dot, 256 colors
 			default: PN = NxPN[0];
 		endcase
 		
 		case (NxCHCN)
-			3'b000:  OFFX = NxOFFX + {NxZMHF&NxCH_CNT[0],3'b000};
-			3'b001:  OFFX = NxOFFX + {NxZMHF&NxCH_CNT[1],3'b000};
+			3'b000:  OFFX = NxOFFX + {     NxCH_CNT[1:0]&ZM_MASK[1:0],3'b000};
+			3'b001:  OFFX = NxOFFX + {1'b0,NxCH_CNT[1:1]&ZM_MASK[0:0],3'b000};
 			default: OFFX = NxOFFX;
 		endcase
 
@@ -2291,9 +2295,8 @@ package VDP2_PKG;
 		bit         CC;	//Color calculation flag
 		bit         TPON;	//Transparent code enabled
 		bit [ 6: 0] PALN;	//Palette number
-	} DotParam_t;
-	parameter DotParam_t DP_NULL = {1'b0,1'b0,1'b0,7'h00};
-	typedef DotParam_t CellDotsParam_t [8];
+	} CellParam_t;
+	parameter CellParam_t CDP_NULL = {1'b0,1'b0,1'b0,7'h00};
 	
 	typedef struct packed
 	{
@@ -2307,15 +2310,15 @@ package VDP2_PKG;
 	
 	typedef DotData_t DotsBuffer_t [16];
 	
-	function DotData_t MakeDotData(input bit [31:0] DCC, input DotParam_t DP, input bit [2:0] CHCN);
+	function DotData_t MakeDotData(input bit [31:0] DCC, input CellParam_t CDP, input bit [2:0] CHCN);
 		bit [23: 0] DC;
 		bit [ 2: 0] NTP;
 		bit         P;
 		bit         TP;
 		
 		case (CHCN)
-			3'b000:  DC = {13'h0000,DP.PALN     ,DCC[3:0]};							//Palette 4bits/dot, 16 colors
-			3'b001:  DC = {13'h0000,DP.PALN[6:4],DCC[7:0]};							//Palette 8bits/dot, 256 colors
+			3'b000:  DC = {13'h0000,CDP.PALN     ,DCC[3:0]};						//Palette 4bits/dot, 16 colors
+			3'b001:  DC = {13'h0000,CDP.PALN[6:4],DCC[7:0]};						//Palette 8bits/dot, 256 colors
 			3'b010:  DC = {13'h0000,DCC[10:0]};											//Palette 16bits/dot, 2048 colors
 			3'b011:  DC = {DCC[14:10],3'b000,DCC[9:5],3'b000,DCC[4:0],3'b000};//RGB 16bits/dot, 32768 colors
 			default: DC = DCC[23:0];														//RGB 32bits/dot, 16M colors
@@ -2323,14 +2326,14 @@ package VDP2_PKG;
 
 		NTP = {|DCC[10:8],|DCC[7:4],|DCC[3:0]};
 		case (CHCN)
-			3'b000:  begin TP = ~(|NTP[0:0] | DP.TPON); P = 1; end	//Palette 4bits/dot, 16 colors
-			3'b001:  begin TP = ~(|NTP[1:0] | DP.TPON); P = 1; end	//Palette 8bits/dot, 256 colors
-			3'b010:  begin TP = ~(|NTP[2:0] | DP.TPON); P = 1; end	//Palette 16bits/dot, 2048 colors
-			3'b011:  begin TP = ~(DCC[15]   | DP.TPON); P = 0; end	//RGB 16bits/dot, 32768 colors
-			default: begin TP = ~(DCC[31]   | DP.TPON); P = 0; end	//RGB 32bits/dot, 16M colors
+			3'b000:  begin TP = ~(|NTP[0:0] | CDP.TPON); P = 1; end	//Palette 4bits/dot, 16 colors
+			3'b001:  begin TP = ~(|NTP[1:0] | CDP.TPON); P = 1; end	//Palette 8bits/dot, 256 colors
+			3'b010:  begin TP = ~(|NTP[2:0] | CDP.TPON); P = 1; end	//Palette 16bits/dot, 2048 colors
+			3'b011:  begin TP = ~(DCC[15]   | CDP.TPON); P = 0; end	//RGB 16bits/dot, 32768 colors
+			default: begin TP = ~(DCC[31]   | CDP.TPON); P = 0; end	//RGB 32bits/dot, 16M colors
 		endcase
 		
-		return {DP.PR, DP.CC, P, TP, DC};
+		return {CDP.PR, CDP.CC, P, TP, DC};
 	endfunction
 	
 	typedef struct packed
