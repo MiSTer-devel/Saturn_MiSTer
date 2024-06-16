@@ -1339,6 +1339,11 @@ package VDP2_PKG;
 		S[2].LSCY = '0;
 		S[3].LSCY = '0;
 		
+		S[0].LZMX = REGS.SCRCTL.N0LZMX;
+		S[1].LZMX = REGS.SCRCTL.N1LZMX;
+		S[2].LZMX = '0;
+		S[3].LZMX = '0;
+		
 		S[0].LSS = REGS.SCRCTL.N0LSS;
 		S[1].LSS = REGS.SCRCTL.N1LSS;
 		S[2].LSS = '0;
@@ -1348,11 +1353,6 @@ package VDP2_PKG;
 		S[1].LWTA = {REGS.LWTA1U.WxLWTA,REGS.LWTA1L.WxLWTA};
 		S[2].LWTA = '0;
 		S[3].LWTA = '0;
-		
-		S[0].LZMX = REGS.SCRCTL.N0LZMX;
-		S[1].LZMX = REGS.SCRCTL.N1LZMX;
-		S[2].LZMX = '0;
-		S[3].LZMX = '0;
 		
 		S[0].TPON = REGS.BGON.N0TPON;
 		S[1].TPON = REGS.BGON.N1TPON;
@@ -1862,7 +1862,7 @@ package VDP2_PKG;
 		return addr;
 	endfunction
 	
-	function bit [19:1] NxBMAddr(input bit [2:0] NxMP, input bit [2:0] NxCH_CNT, input bit [10:0] NxOFFX, input bit [10:0] NxOFFY, 
+	function bit [19:1] NxBMAddr(input bit [2:0] NxMP, input bit [2:0] NxCH_CNT, input bit [2:0] NxBM_CNT, input bit [10:0] NxOFFX, input bit [10:0] NxOFFY, 
 	                             input bit [2:0] NxCHCN, input bit [1:0] NxBMSZ, input bit NxZMHF, input bit NxZMQT);
 		bit   [19:1] addr;
 		bit   [15:0] offs;
@@ -1875,11 +1875,11 @@ package VDP2_PKG;
 		endcase
 		
 		case (NxCHCN)
-			3'b000: addr = {NxMP,16'b0000000000000000} + {offs[15:0],1'b0   } + {1'b0              ,NxZMHF&NxCH_CNT[0],1'b0};	//4bits/dot, 16 colors
-			3'b001: addr = {NxMP,16'b0000000000000000} + {offs[15:0],2'b00  } + {NxZMHF&NxCH_CNT[1],       NxCH_CNT[0],1'b0};	//8bits/dot, 256 colors
+			3'b000: addr = {NxMP,16'b0000000000000000} + {offs[15:0],1'b0   } + {NxBM_CNT,1'b0} /*+ {1'b0              ,NxZMHF&NxCH_CNT[0],1'b0}*/;	//4bits/dot, 16 colors
+			3'b001: addr = {NxMP,16'b0000000000000000} + {offs[15:0],2'b00  } + {NxBM_CNT,1'b0} /*+ {NxZMHF&NxCH_CNT[1],       NxCH_CNT[0],1'b0}*/;	//8bits/dot, 256 colors
 			3'b010,
-			3'b011: addr = {NxMP,16'b0000000000000000} + {offs[15:0],3'b000 } + {NxCH_CNT[1:0],1'b0};	//16bits/dot, 2048/32768 colors
-			3'b100: addr = {NxMP,16'b0000000000000000} + {offs[14:0],4'b0000} + {NxCH_CNT[2:0],1'b0};	//32bits/dot, 16M colors
+			3'b011: addr = {NxMP,16'b0000000000000000} + {offs[15:0],3'b000 } + {NxBM_CNT,1'b0} /*+ {NxCH_CNT[1:0],1'b0}*/;	//16bits/dot, 2048/32768 colors
+			3'b100: addr = {NxMP,16'b0000000000000000} + {offs[14:0],4'b0000} + {NxBM_CNT,1'b0} /*+ {NxCH_CNT[2:0],1'b0}*/;	//32bits/dot, 16M colors
 			default: addr = '0;
 		endcase
 	
@@ -1906,7 +1906,7 @@ package VDP2_PKG;
 		return (res<<DI);
 	endfunction
 	
-	function bit [2:0] NxLSSMask(input bit [1:0] NxLSS);
+	function bit [2:0] NxLSSMask(input bit [1:0] NxLSS, input bit DDI);
 		bit [2:0] mask;
 		
 		case (NxLSS)
@@ -1915,7 +1915,7 @@ package VDP2_PKG;
 			2'b10: mask = 3'b011;
 			2'b11: mask = 3'b111;
 		endcase
-		return mask;
+		return (mask>>DDI);
 	endfunction
 	
 	//Rotation scroll screen
