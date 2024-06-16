@@ -178,18 +178,20 @@ package SCUDSP_PKG;
 			4'b1100: begin
 				di.DMA.ST = 1;
 				di.DMA.DIR = IC[12];
-				case (IC[9:8])
-					2'b00: di.DMA.RAMW[0] = ~IC[10] & ~IC[12];
-					2'b01: di.DMA.RAMW[1] = ~IC[10] & ~IC[12];
-					2'b10: di.DMA.RAMW[2] = ~IC[10] & ~IC[12];
-					2'b11: di.DMA.RAMW[3] = ~IC[10] & ~IC[12];
+				case (IC[10:8])
+					3'b000: di.DMA.RAMW[0] = ~IC[12];
+					3'b001: di.DMA.RAMW[1] = ~IC[12];
+					3'b010: di.DMA.RAMW[2] = ~IC[12];
+					3'b011: di.DMA.RAMW[3] = ~IC[12];
+					3'b100: di.DMA.PRGW = ~IC[12];
+					default:;
 				endcase
-				di.DMA.PRGW = IC[10] & ~IC[12];
-				case (IC[9:8])
-					2'b00: di.DMA.RAMR[0] = ~IC[10] & IC[12];
-					2'b01: di.DMA.RAMR[1] = ~IC[10] & IC[12];
-					2'b10: di.DMA.RAMR[2] = ~IC[10] & IC[12];
-					2'b11: di.DMA.RAMR[3] = ~IC[10] & IC[12];
+				case (IC[10:8])
+					3'b000: di.DMA.RAMR[0] = ~IC[10] & IC[12];
+					3'b001: di.DMA.RAMR[1] = ~IC[10] & IC[12];
+					3'b010: di.DMA.RAMR[2] = ~IC[10] & IC[12];
+					3'b011: di.DMA.RAMR[3] = ~IC[10] & IC[12];
+					default:;
 				endcase
 				di.DMA.RAMS = IC[9:8];
 //				di.DMA.ADDI = IC[17:15];

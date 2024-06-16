@@ -64,6 +64,7 @@ module SCU_DSP (
 	bit        V;
 	
 	bit        LPS_EXE;
+	bit        PAUSED;
 
 	bit  [5:0] DATA_RAM_ADDR [4];
 	bit [31:0] DATA_RAM_D [4];
@@ -82,8 +83,8 @@ module SCU_DSP (
 	bit        DATA_TRANS_WE;
 	bit        DATA_TRANS_RE;
 	
-	wire DMA_CE = T0 && DMA_ACK;
-	wire RUN = (EX || ES) && ~T0;
+	wire DMA_EN = T0 && DMA_ACK;
+	wire RUN = (EX || ES) && ~PAUSED;
 
 	
 	reg [31:0] IC;
@@ -191,14 +192,12 @@ module SCU_DSP (
 		YBUS = DATA_RAM_Q[DECI.YBUS.RAMS];
 		
 		if (DECI.D1BUS.IMMS) begin
-			D1BUS = ImmSext(IC, DECI.D1BUS.IMMT);;
+			D1BUS = ImmSext(IC, DECI.D1BUS.IMMT);
 		end else if (DECI.D1BUS.ALUS) begin
 			case (DECI.D1BUS.RAMS[0])
 				1'b0: D1BUS = ALU_Q[47:16];//ALU HIGH
 				2'b1: D1BUS = ALU_Q[31: 0];//ALU LOW
 			endcase
-		end else if (DECI.D1BUS.DMAW) begin
-			D1BUS = IC;
 		end else begin
 			D1BUS = DATA_RAM_Q[DECI.D1BUS.RAMS];
 		end
@@ -282,7 +281,7 @@ module SCU_DSP (
 				if (DECI.D1BUS.CTW[3]) CT3 <= D1BUS[5:0];
 			end
 			
-			if (DMA_CE && CE_R) begin
+			if (DMA_EN && CE_R) begin
 				if (DMAI.RAMW[0] || DMAI.RAMR[0]) CT0 <= CT0 + 6'd1;
 				if (DMAI.RAMW[1] || DMAI.RAMR[1]) CT1 <= CT1 + 6'd1;
 				if (DMAI.RAMW[2] || DMAI.RAMR[2]) CT2 <= CT2 + 6'd1;
@@ -347,7 +346,7 @@ module SCU_DSP (
 				end
 			end
 			
-			if (DMA_CE && CE_R) begin
+			if (DMA_EN && CE_R) begin
 				if (DMAI.PRGW) PC <= PC + 6'd1;
 			end
 			
@@ -357,15 +356,16 @@ module SCU_DSP (
 		end
 	end
 	
+	wire [ 7: 0] TN_VAL = DECI.DMA.CNTM ? DATA_RAM_Q[DECI.DMA.CNTS][7:0] : IC[7:0];
 	wire [ 7: 0] TN0_NEXT = TN0 - 8'd1;
 	always @(posedge CLK or negedge RST_N) begin
-		bit [7:0] CNT_VAL;
 		bit       DMA_END_OLD;
 		bit       DMA_END_PEND;
 		
 		if (!RST_N) begin
 			TN0 <= '0;
 			T0 <= 0;
+			PAUSED <= 0;
 			DMAI <= '0;
 			DMA_REQ <= 0;
 			DMA_END_PEND <= 0;
@@ -375,21 +375,15 @@ module SCU_DSP (
 		end else if (!RES_N) begin
 			TN0 <= '0;
 			T0 <= 0;
+			PAUSED <= 0;
 			DMAI <= '0;
 			DMA_REQ <= 0;
 		end else begin
 			if (CE) begin
 				if (RUN) begin
-					if (DECI.DMA.CNTM) begin
-						CNT_VAL = DATA_RAM_Q[DECI.DMA.CNTS][7:0];
-					end
-					else begin
-						CNT_VAL = IC[7:0];
-					end
-			
 					if (DECI.DMA.ST && !T0) begin
 						T0 <= 1;
-						TN0 <= CNT_VAL;
+						TN0 <= TN_VAL;
 						DMAI <= DECI.DMA;
 						DMA_REQ <= 1;
 					end
@@ -398,6 +392,7 @@ module SCU_DSP (
 				DMA_END_PEND <= 0;
 				if (DMA_END_PEND) begin
 					T0 <= 0;
+					PAUSED <= 0;
 					DMAI <= '0;
 				end
 			end
@@ -407,9 +402,15 @@ module SCU_DSP (
 				if (!DMA_END && DMA_END_OLD) begin
 					DMA_END_PEND <= 1;
 				end
+				
+				if (DECI.XBUS.RAMS == DMAI.RAMS || DECI.YBUS.RAMS == DMAI.RAMS || DECI.D1BUS.RAMS == DMAI.RAMS || 
+				    DECI.XBUS.CTI[DMAI.RAMS] || DECI.YBUS.CTI[DMAI.RAMS] || DECI.D1BUS.CTI[DMAI.RAMS] || DECI.D1BUS.CTW[DMAI.RAMS] ||
+					 DECI.DMA.ST || DECI.D1BUS.RA0W || DECI.D1BUS.WA0W) begin
+					PAUSED <= T0;
+				end
 			end 
 			if (CE_R) begin
-				if (DMA_CE) begin
+				if (DMA_EN) begin
 					DMA_REQ <= 0;
 					TN0 <= TN0_NEXT;
 					if (TN0_NEXT != 8'd0) begin
@@ -428,32 +429,32 @@ module SCU_DSP (
 	assign DMA_RUN = T0;
 	assign DMA_LAST = (TN0_NEXT == 8'd0);
 	
-	assign DSO = D1BUS;
+	assign DSO = DECI.DMA.ST ? IC : D1BUS;
 	assign RA0W = DECI.D1BUS.RA0W & RUN & CE;
 	assign WA0W = DECI.D1BUS.WA0W & RUN & CE;
-	assign DMAW = DECI.D1BUS.DMAW & RUN & CE;
+	assign DMAW = DECI.DMA.ST & RUN & CE;
 	
 	//DATA RAM
 	wire DATA_TRANS_CS[4] = '{DATA_TRANS_ADDR[7:6] == 2'b00,DATA_TRANS_ADDR[7:6] == 2'b01,DATA_TRANS_ADDR[7:6] == 2'b10,DATA_TRANS_ADDR[7:6] == 2'b11};
 	
 	assign DATA_RAM_ADDR[0] = RUN || T0 ? CT0 : DATA_TRANS_ADDR[5:0];
-	assign DATA_RAM_D[0] = T0 ? D0BUSI : RUN ? D1BUS : DI;
-	assign DATA_RAM_WE[0] = T0 ? DMAI.RAMW[0] & DMA_CE & CE_R : RUN ? DECI.D1BUS.RAMW[0] & CE : DATA_TRANS_WE && DATA_TRANS_CS[0] & CE_R;
+	assign DATA_RAM_D[0] = T0 && DMAI.RAMW[0] ? D0BUSI : RUN ? D1BUS : DI;
+	assign DATA_RAM_WE[0] = T0 && DMAI.RAMW[0] ? DMA_EN & CE_R : RUN ? DECI.D1BUS.RAMW[0] & CE : DATA_TRANS_WE && DATA_TRANS_CS[0] & CE_R;
 	DSP_DATA_RAM #(6,32) DATA_RAM0(CLK, DATA_RAM_ADDR[0], DATA_RAM_D[0], DATA_RAM_WE[0], DATA_RAM_Q[0]);
 	
 	assign DATA_RAM_ADDR[1] = RUN || T0 ? CT1 : DATA_TRANS_ADDR[5:0];
-	assign DATA_RAM_D[1] = T0 ? D0BUSI : RUN ? D1BUS : DI;
-	assign DATA_RAM_WE[1] = T0 ? DMAI.RAMW[1] & DMA_CE & CE_R : RUN ? DECI.D1BUS.RAMW[1] & CE : DATA_TRANS_WE && DATA_TRANS_CS[1] & CE_R ;
+	assign DATA_RAM_D[1] = T0 && DMAI.RAMW[1] ? D0BUSI : RUN ? D1BUS : DI;
+	assign DATA_RAM_WE[1] = T0 && DMAI.RAMW[1] ? DMA_EN & CE_R : RUN ? DECI.D1BUS.RAMW[1] & CE : DATA_TRANS_WE && DATA_TRANS_CS[1] & CE_R ;
 	DSP_DATA_RAM #(6,32) DATA_RAM1(CLK, DATA_RAM_ADDR[1], DATA_RAM_D[1], DATA_RAM_WE[1], DATA_RAM_Q[1]);
 	
 	assign DATA_RAM_ADDR[2] = RUN || T0 ? CT2 : DATA_TRANS_ADDR[5:0];
-	assign DATA_RAM_D[2] = T0 ? D0BUSI : RUN ? D1BUS : DI;
-	assign DATA_RAM_WE[2] = T0 ? DMAI.RAMW[2] & DMA_CE & CE_R : RUN ? DECI.D1BUS.RAMW[2] & CE : DATA_TRANS_WE && DATA_TRANS_CS[2] & CE_R ;
+	assign DATA_RAM_D[2] = T0 && DMAI.RAMW[2] ? D0BUSI : RUN ? D1BUS : DI;
+	assign DATA_RAM_WE[2] = T0 && DMAI.RAMW[2] ? DMA_EN & CE_R : RUN ? DECI.D1BUS.RAMW[2] & CE : DATA_TRANS_WE && DATA_TRANS_CS[2] & CE_R ;
 	DSP_DATA_RAM #(6,32) DATA_RAM2(CLK, DATA_RAM_ADDR[2], DATA_RAM_D[2], DATA_RAM_WE[2], DATA_RAM_Q[2]);
 	
 	assign DATA_RAM_ADDR[3] = RUN || T0 ? CT3 : DATA_TRANS_ADDR[5:0];
-	assign DATA_RAM_D[3] = T0 ? D0BUSI : RUN ? D1BUS : DI;
-	assign DATA_RAM_WE[3] = T0 ? DMAI.RAMW[3] & DMA_CE & CE_R : RUN ? DECI.D1BUS.RAMW[3] & CE : DATA_TRANS_WE && DATA_TRANS_CS[3] & CE_R ;
+	assign DATA_RAM_D[3] = T0 && DMAI.RAMW[3] ? D0BUSI : RUN ? D1BUS : DI;
+	assign DATA_RAM_WE[3] = T0 && DMAI.RAMW[3] ? DMA_EN & CE_R : RUN ? DECI.D1BUS.RAMW[3] & CE : DATA_TRANS_WE && DATA_TRANS_CS[3] & CE_R ;
 	DSP_DATA_RAM #(6,32) DATA_RAM3(CLK, DATA_RAM_ADDR[3], DATA_RAM_D[3], DATA_RAM_WE[3], DATA_RAM_Q[3]);
 	
 	//Control port
@@ -556,7 +557,7 @@ module SCU_DSP (
 	//PRG RAM
 	assign PRG_RAM_ADDR = T0 || RUN ? PC : PRG_TRANS_ADDR;
 	assign PRG_RAM_D = T0 ? D0BUSI : DI;
-	assign PRG_RAM_WE = T0 ? DMAI.PRGW & DMA_CE & CE_R : !RUN && PRG_TRANS_WE;
+	assign PRG_RAM_WE = T0 ? DMAI.PRGW & DMA_EN & CE_R : !RUN && PRG_TRANS_WE;
 	DSP_PRG_RAM #(8,32," ","prg.txt") PRG_RAM(CLK, PRG_RAM_ADDR, PRG_RAM_D, PRG_RAM_WE & CE_R, PRG_RAM_Q);
 
 	

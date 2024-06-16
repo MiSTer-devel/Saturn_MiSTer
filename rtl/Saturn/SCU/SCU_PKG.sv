@@ -265,4 +265,7 @@ package SCU_PKG;
 	parameter bit [31:0] VER_RMASK = 32'h0000000F;
 	parameter bit [31:0] VER_INIT = 32'h00000000;
 	
+	
+	parameter bit [19:0] DMA_TN_MASK[3] = '{20'hFFFFF,20'h00FFF,20'h00FFF};
+	
 endpackage
