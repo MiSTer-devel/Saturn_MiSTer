@@ -728,7 +728,13 @@ module emu
 		.CE(CDD_2X_CE)
 	);
 	
-	Saturn saturn
+	Saturn 
+`ifdef MISTER_DUAL_SDRAM
+	#(.RAMH_SLOW(0))
+`else
+	#(.RAMH_SLOW(1))
+`endif
+	saturn
 	(
 		.CLK(clk_sys),
 		.RST_N(~rst_sys),
@@ -941,23 +947,23 @@ module emu
 		.init(reset),
 		.sync(DCE_R),
 	
-		.addr_a0({VDP2_RA0_A[17],3'b0000,VDP2_RA0_A[16:1]}),
-		.addr_a1({               3'b0000,VDP2_RA1_A[16:1]}),
+		.addr_a0(VDP2_RA0_A[17:1]),
+		.addr_a1(VDP2_RA1_A[16:1]),
 		.din_a(VDP2_RA_D),
 		.wr_a(VDP2_RA_WE),
 		.rd_a(VDP2_RA_RD),
 		.dout_a0(VDP2_RA0_Q),
 		.dout_a1(VDP2_RA1_Q),
 	
-		.addr_b0({VDP2_RB0_A[17],3'b0000,VDP2_RB0_A[16:1]}),
-		.addr_b1({               3'b0000,VDP2_RB1_A[16:1]}),
+		.addr_b0(VDP2_RB0_A[17:1]),
+		.addr_b1(VDP2_RB1_A[16:1]),
 		.din_b(VDP2_RA_D),///////////////
 		.wr_b(VDP2_RB_WE),
 		.rd_b(VDP2_RB_RD),
 		.dout_b0(VDP2_RB0_Q),
 		.dout_b1(VDP2_RB1_Q),
 		
-		.ch2addr({3'b000,SCSP_RAM_A}),
+		.ch2addr({1'b0,SCSP_RAM_A}),
 		.ch2din(SCSP_RAM_D),
 		.ch2wr(SCSP_RAM_WE & {2{SCSP_RAM_CS}}),
 		.ch2rd(SCSP_RAM_RD & SCSP_RAM_CS),
@@ -988,6 +994,14 @@ module emu
 		.*,
 		.clk(clk_ram),
 		.rst(reset || rst_ram),
+	
+		//CPU bus (RAMH)
+		.ramh_addr(MEM_A[19:2]),
+		.ramh_din (MEM_DO),
+		.ramh_wr  ({4{~RAMH_CS_N}} & ~MEM_DQM_N),
+		.ramh_rd  (~RAMH_CS_N & ~MEM_RD_N),
+		.ramh_dout(ramh_do),
+		.ramh_busy(ramh_busy),
 		
 		//CD RAM
 `ifdef MISTER_DUAL_SDRAM
@@ -1011,14 +1025,6 @@ module emu
 		.raml_rd  ((~ROM_CS_N | ~SRAM_CS_N | ~RAML_CS_N) & ~MEM_RD_N),
 		.raml_dout(raml_do),
 		.raml_busy(raml_busy),
-	
-		//CPU bus (RAMH)
-		.ramh_addr(MEM_A[19:2]),
-		.ramh_din (MEM_DO),
-		.ramh_wr  ({4{~RAMH_CS_N}} & ~MEM_DQM_N),
-		.ramh_rd  (~RAMH_CS_N & ~MEM_RD_N),
-		.ramh_dout(ramh_do),
-		.ramh_busy(ramh_busy),
 	
 		//VDP1 VRAM
 		.vdp1vram_addr(VDP1_VRAM_A[18:1]),
