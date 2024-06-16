@@ -1,4 +1,6 @@
-module DCC (
+module DCC 
+#(parameter bit FAST=0)
+(
 	input             CLK,
 	input             RST_N,
 	input             CE_R,
@@ -59,7 +61,7 @@ module DCC (
 			else if (EXBREQ_N && SCU_ACTIVE) SCU_ACTIVE <= 0;
 		end
 	end
-	assign BRLS_N = (BREQ_N | ~SSH_ACTIVE) & (EXBREQ_N | ~SCU_ACTIVE);
+	assign BRLS_N = BREQ_N & EXBREQ_N;
 	assign BACK_N = BGR_N | ~SSH_ACTIVE;
 	assign EXBACK_N = BGR_N | ~SCU_ACTIVE;
 	
@@ -77,26 +79,26 @@ module DCC (
 	assign DCE_N = ~(A[24:21] == 4'b0001) | CS0_N;
 	assign DOE_N = RD_N;
 	assign DWE_N = WE_N;
-	bit          DRAM_WAIT;
+	bit          MEM_WAIT;
 	always @(posedge CLK or negedge RST_N) begin
 		bit          RD_N_OLD;
 		bit          WE_N_OLD;
-		bit  [ 2: 0] DRAM_WAIT_CNT;
+		bit  [ 2: 0] WAIT_CNT;
 		
 		if (!RST_N) begin
-			DRAM_WAIT <= 0;
-			DRAM_WAIT_CNT <= '0;
+			MEM_WAIT <= 0;
+			WAIT_CNT <= '0;
 		end else begin
 			RD_N_OLD <= RD_N;
 			WE_N_OLD <= |WE_N;
-			if ((!RD_N && RD_N_OLD && !DCE_N) || (!WE_N && WE_N_OLD && !DCE_N)) begin
-				DRAM_WAIT <= 1;
-				DRAM_WAIT_CNT <= 3'd5;
-			end else if (!DRAM_WAIT_CNT && CE_F) begin
-				DRAM_WAIT <= 0;
+			if ((!RD_N && RD_N_OLD && !CS0_N) || (!WE_N && WE_N_OLD && !CS0_N)) begin
+				MEM_WAIT <= 1;
+				WAIT_CNT <= !DCE_N || !SMPCCE_N ? (FAST ? 3'd4 : 3'd6) : 3'd7;
+			end else if (!WAIT_CNT && CE_F) begin
+				MEM_WAIT <= 0;
 			end
 			
-			if (DRAM_WAIT_CNT && CE_R) DRAM_WAIT_CNT <= DRAM_WAIT_CNT - 3'd1;
+			if (WAIT_CNT && CE_R) WAIT_CNT <= WAIT_CNT - 3'd1;
 		end
 	end
 	
@@ -124,7 +126,7 @@ module DCC (
 		end
 	end
 	
-	assign WAIT_N = WTIN_N & ~DRAM_WAIT;
+	assign WAIT_N = WTIN_N & ~MEM_WAIT;
 	
 	assign IREQ_N = {VINT_N,VINT_N&HINT_N};
 

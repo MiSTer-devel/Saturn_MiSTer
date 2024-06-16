@@ -1,4 +1,6 @@
-module Saturn (
+module Saturn
+#(parameter bit RAMH_SLOW=0)
+(
 	input             CLK,
 	input             RST_N,
 	input             EN,
@@ -17,6 +19,7 @@ module Saturn (
 	output            SRAM_CS_N,
 	output            RAML_CS_N,
 	output            RAMH_CS_N,
+	output            RAMH_RFS,
 	output      [3:0] MEM_DQM_N,
 	output            MEM_RD_N,
 	input             MEM_WAIT_N,
@@ -133,10 +136,7 @@ module Saturn (
 	input             DBG_PAUSE,
 	input             DBG_BREAK,
 	input             DBG_RUN,
-	input       [7:0] DBG_EXT,
-	
-	output      [7:0] DBG_WAIT_CNT,
-	output reg        DBG_HOOK
+	input       [7:0] DBG_EXT
 );
 
 	bit BREAK;
@@ -185,6 +185,7 @@ module Saturn (
 	bit         MSHNMI_N;
 	bit         MSHBGR_N;
 	bit         MSHBRLS_N;
+	bit         MSRFS;
 	
 	//SSH
 	bit  [26:0] SSHA;
@@ -231,6 +232,7 @@ module Saturn (
 	bit         ECRD_WR_N;
 	bit         ECCS3_N;
 	bit         ECRD_N;
+	bit         ECRFS;
 	bit         ECWAIT_N;
 
 	bit  [25:0] AA;
@@ -306,7 +308,7 @@ module Saturn (
 	bit  [15:0] CD_SL;
 	bit  [15:0] CD_SR;
 	
-	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .WDT_DISABLE(0)) MSH
+	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1)) MSH
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -331,6 +333,7 @@ module Saturn (
 		.WE_N(MSHDQM_N),
 		.RD_N(MSHRD_N),
 		.IVECF_N(MSHIVECF_N),
+//		.RFS(MSRFS),
 		
 		.EA(SSHA),
 		.EDI(SSHDI),
@@ -373,7 +376,7 @@ module Saturn (
 `endif
 	);
 	
-	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .WDT_DISABLE(0)) SSH
+	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1)) SSH
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -474,7 +477,7 @@ module Saturn (
 							!BCSS_N ? SCSP_DO : 16'h0000;
 
 	bit DBG_ABUS_END;
-	SCU SCU
+	SCU #(.FAST(RAMH_SLOW)) SCU
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -505,6 +508,7 @@ module Saturn (
 		.ECRD_WR_N(ECRD_WR_N),
 		.ECCS3_N(ECCS3_N),
 		.ECRD_N(ECRD_N),
+		.ECRFS(ECRFS),
 		.ECWAIT_N(ECWAIT_N),
 		
 		.AA(AA),
@@ -545,7 +549,7 @@ module Saturn (
 	);
 	
 	
-	DCC DCC
+	DCC #(.FAST(RAMH_SLOW)) DCC
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -600,20 +604,7 @@ module Saturn (
 	assign SRAM_CS_N = SRAMCE_N;
 	assign RAML_CS_N = DRAMCE_N;
 	assign RAMH_CS_N = MSHCS3_N;
-	
-	
-	always @(posedge CLK or negedge RST_N) begin
-		if (!RST_N) begin
-			DBG_WAIT_CNT <= '0;
-			DBG_HOOK <= 0;
-		end else if (SYS_CE_R) begin
-			DBG_WAIT_CNT <= DBG_WAIT_CNT + 8'd1;
-			if (!CRD_N || !CDQM_N[0] || !CDQM_N[1] || !CDQM_N[2] || !CDQM_N[3]) begin
-				DBG_WAIT_CNT <= 8'd0;
-			end
-			if (CA == 25'h0012B0 && !CRD_N && !CCS3_N) DBG_HOOK <= 1;
-		end
-	end
+	assign RAMH_RFS = /*MSRFS |*/ ECRFS;
 	
 	bit MRES_N;
 	always @(posedge CLK or negedge RST_N) begin
