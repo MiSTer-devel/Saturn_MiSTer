@@ -78,16 +78,16 @@ module VDP2_WRITE_FIFO (
 	input	        CLK,
 	input         RST_N,
 	
-	input	 [33:0] DATA,
+	input	 [35:0] DATA,
 	input	        WRREQ,
 	input	        RDREQ,
-	output [33:0] Q,
+	output [35:0] Q,
 	output	     EMPTY,
 	output	     FULL,
 	output	     LAST
 );
 
-	wire [33: 0] sub_wire0;
+	wire [35: 0] sub_wire0;
 	bit  [ 2: 0] RADDR;
 	bit  [ 2: 0] WADDR;
 	bit  [ 3: 0] AMOUNT;
@@ -144,7 +144,7 @@ module VDP2_WRITE_FIFO (
 		altdpram_component.rdcontrol_aclr = "OFF",
 		altdpram_component.rdcontrol_reg = "UNREGISTERED",
 		altdpram_component.read_during_write_mode_mixed_ports = "CONSTRAINED_DONT_CARE",
-		altdpram_component.width = 34,
+		altdpram_component.width = 36,
 		altdpram_component.widthad = 3,
 		altdpram_component.width_byteena = 1,
 		altdpram_component.wraddress_aclr = "OFF",

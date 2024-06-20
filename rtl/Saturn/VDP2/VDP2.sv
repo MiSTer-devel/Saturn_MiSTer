@@ -1421,25 +1421,25 @@ module VDP2 (
 					2'b00: begin
 						VRAM_WA <= FIFO_A[18:1];
 						VRAM_D[63:48] <= FIFO_D;
-						VRAM_WE[7:6] <= 2'b11;
+						VRAM_WE[7:6] <= ~FIFO_DQM;
 						VRAM_WRITE_PEND <= FIFO_LAST;
 					end
 					2'b01: begin
 						VRAM_WA <= FIFO_A[18:1];
 						VRAM_D[47:32] <= FIFO_D;
-						VRAM_WE[5:4] <= 2'b11;
+						VRAM_WE[5:4] <= ~FIFO_DQM;
 						VRAM_WRITE_PEND <= FIFO_LAST;
 					end
 					2'b10: begin
 						VRAM_WA <= FIFO_A[18:1];
 						VRAM_D[31:16] <= FIFO_D;
-						VRAM_WE[3:2] <= 2'b11;
+						VRAM_WE[3:2] <= ~FIFO_DQM;
 						VRAM_WRITE_PEND <= FIFO_LAST;
 					end
 					2'b11: begin
 						VRAM_WA <= FIFO_A[18:1];
 						VRAM_D[15:0] <= FIFO_D;
-						VRAM_WE[1:0] <= 2'b11;
+						VRAM_WE[1:0] <= ~FIFO_DQM;
 						VRAM_WRITE_PEND <= 1;
 					end
 				endcase
@@ -1471,14 +1471,15 @@ module VDP2 (
 	
 	bit         FIFO_WRREQ;
 	bit         FIFO_RDREQ;
-	bit [33: 0] FIFO_Q;
+	bit [35: 0] FIFO_Q;
 	bit         FIFO_EMPTY;
 	bit         FIFO_FULL;
 	bit         FIFO_LAST;
-	VDP2_WRITE_FIFO fifo(CLK, RES_N, {A[18:1],DI}, FIFO_WRREQ, FIFO_RDREQ, FIFO_Q, FIFO_EMPTY, FIFO_FULL, FIFO_LAST);
+	VDP2_WRITE_FIFO fifo(CLK, RES_N, {A[18:1],DQM,DI}, FIFO_WRREQ, FIFO_RDREQ, FIFO_Q, FIFO_EMPTY, FIFO_FULL, FIFO_LAST);
 	assign FIFO_WRREQ = VRAM_REQ & ~WE_N & ~DTEN_N & BURST;
 	assign FIFO_RDREQ = ~FIFO_EMPTY & ~VRAM_WRITE_PEND;
-	wire [18: 1] FIFO_A = FIFO_Q[33:16];
+	wire [18: 1] FIFO_A = FIFO_Q[35:18];
+	wire [ 1: 0] FIFO_DQM = FIFO_Q[17:16];
 	wire [15: 0] FIFO_D = FIFO_Q[15:0];
 	
 	assign RA0_A = VRAMA0_A;
@@ -2081,7 +2082,7 @@ module VDP2 (
 	
 	wire W0_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[0][9:1],WxSX[0][0]&HRES[1]} || {WxSX[0][9:1],WxSX[0][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[0][9:1],WxEX[0][0]&HRES[1]} && {WxEX[0][9:1],WxEX[0][0]&HRES[1]} <= 10'h380 &&
 	               WSCRNY                 >= {WxSY[0][8:1],WxSY[0][0]&~DDI}                                                      && WSCRNY                 <= {WxEY[0][8:1],WxEY[0][0]&~DDI}    && WxEY[0][8:0] < 9'h1FC;
-	wire W1_HIT = ({SCRNX,SCRNX0|HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]&HRES[1]} || {WxSX[1][9:1],WxSX[1][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]&HRES[1]} && {WxEX[1][9:1],WxEX[1][0]&HRES[1]} <= 10'h380 &&
+	wire W1_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]&HRES[1]} || {WxSX[1][9:1],WxSX[1][0]|~HRES[1]} == 10'h3FF) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]&HRES[1]} && {WxEX[1][9:1],WxEX[1][0]&HRES[1]} <= 10'h380 &&
 	               WSCRNY                 >= {WxSY[1][8:1],WxSY[1][0]&~DDI}                                                      && WSCRNY                 <= {WxEY[1][8:1],WxEY[1][0]&~DDI}    && WxEY[1][8:0] < 9'h1FC;
 					  
 	bit          W0_HIT_PIPE[17*2];
@@ -2318,7 +2319,7 @@ module VDP2 (
 				if (NEN[3]) begin
 					case (NCHCN[3])
 						3'b000: begin				//4bits/dot, 16 colors
-							if (!NCNT[3][2] && NCNT[3][0] == 2'b11 && NSxREG[1].ZMQT) begin
+							if (!NCNT[3][2] && NCNT[3][0] == 2'b11 && NSxREG[1].ZMQT && NSxREG[1].ON) begin
 							NBG_CDC[3][3'b000               ^ {3{NHF[7]}}][ 7: 4] <= NCH[3][31:28];
 							NBG_CDC[3][3'b001               ^ {3{NHF[7]}}][ 7: 4] <= NCH[3][27:24];
 							NBG_CDC[3][3'b010               ^ {3{NHF[7]}}][ 7: 4] <= NCH[3][23:20];
@@ -2328,7 +2329,7 @@ module VDP2 (
 							NBG_CDC[3][3'b110               ^ {3{NHF[7]}}][ 7: 4] <= NCH[3][ 7: 4];
 							NBG_CDC[3][3'b111               ^ {3{NHF[7]}}][ 7: 4] <= NCH[3][ 3: 0];
 							NBG_CDP[7] <= {NPR[7], NCC[7], NTPON[3], NPALN[7]};
-							end else if (!NCNT[3][2] && ((NCNT[3][1:0] == 2'b00 && !NSxREG[1].ZMQT) || (NCNT[3][1:0] == 2'b10 && NSxREG[1].ZMQT))) begin
+							end else if (!NCNT[3][2] && ((NCNT[3][1:0] == 2'b00 && !(NSxREG[1].ZMQT && NSxREG[1].ON)) || (NCNT[3][1:0] == 2'b10 && NSxREG[1].ZMQT && NSxREG[1].ON))) begin
 							NBG_CDC[3][3'b000               ^ {3{NHF[3]}}][ 3: 0] <= NCH[3][31:28];
 							NBG_CDC[3][3'b001               ^ {3{NHF[3]}}][ 3: 0] <= NCH[3][27:24];
 							NBG_CDC[3][3'b010               ^ {3{NHF[3]}}][ 3: 0] <= NCH[3][23:20];
@@ -2341,7 +2342,7 @@ module VDP2 (
 							end
 						end
 						3'b001: begin				//8bits/dot, 256 colors
-							if (!NCNT[3][2] && ((NCNT[3][1] == 1'b0 && !NSxREG[1].ZMHF) || (NCNT[3][1] == 1'b1 && NSxREG[1].ZMHF))) begin
+							if (!NCNT[3][2] && ((NCNT[3][1] == 1'b0 && !(NSxREG[1].ZMHF && NSxREG[1].ON)) || (NCNT[3][1] == 1'b1 && NSxREG[1].ZMHF && NSxREG[1].ON))) begin
 							NBG_CDC[3][{NCNT[3][0:0],2'b00 ^ {2{NHF[3]}}}] <= {     NCH[3][31:24]};
 							NBG_CDC[3][{NCNT[3][0:0],2'b01 ^ {2{NHF[3]}}}] <= {     NCH[3][23:16]};
 							NBG_CDC[3][{NCNT[3][0:0],2'b10 ^ {2{NHF[3]}}}] <= {     NCH[3][15: 8]};
@@ -2398,7 +2399,7 @@ module VDP2 (
 				if (NEN[2]) begin
 					case (NCHCN[2])
 						3'b000: begin				//4bits/dot, 16 colors
-							if (!NCNT[2][2] && NCNT[2][1:0] == 2'b11 && NSxREG[0].ZMQT) begin
+							if (!NCNT[2][2] && NCNT[2][1:0] == 2'b11 && NSxREG[0].ZMQT && NSxREG[0].ON) begin
 							NBG_CDC[2][3'b000               ^ {3{NHF[6]}}][ 7: 4] <= NCH[2][31:28];
 							NBG_CDC[2][3'b001               ^ {3{NHF[6]}}][ 7: 4] <= NCH[2][27:24];
 							NBG_CDC[2][3'b010               ^ {3{NHF[6]}}][ 7: 4] <= NCH[2][23:20];
@@ -2408,7 +2409,7 @@ module VDP2 (
 							NBG_CDC[2][3'b110               ^ {3{NHF[6]}}][ 7: 4] <= NCH[2][ 7: 4];
 							NBG_CDC[2][3'b111               ^ {3{NHF[6]}}][ 7: 4] <= NCH[2][ 3: 0];
 							NBG_CDP[6] <= {NPR[6], NCC[6], NTPON[2], NPALN[6]};
-							end else if (!NCNT[2][2] && ((NCNT[2][1:0] == 2'b00 && !NSxREG[0].ZMQT) || (NCNT[2][1:0] == 2'b10 && NSxREG[0].ZMQT))) begin
+							end else if (!NCNT[2][2] && ((NCNT[2][1:0] == 2'b00 && !(NSxREG[0].ZMQT && NSxREG[0].ON)) || (NCNT[2][1:0] == 2'b10 && NSxREG[0].ZMQT && NSxREG[0].ON))) begin
 							NBG_CDC[2][3'b000               ^ {3{NHF[2]}}][ 3: 0] <= NCH[2][31:28];
 							NBG_CDC[2][3'b001               ^ {3{NHF[2]}}][ 3: 0] <= NCH[2][27:24];
 							NBG_CDC[2][3'b010               ^ {3{NHF[2]}}][ 3: 0] <= NCH[2][23:20];
@@ -2421,7 +2422,7 @@ module VDP2 (
 							end
 						end
 						3'b001: begin				//8bits/dot, 256 colors
-							if (!NCNT[2][2] && ((NCNT[2][1] == 1'b0 && !NSxREG[0].ZMHF) || (NCNT[2][1] == 1'b1 && NSxREG[0].ZMHF))) begin
+							if (!NCNT[2][2] && ((NCNT[2][1] == 1'b0 && !(NSxREG[0].ZMHF && NSxREG[0].ON)) || (NCNT[2][1] == 1'b1 && NSxREG[0].ZMHF && NSxREG[0].ON))) begin
 							NBG_CDC[2][{NCNT[2][0:0],2'b00 ^ {2{NHF[2]}}}] <= {     NCH[2][31:24]};
 							NBG_CDC[2][{NCNT[2][0:0],2'b01 ^ {2{NHF[2]}}}] <= {     NCH[2][23:16]};
 							NBG_CDC[2][{NCNT[2][0:0],2'b10 ^ {2{NHF[2]}}}] <= {     NCH[2][15: 8]};
@@ -2487,7 +2488,7 @@ module VDP2 (
 				if (NEN[1]) begin
 					case (NCHCN[1])
 						3'b000: begin				//4bits/dot, 16 colors
-							if (NCNT[1][0] && (NSxREG[1].ZMHF || NSxREG[1].ZMQT)) begin
+							if (NCNT[1][0] && (NSxREG[1].ZMHF || NSxREG[1].ZMQT) && NSxREG[1].ON) begin
 							NBG_CDC[1][3'b000               ^ {3{NHF[5]}}][ 7: 4] <= NCH[1][31:28];
 							NBG_CDC[1][3'b001               ^ {3{NHF[5]}}][ 7: 4] <= NCH[1][27:24];
 							NBG_CDC[1][3'b010               ^ {3{NHF[5]}}][ 7: 4] <= NCH[1][23:20];
@@ -2567,7 +2568,7 @@ module VDP2 (
 				if (NEN[0]) begin
 					case (NCHCN[0])
 						3'b000: begin				//4bits/dot, 16 colors
-							if (NCNT[0][0] && (NSxREG[0].ZMHF || NSxREG[0].ZMQT)) begin
+							if (NCNT[0][0] && (NSxREG[0].ZMHF || NSxREG[0].ZMQT) && NSxREG[0].ON) begin
 							NBG_CDC[0][3'b000               ^ {3{NHF[4]}}][ 7: 4] <= NCH[0][31:28];
 							NBG_CDC[0][3'b001               ^ {3{NHF[4]}}][ 7: 4] <= NCH[0][27:24];
 							NBG_CDC[0][3'b010               ^ {3{NHF[4]}}][ 7: 4] <= NCH[0][23:20];
@@ -2939,8 +2940,8 @@ module VDP2 (
 	end
 	
 	//Priority
-	wire TW0_HIT = W0_HIT_PIPE[16*2+1];
-	wire TW1_HIT = W1_HIT_PIPE[16*2+1];
+	wire TW0_HIT = HRES[1] ? W0_HIT_PIPE[16*2+0] : W0_HIT_PIPE[16*2+1];
+	wire TW1_HIT = HRES[1] ? W1_HIT_PIPE[16*2+0] : W1_HIT_PIPE[16*2+1];
 	wire NxW_EN[4] = '{WinTest(TW0_HIT ^ REGS.WCTLA.N0W0A,TW1_HIT ^ REGS.WCTLA.N0W1A,SDOT.WN ^ REGS.WCTLC.SPSWA,REGS.WCTLA.N0W0E,REGS.WCTLA.N0W1E,REGS.WCTLA.N0SWE & REGS.SPCTL.SPWINEN,REGS.WCTLA.N0LOG),
 	                   WinTest(TW0_HIT ^ REGS.WCTLA.N1W0A,TW1_HIT ^ REGS.WCTLA.N1W1A,SDOT.WN ^ REGS.WCTLC.SPSWA,REGS.WCTLA.N1W0E,REGS.WCTLA.N1W1E,REGS.WCTLA.N1SWE & REGS.SPCTL.SPWINEN,REGS.WCTLA.N1LOG),
 	                   WinTest(TW0_HIT ^ REGS.WCTLB.N2W0A,TW1_HIT ^ REGS.WCTLB.N2W1A,SDOT.WN ^ REGS.WCTLC.SPSWA,REGS.WCTLB.N2W0E,REGS.WCTLB.N2W1E,REGS.WCTLB.N2SWE & REGS.SPCTL.SPWINEN,REGS.WCTLB.N2LOG),
