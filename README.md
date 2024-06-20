@@ -13,7 +13,6 @@ Current status is WIP/Beta
 
 Known issues:
 
-- 3D Baseball - minor graphic gliches
 - Space Jam - freeze in demo
 - Battle Monsters (EU) - graphic gliches
 - Dragon Ball Z (EU) - freeze
