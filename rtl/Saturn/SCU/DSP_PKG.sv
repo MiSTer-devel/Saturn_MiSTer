@@ -8,6 +8,7 @@ package SCUDSP_PKG;
 
 	typedef struct packed
 	{
+		bit         RAMR;
 		bit [ 1: 0] RAMS;
 		bit         MULS;
 		bit         RXW;
@@ -17,6 +18,7 @@ package SCUDSP_PKG;
 	
 	typedef struct packed
 	{
+		bit         RAMR;
 		bit [ 1: 0] RAMS;
 		bit [ 1: 0] ACS;
 		bit         RYW;
@@ -29,6 +31,7 @@ package SCUDSP_PKG;
 		bit         IMMS;
 		bit [ 1: 0] IMMT;		//Immadiate type (8/25/19)
 		bit         ALUS;
+		bit         RAMR;
 		bit [ 1: 0] RAMS;
 		bit         RXW;
 		bit         PW;
@@ -78,9 +81,9 @@ package SCUDSP_PKG;
 	} DecInst_t;
 	
 	parameter DecInst_t DECINST_RESET = '{1'b0,
-	                                  {2'b00, 1'b0, 1'b0, 1'b0, 4'b0000},
-	                                  {2'b00, 2'b00, 1'b0, 1'b0, 4'b0000},
-										       {1'b0, 2'b00, 1'b0, 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 4'b0000, 4'b0000, 4'b0000},
+	                                  {1'b0, 2'b00, 1'b0, 1'b0, 1'b0, 4'b0000},
+	                                  {1'b0, 2'b00, 2'b00, 1'b0, 1'b0, 4'b0000},
+										       {1'b0, 2'b00, 1'b0, 1'b0, 2'b00, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 4'b0000, 4'b0000, 4'b0000},
 										       1'b0,
 												 {1'b0, 1'b0, 4'b0000, 1'b0, 4'b0000, 2'b00/*, 3'b000*/, 1'b0, 2'b00, 4'b0000/*, 1'b0*/},
 												 {1'b0, 1'b0, 1'b0, 1'b0}};
@@ -93,6 +96,7 @@ package SCUDSP_PKG;
 			4'b0000,4'b0001,4'b0010,4'b0011: begin
 				di.ALU = |IC[29:26];
 				
+				di.XBUS.RAMR = IC[25] | &IC[24:23];
 				di.XBUS.RAMS = IC[21:20];
 				di.XBUS.MULS = ~IC[23];
 				di.XBUS.RXW = IC[25];
@@ -104,6 +108,7 @@ package SCUDSP_PKG;
 					2'b11: di.XBUS.CTI[3] = |IC[25:23] & IC[22];
 				endcase
 				
+				di.YBUS.RAMR = IC[19];
 				di.YBUS.RAMS = IC[15:14];
 				di.YBUS.ACS = IC[18:17];
 				di.YBUS.RYW = IC[19];
@@ -118,6 +123,7 @@ package SCUDSP_PKG;
 				di.D1BUS.IMMS = ~IC[13] & IC[12];
 				di.D1BUS.IMMT = 2'b00;
 				di.D1BUS.ALUS = IC[13] & IC[12] & (IC[3:0] == 4'h9 | IC[3:0] == 4'hA);
+				di.D1BUS.RAMR = IC[13] & IC[12] & ~IC[3];
 				di.D1BUS.RAMS = IC[1:0];
 				case (IC[11:8])
 					4'b0000: di.D1BUS.RAMW[0] = IC[12];

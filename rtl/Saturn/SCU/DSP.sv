@@ -65,6 +65,7 @@ module SCU_DSP (
 	
 	bit        LPS_EXE;
 	bit        PAUSED;
+	bit        FLUSH;
 
 	bit  [5:0] DATA_RAM_ADDR [4];
 	bit [31:0] DATA_RAM_D [4];
@@ -99,7 +100,7 @@ module SCU_DSP (
 				IC <= '0;
 			end 
 			if (RUN && (!LPS_EXE || LOP == 0)) begin
-				IC <= PRG_RAM_Q;
+				IC <= FLUSH ? '0 : PRG_RAM_Q;
 			end
 		end
 	end
@@ -198,8 +199,10 @@ module SCU_DSP (
 				1'b0: D1BUS = ALU_Q[47:16];//ALU HIGH
 				2'b1: D1BUS = ALU_Q[31: 0];//ALU LOW
 			endcase
-		end else begin
+		end else if (DECI.D1BUS.RAMR) begin
 			D1BUS = DATA_RAM_Q[DECI.D1BUS.RAMS];
+		end else begin
+			D1BUS = '0;
 		end
 		
 		D0BUSO = DATA_RAM_Q[DMAI.RAMS];
@@ -340,10 +343,6 @@ module SCU_DSP (
 				if (DECI.D1BUS.TOPW) begin
 					TOP <= D1BUS[7:0];
 				end
-				
-				if (DECI.DMA.PRGW) begin
-					PC <= '0;
-				end
 			end
 			
 			if (DMA_EN && CE_R) begin
@@ -366,6 +365,7 @@ module SCU_DSP (
 			TN0 <= '0;
 			T0 <= 0;
 			PAUSED <= 0;
+			FLUSH <= 0;
 			DMAI <= '0;
 			DMA_REQ <= 0;
 			DMA_END_PEND <= 0;
@@ -376,6 +376,7 @@ module SCU_DSP (
 			TN0 <= '0;
 			T0 <= 0;
 			PAUSED <= 0;
+			FLUSH <= 0;
 			DMAI <= '0;
 			DMA_REQ <= 0;
 		end else begin
@@ -383,6 +384,7 @@ module SCU_DSP (
 				if (RUN) begin
 					if (DECI.DMA.ST && !T0) begin
 						T0 <= 1;
+						PAUSED <= DECI.DMA.PRGW;
 						TN0 <= TN_VAL;
 						DMAI <= DECI.DMA;
 						DMA_REQ <= 1;
@@ -390,11 +392,15 @@ module SCU_DSP (
 				end
 				
 				DMA_END_PEND <= 0;
+				FLUSH <= 0;
 				if (DMA_END_PEND) begin
 					T0 <= 0;
 					PAUSED <= 0;
+					FLUSH <= DMAI.PRGW;
 					DMAI <= '0;
 				end
+				
+				
 			end
 			
 			if (CE_F) begin
@@ -403,8 +409,11 @@ module SCU_DSP (
 					DMA_END_PEND <= 1;
 				end
 				
-				if (DECI.XBUS.RAMS == DMAI.RAMS || DECI.YBUS.RAMS == DMAI.RAMS || DECI.D1BUS.RAMS == DMAI.RAMS || 
-				    DECI.XBUS.CTI[DMAI.RAMS] || DECI.YBUS.CTI[DMAI.RAMS] || DECI.D1BUS.CTI[DMAI.RAMS] || DECI.D1BUS.CTW[DMAI.RAMS] ||
+				if ((DECI.XBUS.RAMR && DECI.XBUS.RAMS == DMAI.RAMS) || 
+				    (DECI.YBUS.RAMR && DECI.YBUS.RAMS == DMAI.RAMS) || 
+					 (DECI.D1BUS.RAMR && DECI.D1BUS.RAMS == DMAI.RAMS) || 
+					 DECI.D1BUS.RAMW[DMAI.RAMS] || DECI.D1BUS.CTW[DMAI.RAMS] ||
+				    DECI.XBUS.CTI[DMAI.RAMS] || DECI.YBUS.CTI[DMAI.RAMS] || DECI.D1BUS.CTI[DMAI.RAMS] || 
 					 DECI.DMA.ST || DECI.D1BUS.RA0W || DECI.D1BUS.WA0W) begin
 					PAUSED <= T0;
 				end
