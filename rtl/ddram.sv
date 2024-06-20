@@ -121,7 +121,7 @@ reg  [ 15:  0] raml_write_data;
 reg  [  1:  0] raml_be;
 reg            raml_read_busy,raml_write_busy;
 
-reg  [ 18:  1] vdp1vram_rcache_addr;
+reg  [ 18:  1] vdp1vram_rcache_addr,vdp1vram_rcache_addr2;
 reg  [  9:  1] vdp1vram_rcache_addr_lsb;
 reg  [  8:  0] vdp1vram_rcache_blen;
 reg            vdp1vram_rcache_dirty = 1;
@@ -223,12 +223,12 @@ always @(posedge clk) begin
 	bit [3:0] chan;
 	bit [6:0] word_cnt;
 
-	if (rst_pulse) begin		
+	/*if (rst_pulse) begin		
 		{cdram_rcache_dirty,raml_rcache_dirty,ramh_rcache_dirty,vdp1vram_rcache_dirty,vdp1fb_rcache_dirty,cart_rcache_dirty} <= '1;
 		{cdram_read_busy,raml_read_busy,ramh_read_busy,vdp1vram_read_busy,vdp1fb_read_busy,cdbuf_read_busy,cart_read_busy} <= '0;
 		vdp1vram_rcache_blen <= '0;
 	end
-	else begin
+	else*/ begin
 		if (ramh_rd && !ramh_rd_old) begin
 			if (ramh_addr[19:5] != ramh_rcache_addr[19:5] || ramh_rcache_dirty) begin
 				ramh_read_busy <= 1;
@@ -255,12 +255,14 @@ always @(posedge clk) begin
 				if (vdp1vram_addr != vdp1vram_rcache_addr || vdp1vram_rcache_dirty) begin
 					vdp1vram_read_busy <= 1;
 					vdp1vram_rcache_addr <= vdp1vram_addr;
+					vdp1vram_rcache_addr2 <= vdp1vram_addr + vdp1vram_blen - 1;
 					vdp1vram_rcache_blen <= vdp1vram_blen;
 				end
 			end else if (vdp1vram_rcache_blen) begin
-				if (vdp1vram_addr < vdp1vram_rcache_addr || vdp1vram_addr > (vdp1vram_rcache_addr + vdp1vram_rcache_blen - 1) || vdp1vram_rcache_dirty) begin
+				if (vdp1vram_addr < vdp1vram_rcache_addr || vdp1vram_addr > vdp1vram_rcache_addr2 || vdp1vram_rcache_dirty) begin
 					vdp1vram_read_busy <= 1;
 					vdp1vram_rcache_addr <= vdp1vram_addr;
+//					vdp1vram_rcache_addr2 <= vdp1vram_addr + vdp1vram_blen - 1;
 					vdp1vram_rcache_blen <= '0;
 				end
 			end else begin
@@ -301,10 +303,10 @@ always @(posedge clk) begin
 		end
 	end
 		
-	if (rst_pulse) begin
+	/*if (rst_pulse) begin
 		{cdram_write_busy,raml_write_busy,cart_write_busy,bios_write_busy,bsram_write_busy} <= 0;		
 	end
-	else begin
+	else*/ begin
 		if (|ramh_wr && !ramh_wr_old) begin
 			if (ramh_addr[19:5] == ramh_rcache_addr[19:5]) begin
 				ramh_rcache_dirty <= 1;
@@ -371,6 +373,12 @@ always @(posedge clk) begin
 			bsram_be <= bsram_wr;
 			bsram_write_busy <= 1;	
 		end
+	end
+	if (rst_pulse) begin		
+		{cdram_rcache_dirty,raml_rcache_dirty,ramh_rcache_dirty,vdp1vram_rcache_dirty,vdp1fb_rcache_dirty,cart_rcache_dirty} <= '1;
+		{cdram_read_busy,raml_read_busy,ramh_read_busy,vdp1vram_read_busy,vdp1fb_read_busy,cdbuf_read_busy,cart_read_busy} <= '0;
+		vdp1vram_rcache_blen <= '0;
+		{cdram_write_busy,raml_write_busy,cart_write_busy,bios_write_busy,bsram_write_busy} <= 0;	
 	end
 	
 	if (rst_pulse) begin
