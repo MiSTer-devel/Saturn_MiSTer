@@ -1220,7 +1220,11 @@ module SCU
 					end else if (BBUS_RDY) begin
 						BBUS_WRITE_DONE = BBUS_WRITE_PROCESS;
 						BBUS_WRITE_PROCESS <= 0;
-						if (!BBUS_WRITE_PAGE || BBUS_WRITE_UNALIGNED || (DMA_WTN_LESS2 && DMA_WTN[0])) begin
+						if (!BBUS_WRITE_PAGE) begin
+							BDO <= {1'b0,1'b0,2'b00,DMA_WA[20:9]};
+							BADDT_N <= 1;
+							BBUS_ST <= BBUS_DMA_WADDR0;
+						end else if (BBUS_WRITE_UNALIGNED || (DMA_WTN_LESS2 && DMA_WTN[0])) begin
 							BDO <= {1'b0,1'b0,2'b11,DMA_WA[20:9]};
 							BADDT_N <= 1;
 							BBUS_ST <= BBUS_DMA_WADDR0;
