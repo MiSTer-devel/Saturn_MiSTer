@@ -693,7 +693,8 @@ module VDP1 (
 								4'h8,
 								4'hB,
 								4'h9,
-								4'hA: begin	
+								4'hA,
+								4'hB: begin	
 									CMD_DELAY <= 8'd0;
 									CMD_ST <= CMDS_EXEC;
 								end
@@ -959,10 +960,10 @@ module VDP1 (
 				CMDS_POLYGON_CALCTY: begin
 					if ({5'b00000,ORIG_HEIGHT} <= COL_HEIGHT) begin
 						SPR_COL_ENLARGE <= 1;
-						COL_TEXT_D <= {5'b00000,ORIG_HEIGHT} >> 1;
+						COL_TEXT_D <= ({5'b00000,ORIG_HEIGHT} >> 1) - {12'b000000000000,~ORIG_HEIGHT[0]};
 					end else begin
 						SPR_COL_ENLARGE <= 0;
-						COL_TEXT_D <= COL_HEIGHT >> 1;
+						COL_TEXT_D <= (COL_HEIGHT >> 1) /*+ {12'b000000000000,COL_HEIGHT[0]}*/;
 					end
 					
 					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT - 8'd1) * ORIG_WIDTH[8:3] : '0;
@@ -1019,19 +1020,18 @@ module VDP1 (
 						GRD_CALC_STATE <= '0;
 						RIGHT_GHCOLOR_STEP <= GRD_CALC_STEP;
 						TEXT_X <= '0;
-						CMD_ST <= CMDS_ROW_DRAW;
+						case (CMD.CMDCTRL.COMM) 
+							4'h0: CMD_ST <= CMDS_NSPR_CALCX;
+							4'h1: CMD_ST <= CMDS_SSPR_CALCX;
+							default: CMD_ST <= CMDS_LINE_CALC;
+						endcase
 					end
 				end
 				
 				CMDS_ROW_DRAW: begin
-					TEXTY_INC <= 0;
 					if (TEXTY_READ_STEP) begin
-						if (COL_DRAW_STEP) begin
-							TEXTY_INC <= 1;
-						end else begin
-							TEXT_Y <= TEXT_Y + 8'd1;
-							SPR_OFFSY <= SPR_OFFSY_NEXT;
-						end
+						TEXT_Y <= TEXT_Y + 8'd1;
+						SPR_OFFSY <= SPR_OFFSY_NEXT;
 					end
 					
 					if (COL_DRAW_STEP) begin
@@ -1358,10 +1358,6 @@ module VDP1 (
 				CMDS_LINE_NEXT: begin
 					SPR_READ <= 0;
 					TEXT_X <= '0;
-					if (TEXTY_INC) begin
-						TEXT_Y <= TEXT_Y + 8'd1;
-						SPR_OFFSY <= SPR_OFFSY_NEXT;
-					end
 					
 					if (CMD.CMDCTRL.COMM == 4'h0 || CMD.CMDCTRL.COMM == 4'h1) begin
 						LEFT_VERT.Y <= LEFT_VERT.Y + {{12{COL_DIRY}},1'b1};
@@ -1548,7 +1544,7 @@ module VDP1 (
 						2'b11: begin CMD_ADDR <= CMD_SUB_RUN ? CMD_RET_ADDR : NEXT_ADDR; CMD_SUB_RUN <= 0; end
 					endcase
 					
-					if (CMD.CMDCTRL.END || CMD.CMDCTRL.COMM >= 4'hB) begin
+					if (CMD.CMDCTRL.END || CMD.CMDCTRL.COMM >= 4'hC) begin
 						DRAW_END <= 1;
 						CMD_ST <= CMDS_IDLE;
 `ifdef DEBUG
@@ -2446,13 +2442,13 @@ module VDP1 (
 `ifdef DEBUG
 					FRAMES_DBG <= 8'd0;
 `endif
-				end else if (MANUAL_ERASECHANGE_PEND && FBCR.FCT) begin
+				end else if ((MANUAL_ERASECHANGE_PEND || DBG_DRAW_EN) && FBCR.FCT) begin
 					FB_SEL <= ~FB_SEL;
 					EDSR.CEF <= 0;
 					EDSR.BEF <= EDSR.CEF;
 					DIE <= FBCR.DIE;
 					DIL <= FBCR.DIL;
-					if (PTMR.PTM[1]) begin
+					if (PTMR.PTM[1] || DBG_DRAW_EN) begin
 						FRAME_START <= 1;
 					end
 					MANUAL_ERASECHANGE_PEND <= 0;
