@@ -1875,11 +1875,11 @@ package VDP2_PKG;
 		endcase
 		
 		case (NxCHCN)
-			3'b000: addr = {NxMP,16'b0000000000000000} + {offs[15:0],1'b0   } + {NxBM_CNT,1'b0} /*+ {1'b0              ,NxZMHF&NxCH_CNT[0],1'b0}*/;	//4bits/dot, 16 colors
-			3'b001: addr = {NxMP,16'b0000000000000000} + {offs[15:0],2'b00  } + {NxBM_CNT,1'b0} /*+ {NxZMHF&NxCH_CNT[1],       NxCH_CNT[0],1'b0}*/;	//8bits/dot, 256 colors
+			3'b000: addr = {NxMP,16'b0000000000000000} + {offs[15:0],1'b0   } + {NxBM_CNT[1:0],1'b0};	//4bits/dot, 16 colors
+			3'b001: addr = {NxMP,16'b0000000000000000} + {offs[15:0],2'b00  } + {NxBM_CNT[1:0],1'b0};	//8bits/dot, 256 colors
 			3'b010,
-			3'b011: addr = {NxMP,16'b0000000000000000} + {offs[15:0],3'b000 } + {NxBM_CNT,1'b0} /*+ {NxCH_CNT[1:0],1'b0}*/;	//16bits/dot, 2048/32768 colors
-			3'b100: addr = {NxMP,16'b0000000000000000} + {offs[14:0],4'b0000} + {NxBM_CNT,1'b0} /*+ {NxCH_CNT[2:0],1'b0}*/;	//32bits/dot, 16M colors
+			3'b011: addr = {NxMP,16'b0000000000000000} + {offs[15:0],3'b000 } + {NxBM_CNT[1:0],1'b0};	//16bits/dot, 2048/32768 colors
+			3'b100: addr = {NxMP,16'b0000000000000000} + {offs[14:0],4'b0000} + {NxBM_CNT,1'b0};	//32bits/dot, 16M colors
 			default: addr = '0;
 		endcase
 	
