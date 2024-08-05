@@ -174,9 +174,7 @@ module VDP1 (
 	} CMDState_t;
 	CMDState_t CMD_ST;
 	bit  [18: 1] CMD_ADDR;
-	bit  [15: 0] CMD_DAT;
 	bit          CMD_READ;
-	bit          CMD_WE;
 	bit          CMD_READ_DONE;
 	bit  [18: 1] SPR_ADDR;
 	bit          SPR_READ;
@@ -595,25 +593,6 @@ module VDP1 (
 					DBG_CMD_WAIT_CNT <= DBG_CMD_WAIT_CNT + 1'd1;
 `endif
 					CMD_READ <= 0;
-					if (CMD_WE) begin
-						case (VRAM_READ_POS)
-							4'h0: CMD.CMDCTRL <= CMD_DAT;
-							4'h1: CMD.CMDLINK <= CMD_DAT;
-							4'h2: CMD.CMDPMOD <= CMD_DAT;
-							4'h3: CMD.CMDCOLR <= CMD_DAT;
-							4'h4: CMD.CMDSRCA <= CMD_DAT;
-							4'h5: CMD.CMDSIZE <= CMD_DAT;
-							4'h6: CMD.CMDXA <= CMD_DAT;
-							4'h7: CMD.CMDYA <= CMD_DAT;
-							4'h8: CMD.CMDXB <= CMD_DAT;
-							4'h9: CMD.CMDYB <= CMD_DAT;
-							4'hA: CMD.CMDXC <= CMD_DAT;
-							4'hB: CMD.CMDYC <= CMD_DAT;
-							4'hC: CMD.CMDXD <= CMD_DAT;
-							4'hD: CMD.CMDYD <= CMD_DAT;
-							4'hE: CMD.CMDGRDA <= CMD_DAT;
-						endcase
-					end
 					
 					if (CMD_READ_DONE) begin
 						CMD_CURR <= CMD_CURR + 1'd1;
@@ -2252,7 +2231,6 @@ module VDP1 (
 						VRAM_RD <= 0;
 						VRAM_ST <= VS_IDLE;
 					end else if (VRAM_RDY) begin
-						GRD_TBL[VRAM_READ_POS[1:0]] <= VRAM_Q;
 						VRAM_READ_POS <= VRAM_READ_POS + 4'd1;
 						CPU_ACCESS_WAIT <= 5'd10;
 						VRAM_ST <= VS_IDLE;
@@ -2340,15 +2318,52 @@ module VDP1 (
 	assign FB_DRAW_WAIT = (FB_ST != FS_IDLE) || CPU_FB_WPEND || CPU_FB_RPEND;
 	wire PAT_PREREAD_WAIT = (VRAM_ST == VS_PAT_READ) && PAT_PREREAD && !VRAM_RDY;
 	
-	assign CMD_DAT = VRAM_Q;
-	assign CMD_WE = (VRAM_ST == VS_CMD_READ) && VRAM_RDY;
+	bit [ 3: 0] CMD_POS;
+	bit [15: 0] CMD_DAT;
+	bit         CMD_WE,CLT_WE,GRD_WE;
+	always @(posedge CLK or negedge RST_N) begin
+		bit         CMD_WE,GRD_WE;
+		
+		if (!RST_N) begin
+			CMD_WE <= 0;
+			CLT_WE <= 0;
+			GRD_WE <= 0;
+		end else begin
+			CMD_DAT <= VRAM_Q;
+			CMD_POS <= VRAM_READ_POS;
+			CMD_WE <= (VRAM_ST == VS_CMD_READ && VRAM_RDY);
+			if (CMD_WE) begin
+				case (CMD_POS)
+					4'h0: CMD.CMDCTRL <= CMD_DAT;
+					4'h1: CMD.CMDLINK <= CMD_DAT;
+					4'h2: CMD.CMDPMOD <= CMD_DAT;
+					4'h3: CMD.CMDCOLR <= CMD_DAT;
+					4'h4: CMD.CMDSRCA <= CMD_DAT;
+					4'h5: CMD.CMDSIZE <= CMD_DAT;
+					4'h6: CMD.CMDXA <= CMD_DAT;
+					4'h7: CMD.CMDYA <= CMD_DAT;
+					4'h8: CMD.CMDXB <= CMD_DAT;
+					4'h9: CMD.CMDYB <= CMD_DAT;
+					4'hA: CMD.CMDXC <= CMD_DAT;
+					4'hB: CMD.CMDYC <= CMD_DAT;
+					4'hC: CMD.CMDXD <= CMD_DAT;
+					4'hD: CMD.CMDYD <= CMD_DAT;
+					4'hE: CMD.CMDGRDA <= CMD_DAT;
+				endcase
+			end
+			
+			CLT_WE <= (VRAM_ST == VS_CLT_READ) && VRAM_RDY;
+			
+			GRD_WE <= (VRAM_ST == VS_GRD_READ) && VRAM_RDY;
+			if (GRD_WE) begin
+				GRD_TBL[CMD_POS[1:0]] <= CMD_DAT;
+			end
+		end
+	end
 	assign CMD_READ_DONE = (VRAM_ST == VS_CMD_READ) && VRAM_RDY && (VRAM_READ_POS == 4'd15);
 	
-	wire [ 3: 0] CLT_WA = VRAM_READ_POS;
-	wire [15: 0] CLT_DAT = VRAM_Q;
-	wire         CLT_WE = (VRAM_ST == VS_CLT_READ) && VRAM_RDY;
 	wire [ 3: 0] CLT_RA = DRAW_PAT.C[3:0];
-	VDP1_COL_TBL CLT(.CLK(CLK), .WRADDR(CLT_WA), .DATA(CLT_DAT), .WREN(CLT_WE), .RDADDR(CLT_RA), .Q(CLT_Q));
+	VDP1_COL_TBL CLT(.CLK(CLK), .WRADDR(CMD_POS), .DATA(CMD_DAT), .WREN(CLT_WE), .RDADDR(CLT_RA), .Q(CLT_Q));
 	assign CLT_READ_DONE = (VRAM_ST == VS_CLT_READ) && VRAM_RDY && (VRAM_READ_POS == 4'd15);
 	
 	assign GRD_READ_DONE = (VRAM_ST == VS_GRD_READ) && VRAM_RDY && (VRAM_READ_POS == 4'd3);
