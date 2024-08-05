@@ -508,7 +508,7 @@ module emu
 					end
 				5: begin
 						cfg_address <= 7;
-						cfg_data <= !pald2 ? (!dotsel2 ? 32'h96F21F6D : 32'h29E3FEC3) :
+						cfg_data <= !pald2 ? (!dotsel2 ? 32'h9986B96D : 32'h29E4D329) :
 						                     (!dotsel2 ? 32'h8A3D70A4 : 32'h1999999A);
 						cfg_write <= 1;
 					end
@@ -684,7 +684,7 @@ module emu
 	
 	reg [31:0] in_clk;
 	always @(posedge clk_sys) 
-		in_clk <= !PAL ? (!SMPC_DOTSEL ? 53685200 : 57272720) :
+		in_clk <= !PAL ? (!SMPC_DOTSEL ? 53748200 : 57272800) :
 	                    (!SMPC_DOTSEL ? 53375000 : 56875000);
 
 	
@@ -1603,12 +1603,11 @@ module emu
 	
 	reg  [7:0] SCRN_EN2 = 8'b11111111;
 	reg  [2:0] SND_EN2 = 3'b111;
-`ifndef DEBUG
-	assign SCRN_EN2 = ~status[42:36];
-	assign SND_EN2 = ~status[45:43];
-`endif
 `ifdef DEBUG
 	assign SLOT_EN = {~status[31:28],~status[63:36]};
+`else
+	assign SCRN_EN2 = ~status[42:36];
+	assign SND_EN2 = ~status[45:43];
 `endif
 
 endmodule
