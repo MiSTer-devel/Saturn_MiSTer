@@ -224,8 +224,8 @@ module sdram1
 								  state[0].ADDR <= wr2                             ? addr2[19:1] : 
 				                                                                 addr2_pipe[19:1];
 				              state[0].RD   <= rd2_pipe;
-				              state[0].BANK <= 2'd2;
 								  state[0].WORD <= 1;
+				              state[0].BANK <= 2'd2;
 				              state[0].CHIP <= 0; end
 								  
 				3'b001: begin state[0].CMD  <= wr[0] || wr[1] || rd[0]         ? CTRL_RAS          : CTRL_IDLE;
@@ -253,8 +253,8 @@ module sdram1
 								  state[0].DATA <= din2;
 								  state[0].WE   <= wr2;
 								  state[0].BE   <= be2;
-				              state[0].BANK <= 2'd2;
 								  state[0].WORD <= 1;
+				              state[0].BANK <= 2'd2;
 				              state[0].CHIP <= 0; end
 
 				3'b100: begin state[0].CMD  <= wr[0] || wr[1] || rd[0]         ? CTRL_CAS          :  CTRL_IDLE;
@@ -337,22 +337,21 @@ module sdram1
 	wire        ctrl_rfs   = state[0].RFS;
 	wire        ctrl_chip  = state[0].CHIP;
 	
-	wire       data0_read = state[4].RD;
-	wire       out0_read  = state[5].RD;
-	wire [1:0] out0_bank  = state[5].BANK;
-	wire       out0_half  = state[5].HALF;
-	wire       out0_word  = state[5].WORD;
-	wire       out0_chip  = state[5].CHIP;
+	wire       data_read = state[4].RD;
+	wire       out_read  = state[5].RD;
+	wire [1:0] out_bank  = state[5].BANK;
+	wire       out_half  = state[5].HALF;
+	wire       out_word  = state[5].WORD;
 	
-	reg [15:0] rbuf;
-	reg [31:0] dout[4] = '{4{'1}};
-	reg [15:0] dout2 = '1;
+	reg [31:0] dout[4];
+	reg [15:0] dout2;
 	always @(posedge clk) begin
-		if (data0_read) rbuf <= SDRAM_DQ;
+		reg [15:0] rbuf0,rbuf1;
+		
+		if (data_read) begin rbuf1 <= rbuf0; rbuf0 <= SDRAM_DQ; end
 
-		if (out0_read && !out0_chip && !out0_word && !out0_bank[1]) dout[{out0_bank[0],out0_half}][31:16] <= rbuf;
-		if (out0_read && !out0_chip &&  out0_word && !out0_bank[1]) dout[{out0_bank[0],out0_half}][15: 0] <= rbuf;
-		if (out0_read && out0_bank[1]) dout2 <= rbuf;
+		if (out_read && !out_bank[1] && out_word) dout[{out_bank[0],out_half}] <= {rbuf1,rbuf0};
+		if (out_read &&  out_bank[1]) dout2 <= rbuf0;
 	end
 		
 	assign {dout_a0,dout_a1,dout_b0,dout_b1} = {dout[0],dout[1],dout[2],dout[3]};
@@ -418,9 +417,9 @@ module sdram1
 	assign dbg_ctrl_cmd = ctrl_cmd;
 	assign dbg_ctrl_we = ctrl_we;
 	assign dbg_ctrl_rfs = ctrl_rfs;
-	assign dbg_data0_read = data0_read;
-	assign dbg_out0_read = out0_read;
-	assign dbg_out0_bank = out0_bank;
+	assign dbg_data0_read = data_read;
+	assign dbg_out0_read = out_read;
+	assign dbg_out0_bank = out_bank;
 
 	altddio_out
 	#(
