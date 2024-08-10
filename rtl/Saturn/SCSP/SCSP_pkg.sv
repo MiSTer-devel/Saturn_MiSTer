@@ -307,9 +307,10 @@ package SCSP_PKG;
 		bit         NEGB;
 		bit         ZERO;
 		bit         BSEL;
-		bit         NOFL;
+		bit         UNUSED3;
 		bit [ 5: 0] COEF;
-		bit [ 1: 0] UNUSED3;
+		bit         NOFL;
+		bit         UNUSED4;
 		bit [ 4: 0] MASA;
 		bit         ADREB;
 		bit         NXADR;
@@ -337,21 +338,15 @@ package SCSP_PKG;
 	parameter EGState_t EST_DECAY2  = 2'b10;
 	parameter EGState_t EST_RELEASE = 2'b11;
 	
-//	typedef struct packed
-//	{
-//		bit [14: 0] PHASE;
-//	} OP1State_t;
-	
 	typedef struct packed
 	{
 		bit [ 4: 0] SLOT;	//
 		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
-		bit [ 7: 0] PHASE_INT;//Phase integer
 		bit [13: 0] PHASE_FRAC;//Phase fractional
 	} OP2_t;
-	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,8'h00,18'h00000};
+	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,14'h0000};
 	
 	typedef struct packed
 	{
@@ -361,8 +356,9 @@ package SCSP_PKG;
 		bit         KOFF;	//
 		bit         LOOP;//Loop processing 
 		bit         LOOP_END;//Loop processing end
+		bit [13: 0] PHASE_FRAC;//Phase fractional
 	} OP3_t;
-	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0};
+	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,14'h0000};
 	
 	typedef struct packed
 	{
@@ -372,9 +368,11 @@ package SCSP_PKG;
 		bit         KOFF;	//
 		bit         LOOP;//Loop processing 
 		bit         LOOP_END;//Loop processing end
-		bit [15: 0] WD;//Wave form data
+		bit [13: 0] PHASE_FRAC;//Phase fractional
+		bit [15: 0] WD0;//Wave form data
+		bit [ 1: 0] SSCTL;
 	} OP4_t;
-	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,16'h0000};
+	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,14'h0000,16'h0000,2'b00};
 	
 	typedef struct packed
 	{
@@ -395,10 +393,9 @@ package SCSP_PKG;
 		bit         KON;	//
 		bit         KOFF;	//
 		bit [15: 0] WD;	//Wave form data
-		bit [15: 0] SD;	//Slot out data
 		bit [ 9: 0] LEVEL;//Level
 	} OP6_t;
-	parameter OP6_t OP6_RESET = '{5'h00,1'b0,1'b0,1'b0,16'h0000,16'h0000,10'h000};
+	parameter OP6_t OP6_RESET = '{5'h00,1'b0,1'b0,1'b0,16'h0000,10'h000};
 	
 	typedef struct packed
 	{
@@ -412,19 +409,33 @@ package SCSP_PKG;
 	parameter OP7_t OP7_RESET = '{5'h00,1'b0,1'b0,1'b0,16'h0000,1'b0};
 	
 	
+	function bit [15:0] SoundReverse(input bit [15:0] WAVE, bit [1:0] SBCTL);
+		return WAVE ^ {SBCTL[1],{15{SBCTL[0]}}};
+	endfunction
 	
-	function bit [15:0] SoundSel(input bit [15:0] WAVE, input bit [15:0] NOISE, bit [1:0] SBCTL, bit [1:0] SSCTL);
+	function bit [15:0] SoundSel(input bit [15:0] WAVE, input bit [15:0] NOISE, bit [1:0] SSCTL);
 		bit [15:0] SD;
-		bit [15:0] temp;
 		
 		case (SSCTL)
-			2'b00: temp = WAVE;
-			2'b01: temp = NOISE;
-			default: temp = 16'h0000;
-		endcase
-		SD = {temp[15] ^ SBCTL[1], temp[14:0] ^ {15{SBCTL[0]}}}; 
+			2'b00: SD = WAVE;
+			2'b01: SD = NOISE;
+			default: SD = 16'h0000;
+		endcase 
 	
 		return SD;
+	endfunction
+	
+	function bit [15:0] Interpolate(input bit [15:0] WAVE0, input bit [15:0] WAVE1, bit [5:0] PHASE);
+		bit [ 6:0] PHASE_NEG;
+		bit [21:0] TEMP0,TEMP1;
+		bit [21:0] SUM;
+		
+		PHASE_NEG = 7'h40 - PHASE;
+		TEMP0 = $signed(WAVE0) * PHASE_NEG;
+		TEMP1 = $signed(WAVE1) * PHASE;
+		SUM = $signed(TEMP0) + $signed(TEMP1);
+	
+		return SUM[21:6];
 	endfunction
 
 	function bit signed [15:0] MDCalc(bit signed [15:0] X, bit signed [15:0] Y, bit [3:0] MDL);
@@ -467,9 +478,9 @@ package SCSP_PKG;
 		bit [7:0] RET;
 		
 		case (PLFOWS)
-			2'b00: WAVE = DATA ^ 8'h80;
-			2'b01: WAVE = {8{DATA[7]}} ^ 8'h80;
-			2'b10: WAVE = ({DATA[6:0] ^ {7{DATA[7]}},1'b0}) ^ 8'h80;
+			2'b00: WAVE = DATA;
+			2'b01: WAVE = { DATA[7],{7{~DATA[7]}} };
+			2'b10: WAVE = { {1'b0,DATA[5:0]^{6{DATA[6]}}} ^ {7{DATA[7]}},1'b0 };
 			2'b11: WAVE = NOISE;
 		endcase
 		
@@ -496,16 +507,16 @@ package SCSP_PKG;
 	
 	function bit [4:0] EffRateCalc(bit [4:0] RATE, bit [3:0] KRS, bit [3:0] OCT);
 		bit [5:0] RES;
-		bit [4:0] TEMP;
+		bit [5:0] TEMP;
 		bit [3:0] KEY_EG_SCALE;
 		bit [5:0] TEMP2;
 		bit [4:0] RATE_SCALE,RATE_SCALE2;
 		
-		TEMP = {1'b0,KRS} + {OCT[3],OCT};
+		TEMP = {2'b00,KRS} + {OCT[3],OCT[3],OCT};
 		if (KRS == 4'hF) 
 			KEY_EG_SCALE = '0;
 		else
-			KEY_EG_SCALE = TEMP[4] ? 4'h0 : TEMP[3:0];
+			KEY_EG_SCALE = TEMP[5] ? 4'h0 : TEMP[4] ? 4'hF : TEMP[3:0];
 		
 		TEMP2 = {1'b0,RATE} + {2'b00,KEY_EG_SCALE};
 		RES = TEMP2[5] ? 5'h1F : TEMP2[4:0];

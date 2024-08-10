@@ -61,13 +61,12 @@ module SCSP (
 	output reg [ 7: 0] DBG_SCU_740,
 	output             PCM_EN_DBG,
 	output     [23: 0] SCA_DBG,
-	output     [12: 0] ENV_SAMPLE_CNT_DBG,
-	output     [ 2: 0] ENV_STEP_CNT_DBG,
 	output     [ 5: 0] OP4_EFF_RATE_DBG,
 	output             ATTACK_DBG,
 	output             DECAY1_DBG,
 	output             DECAY2_DBG,
 	output             RELEASE_DBG,
+	output             KON_DBG,
 	output SCR0_t      SCR0_DBG,
 	output SA_t        SA_DBG,
 	output LSA_t       LSA_DBG,
@@ -123,19 +122,6 @@ module SCSP (
 	CR18_t       CR18;
 	CR19_t       CR19;
 	bit  [ 3: 0] CR4_CA;
-	
-	SCR0_t       SCR0;
-	SA_t         SA;
-	LSA_t        LSA;
-	LEA_t        LEA;
-	SCR1_t       SCR1;
-	SCR2_t       SCR2;
-	SCR3_t       SCR3;
-	SCR4_t       SCR4;
-	SCR5_t       SCR5;
-	SCR6_t       SCR6;
-	SCR7_t       SCR7;
-	SCR8_t       SCR8;
 	
 	OP2_t        OP2;
 	OP3_t        OP3;
@@ -203,15 +189,15 @@ module SCSP (
 			CYCLE_NUM <= CYCLE_NUM + 3'd1;
 		
 	wire DSP_EN = (CYCLE_NUM[2:1] == 2'b00) || (CYCLE_NUM[2:1] == 2'b10);
-	wire PCM_EN = (CYCLE_NUM[2:1] == 2'b01);
-	wire SLOT0_EN = (CYCLE_NUM[2:1] == 2'b00);
+	wire PCM_EN = (CYCLE_NUM[2:1] == 2'b01) || (CYCLE_NUM[2:1] == 2'b11);
+	wire SLOT0_EN = (CYCLE_NUM[2:1] == 2'b01);
 	wire SLOT1_EN = (CYCLE_NUM[2:1] == 2'b11);
 	
 	wire CYCLE0_CE = ~CYCLE_NUM[0] & CLK_DIV & CE;
 	wire CYCLE1_CE =  CYCLE_NUM[0] & CLK_DIV & CE;
 //	wire DSP_CE = DSP_EN & CYCLE1_CE;
 //	wire PCM_CE = PCM_EN & CYCLE1_CE;
-	wire SLOT0_CE = SLOT0_EN & CYCLE0_CE;
+	wire SLOT0_CE = SLOT0_EN & CYCLE1_CE;
 	wire SLOT1_CE = SLOT1_EN & CYCLE1_CE;
 	
 	wire SAMPLE_CE = (OP7.SLOT == 5'd0) && (CYCLE_NUM[2:1] == 2'b00) && CYCLE1_CE;
@@ -225,26 +211,28 @@ module SCSP (
 				SCR5_RA = SLOT;//OP1
 				SCR6_RA = SLOT;//OP1
 				EVOL_RA = OP2.SLOT;//OP2
-				LFO_RA = OP4.SLOT;//OP1
+				LFO_RA = SLOT;//OP1
 			end
 			2'b1x: begin
 				SCR0_RA = OP3.SLOT;//OP3
 				SCR5_RA = OP4.SLOT;//OP4
-				SCR6_RA = OP5.SLOT;//OP5
+				SCR6_RA = OP4.SLOT;//OP4
 				EVOL_RA = OP4.SLOT;//OP4
-				LFO_RA = OP5.SLOT;//OP5
+				LFO_RA = OP4.SLOT;//OP4
 			end
 		endcase
 	end
 
-	//Operation 1: PG, KEY ON/OFF
-	bit        SCR0_KB[32];
-	bit        KEYON[32],KEYOFF[32];
-	bit  [4:0] SLOT;
-	bit        RST;
+	//Operation 1: PLFO, PG, KEY ON/OFF
+	bit          SCR0_KB[32];
+	bit          KEYON[32],KEYOFF[32];
+	bit  [ 4: 0] SLOT;
+	bit          RST;
+	SCR5_t       OP1_SCR5;
+	SCR6_t       OP1_SCR6;
+	bit  [ 7: 0] OP2_PHASE_INT;	//New phase integer
+	bit  [13: 0] NEW_PHASE_FRAC;	//New phase fractional
 	always @(posedge CLK or negedge RST_N) begin
-		SCR5_t       OP1_SCR5;
-		SCR6_t       OP1_SCR6;
 		bit  [ 9: 0] OP1_LFO_DIV;
 		bit  [ 7: 0] OP1_LFO_DATA;
 		bit          KYONEX_PEND;
@@ -268,6 +256,8 @@ module SCSP (
 			KYONEX_PEND <= 0;
 			SLOT <= '0;
 			RST <= 1;
+			{OP2_PHASE_INT,NEW_PHASE_FRAC} <= '0;
+			NOISE <= 17'h00001;
 			// synopsys translate_on
 			OP2 <= OP2_RESET;
 		end else if (!RES_N) begin
@@ -280,6 +270,7 @@ module SCSP (
 			KYONEX_PEND <= 0;
 			SLOT <= '0;
 			RST <= 1;
+			NOISE <= 17'h00001;
 			OP2 <= OP2_RESET;
 		end else begin
 			if (CYCLE0_CE) begin
@@ -308,13 +299,14 @@ module SCSP (
 				OP2.KOFF <= 0;
 				
 				if (RST)
-					{OP2.PHASE_INT,OP2.PHASE_FRAC} <= '0;
+					{OP2_PHASE_INT,NEW_PHASE_FRAC} <= '0;
 				else
-					{OP2.PHASE_INT,OP2.PHASE_FRAC} <= {8'h00,PHASE_FRAC_RAM_Q} + PHASE;
+					{OP2_PHASE_INT,NEW_PHASE_FRAC} <= {8'h00,PHASE_FRAC_RAM_Q} + PHASE;
+				OP2.PHASE_FRAC <= PHASE_FRAC_RAM_Q;
 				
 				if (KEYON[SLOT]) begin
 					OP2.KON <= 1;
-					{OP2.PHASE_INT,OP2.PHASE_FRAC} <= '0;
+					{OP2_PHASE_INT,NEW_PHASE_FRAC} <= '0;
 				end
 				else if (KEYOFF[SLOT]) begin
 					OP2.KOFF <= 1;
@@ -343,8 +335,10 @@ module SCSP (
 				end
 			end
 			
-			//LFO
+			//Noise,LFO
 			if (SLOT1_CE) begin
+				NOISE <= {NOISE[5]^NOISE[0],NOISE[16:1]};
+				
 				if (!OP1_LFO_DIV) begin
 					NEW_LFO_DIV = LFOFreqDiv(OP1_SCR6.LFOF);
 					NEW_LFO_DATA = OP1_LFO_DATA + 8'd1;
@@ -352,7 +346,7 @@ module SCSP (
 					NEW_LFO_DIV = OP1_LFO_DIV - 10'd1;
 					NEW_LFO_DATA = OP1_LFO_DATA;
 				end
-				if (OP1_SCR6.LFORE) begin
+				if (OP1_SCR6.LFORE /*|| KEYON[SLOT]*/) begin
 					NEW_LFO_DIV = '0;
 					NEW_LFO_DATA = '0;
 				end
@@ -367,7 +361,7 @@ module SCSP (
 	SCSP_LFO_RAM LFO_RAM(CLK, OP2.SLOT, LFO_RAM_D, SLOT1_CE, LFO_RA, LFO_RAM_Q);
 	
 	bit  [13:0] PHASE_FRAC_RAM_Q;
-	SCSP_PHASE_RAM PHASE_FRAC_RAM(CLK, OP2.SLOT, OP2.PHASE_FRAC, SLOT1_CE, SLOT, PHASE_FRAC_RAM_Q);
+	SCSP_PHASE_RAM PHASE_FRAC_RAM(CLK, OP2.SLOT, NEW_PHASE_FRAC, SLOT1_CE, SLOT, PHASE_FRAC_RAM_Q);
 	
 	//Operation 2: MD read, ADP
 	SCR0_t       OP2_SCR0;
@@ -388,10 +382,10 @@ module SCSP (
 	always @(posedge CLK or negedge RST_N) begin
 		bit  [15: 0] SOUSX;
 		bit  [15: 0] SOUSY;
-		EGState_t    OP2_EST;//Current envelope state
-		bit  [ 9: 0] OP2_EVOL;//Current envelope volume
-		bit  [15: 0] CUR_SO;//Sample offset integer
-		bit          CUR_SADIR;//Sample address direction
+		EGState_t    OP2_EST;	//Current envelope state
+		bit  [ 9: 0] OP2_EVOL;	//Current envelope volume
+		bit  [15: 0] CUR_SO;		//Sample offset integer
+		bit          CUR_SADIR;	//Sample address direction
 		bit          CUR_SALOOP;//Sample address loop state
 		bit  [15: 0] CALC_SO;
 		bit          CALC_SO_OVF;
@@ -400,6 +394,7 @@ module SCSP (
 		bit  [15: 0] NEW_SAO;
 		bit          NEW_SADIR;
 		bit          NEW_SALOOP;
+		bit          PCM8B_NEXT;
 		
 		if (!RST_N) begin
 			// synopsys translate_off
@@ -443,11 +438,11 @@ module SCSP (
 			
 			MOD_SO = CUR_SO + MDCalc(SOUSX, SOUSY, OP2_SCR4.MDL);
 			
-			DELTA = {8'h00,OP2.PHASE_INT};
+			DELTA = {8'h00,OP2_PHASE_INT};
 			{CALC_SO_OVF,CALC_SO} = !CUR_SADIR || OP2_SCR0.LPCTL <= 2'b01 ? {1'b0,CUR_SO} + {1'b0,DELTA} : {1'b0,CUR_SO} - {1'b0,DELTA};
 			
 			if (SLOT1_CE) begin
-				ADP <= {OP2_SCR0.SAH,OP2_SA} + (!OP2_SCR0.PCM8B ? {3'b000,MOD_SO,1'b0} : {4'b0000,MOD_SO});
+				ADP <= {OP2_SCR0.SAH,OP2_SA} + (!OP2_SCR0.PCM8B ? {3'b000,MOD_SO,1'b0} : {4'b0000,MOD_SO});//For current sample
 				
 				WD_READ <= 1;
 				OP3.LOOP_END <= 0;
@@ -518,10 +513,18 @@ module SCSP (
 				OP3.KON <= OP2.KON;
 				OP3.KOFF <= OP2.KOFF;
 				OP3.LOOP <= CUR_SALOOP;
+				OP3.PHASE_FRAC <= OP2.PHASE_FRAC;
+				PCM8B_NEXT <= OP2_SCR0.PCM8B;
 				
 				if (OP2.SLOT == CR4.MSLC) begin
 					MONITOR_CA <= CUR_SO[15:12];
 				end
+			end
+			
+			//OP3
+			if (SLOT0_CE) begin
+				//For next sample
+				ADP <= ADP + (!PCM8B_NEXT ? 20'd2 : 20'd1);
 			end
 		end
 	end
@@ -532,6 +535,7 @@ module SCSP (
 	//Operation 3:  
 	SCR0_t       OP3_SCR0;
 	always @(posedge CLK or negedge RST_N) begin
+		bit         ADP0_CURR;
 		bit [15: 0] WAVE;
 		bit [ 7: 0] DBG_EXT_OLD;
 		
@@ -539,12 +543,10 @@ module SCSP (
 			OP4 <= OP4_RESET;
 			// synopsys translate_off
 			OP3_SCR0 <= '0;
-			NOISE <= 17'h00001;
 			// synopsys translate_on
 		end else if (!RES_N) begin
 			OP4 <= OP4_RESET;
 			OP3_SCR0 <= '0;
-			NOISE <= 17'h00001;
 		end else begin
 			if (CYCLE0_CE) begin
 				case (CYCLE_NUM[2:1])
@@ -552,31 +554,65 @@ module SCSP (
 				endcase
 			end
 			
-			WAVE = !WD_READ ? 16'h0000 : !OP3_SCR0.PCM8B ? MEM_WD : !ADP[0] ? {MEM_WD[15:8],8'h00} : {MEM_WD[7:0],8'h00};
-			
+			if (SLOT0_CE) begin
+				//For current sample
+				ADP0_CURR <= ADP[0];
+			end
+			WAVE = !OP3_SCR0.PCM8B ? MEM_WD : !ADP0_CURR ? {MEM_WD[15:8],8'h00} : {MEM_WD[7:0],8'h00};
+
 			if (SLOT1_CE) begin
-				NOISE <= {NOISE[5]^NOISE[0],NOISE[16:1]};
-				
 				OP4.SLOT <= OP3.SLOT;
 				OP4.RST <= OP3.RST;
 				OP4.KON <= OP3.KON;
 				OP4.KOFF <= OP3.KOFF;
 				OP4.LOOP <= OP3.LOOP;
 				OP4.LOOP_END <= OP3.LOOP_END;
-				OP4.WD <= SoundSel(WAVE,{NOISE[7:0],8'h00},OP3_SCR0.SBCTL,OP3_SCR0.SSCTL);
+				OP4.PHASE_FRAC <= OP3.PHASE_FRAC;
+				OP4.WD0 <= SoundReverse(WAVE, OP3_SCR0.SBCTL);
+				OP4.SSCTL <= OP3_SCR0.SSCTL | {2{~WD_READ}};
+				//For next sample
+				OP4_PCM8B_NEXT <= OP3_SCR0.PCM8B;
+				OP4_SBCTL_NEXT <= OP3_SCR0.SBCTL;
+				OP4_ADP0_NEXT <= ADP[0];
+				
+`ifdef DEBUG
+				if (OP3.SLOT == 5'd0) begin
+					DBG_SLOT0_ADP <= ADP;
+				end
+`endif
 			end
 		end
 	end
 	
-	//Operation 4: EG
+	//Operation 4: Interpolation, EG, ALFO
+	bit          OP4_PCM8B_NEXT;
+	bit          OP4_ADP0_NEXT;
+	bit  [ 1: 0] OP4_SBCTL_NEXT;
+	bit  [15: 0] OP4_WD1;
+	always @(posedge CLK or negedge RST_N) begin
+		bit [15: 0] WAVE;
+	
+		if (!RST_N) begin
+			// synopsys translate_off
+			OP4_WD1 <= '0;
+			// synopsys translate_on
+		end else if (!RES_N) begin
+			OP4_WD1 <= '0;
+		end else begin
+			WAVE = !OP4_PCM8B_NEXT ? MEM_WD : !OP4_ADP0_NEXT ? {MEM_WD[15:8],8'h00} : {MEM_WD[7:0],8'h00};
+			if (SLOT0_CE) begin
+				OP4_WD1 <= SoundReverse(WAVE,OP4_SBCTL_NEXT);
+			end
+		end
+	end
+	
 	SCR1_t       OP4_SCR1;
 	SCR2_t       OP4_SCR2;
 	SCR5_t       OP4_SCR5;
-	bit  [ 9: 0] OP4_EVOL;//Current envelope volume
-	EGState_t    OP4_EST;//Current envelope state
-	
-	bit  [14: 0] SCNT;//Sample counter
-	bit  [14: 0] SCNT_PREV;//
+	bit  [ 9: 0] OP4_EVOL;	//Current envelope volume
+	EGState_t    OP4_EST;	//Current envelope state
+	bit  [14: 0] SCNT;		//Sample counter
+	bit  [14: 0] SCNT_PREV;
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
 			SCNT <= '0;
@@ -594,7 +630,7 @@ module SCSP (
 		end
 	end
 	
-	bit  [ 4: 0] EFF_RATE;//Effective rate
+	bit  [ 4: 0] EFF_RATE;	//Effective rate
 	bit  [ 3: 0] EFF_RATE_BIT;
 	bit          ENV_STEP;
 	always_comb begin
@@ -623,13 +659,16 @@ module SCSP (
 			ENV_STEP = SCNT_EDGE[EFF_RATE_BIT];
 	end
 	
+	SCR6_t       OP4_SCR6;
+	bit  [ 7: 0] OP4_LFO_DATA;
 	always @(posedge CLK or negedge RST_N) begin
-		bit  [10: 0] VOL_CALC;
+		bit  [10: 0] ATTACK_VOL_CALC,DECAY_VOL_CALC;
 		bit  [ 9: 0] NEW_EVOL;
 		bit  [ 1: 0] NEW_EST;
 		bit  [10: 0] VOL_INC_BASE;
 		bit  [ 4: 0] ERMAX;
 		bit  [ 5: 0] SRAC;
+		bit  [15: 0] WAVE;
 		
 		if (!RST_N) begin
 			OP5 <= OP5_RESET;
@@ -652,7 +691,9 @@ module SCSP (
 				case (CYCLE_NUM[2:1])
 					2'b10: begin
 						OP4_SCR5 <= SCR_SCR5_Q;
+						OP4_SCR6 <= SCR_SCR6_Q;
 						{OP4_EST,OP4_EVOL} <= EVOL_RAM_Q;
+						OP4_LFO_DATA <= LFO_RAM_Q[7:0];
 					end
 				endcase
 			end
@@ -670,16 +711,17 @@ module SCSP (
 			if (SLOT1_CE) begin
 				NEW_EVOL = OP4_EVOL;
 				NEW_EST = OP4_EST;
-						
+				
+				ATTACK_VOL_CALC = {1'b0,OP4_EVOL} + (ENV_STEP ? $signed($signed(~{1'b0,OP4_EVOL}) >>> SRAC[4:0]) : 11'd0);
+				DECAY_VOL_CALC = {1'b0,OP4_EVOL} + (ENV_STEP ? $signed(10'd16 >>> SRAC[4:0]) : 11'd0);
 				case (OP4_EST)
 					EST_ATTACK: begin
-						VOL_CALC = {1'b0,OP4_EVOL} + (ENV_STEP ? $signed($signed(~{1'b0,OP4_EVOL}) >>> SRAC[4:0]) : 11'd0);
-						if (!VOL_CALC[10] && !OP4_SCR1.EGHOLD) begin
-							NEW_EVOL = VOL_CALC[9:0];
+						if (!ATTACK_VOL_CALC[10] && !OP4_SCR1.EGHOLD) begin
+							NEW_EVOL = ATTACK_VOL_CALC[9:0];
 						end else begin
 							NEW_EVOL = 10'h000;
 						end
-						if ((!VOL_CALC && !OP4_SCR2.LPSLNK) || (OP4.LOOP && OP4_SCR2.LPSLNK)) begin
+						if ((!ATTACK_VOL_CALC && !OP4_SCR2.LPSLNK) || (OP4.LOOP && OP4_SCR2.LPSLNK)) begin
 							NEW_EST = EST_DECAY1;
 `ifdef DEBUG
 							DECAY1_DBG <= 1;
@@ -688,13 +730,12 @@ module SCSP (
 					end
 					
 					EST_DECAY1: begin
-						VOL_CALC = {1'b0,OP4_EVOL} + (ENV_STEP ? $signed(10'd16 >>> SRAC[4:0]) : 11'd0);
-						if (!VOL_CALC[10]) begin
-							NEW_EVOL = VOL_CALC[9:0];
+						if (!DECAY_VOL_CALC[10]) begin
+							NEW_EVOL = DECAY_VOL_CALC[9:0];
 						end else begin
 							NEW_EVOL = 10'h3FF;
 						end
-						if (VOL_CALC[10] || VOL_CALC[9:5] >= OP4_SCR2.DL) begin
+						if (DECAY_VOL_CALC[10] || DECAY_VOL_CALC[9:5] >= OP4_SCR2.DL) begin
 							NEW_EST = EST_DECAY2;
 `ifdef DEBUG
 							DECAY2_DBG <= 1;
@@ -703,20 +744,18 @@ module SCSP (
 					end
 					
 					EST_DECAY2: begin
-						VOL_CALC = {1'b0,OP4_EVOL} + (ENV_STEP ? $signed(10'd16 >>> SRAC[4:0]) : 11'd0);
 						if (OP4_SCR1.D2R == 5'h00) begin
 							NEW_EVOL = OP4_EVOL;
-						end else if (!VOL_CALC[10]) begin
-							NEW_EVOL = VOL_CALC[9:0];
+						end else if (!DECAY_VOL_CALC[10]) begin
+							NEW_EVOL = DECAY_VOL_CALC[9:0];
 						end else begin
 							NEW_EVOL = 10'h3FF;
 						end
 					end
 					
 					EST_RELEASE: begin
-						VOL_CALC = {1'b0,OP4_EVOL} + (ENV_STEP ? $signed(10'd16 >>> SRAC[4:0]) : 11'd0);
-						if (!VOL_CALC[10]) begin
-							NEW_EVOL = VOL_CALC[9:0];
+						if (!DECAY_VOL_CALC[10]) begin
+							NEW_EVOL = DECAY_VOL_CALC[9:0];
 						end else begin
 							NEW_EVOL = 10'h3FF;
 						end
@@ -733,9 +772,8 @@ module SCSP (
 					ATTACK_DBG <= 1;
 `endif
 				end else if (OP4_EST != EST_RELEASE && OP4.KOFF) begin
-					VOL_CALC = {1'b0,OP4_EVOL} + (ENV_STEP ? $signed(10'd16 >>> SRAC[4:0]) : 11'd0);
-					if (!VOL_CALC[10]) begin
-						NEW_EVOL = VOL_CALC[9:0];
+					if (!DECAY_VOL_CALC[10]) begin
+						NEW_EVOL = DECAY_VOL_CALC[9:0];
 					end else begin
 						NEW_EVOL = 10'h3FF;
 					end
@@ -757,50 +795,44 @@ module SCSP (
 				OP5.KON <= OP4.KON;
 				OP5.KOFF <= OP4.KOFF;
 				OP5.EVOL <= OP4_EVOL;
-				OP5.WD <= OP4.WD;
+				
+				WAVE = Interpolate(OP4.WD0, OP4_WD1, OP4.PHASE_FRAC[13:8]);
+				OP5.WD <= SoundSel(WAVE, {NOISE[7:0],8'h00}, OP4.SSCTL);
+				OP5.ALFO <= ALFOCalc(OP4_LFO_DATA, NOISE[7:0], OP4_SCR6.ALFOWS, OP4_SCR6.ALFOS);
 				
 				if (OP4.SLOT == CR4.MSLC) begin
 					MONITOR_SGC <= NEW_EST;
 					MONITOR_EG <= NEW_EVOL[9:5];
 				end
+				
+`ifdef DEBUG
+				if (OP4.SLOT == 5'd0) begin
+					DBG_SLOT0_WD <= OP4.WD0;
+					DBG_SLOT0_PREV <= DBG_SLOT0_WD;
+				end
+`endif
 			end
 		end
 	end
 	bit [11:0] EVOL_RAM_D;
 	bit [11:0] EVOL_RAM_Q;
 	SCSP_EVOL_RAM EVOL_RAM(CLK, OP5.SLOT, EVOL_RAM_D, SLOT1_CE, EVOL_RA, EVOL_RAM_Q);
-	
+		
 	//Operation 5: Level calculation
-	SCR6_t       OP5_SCR6;
-	bit  [ 7: 0] OP5_LFO_DATA;
-	always @(posedge CLK or negedge RST_N) begin
-		bit  [ 7: 0] ALFO_WAVE;
-	
+	always @(posedge CLK or negedge RST_N) begin	
 		if (!RST_N) begin
 			OP6 <= OP6_RESET;
 			// synopsys translate_off
-			OP5_SCR6 <= '0;
 			// synopsys translate_on
 		end else if (!RES_N) begin
 			OP6 <= OP6_RESET;
-			OP5_SCR6 <= '0;
 		end else begin
-			if (CYCLE0_CE) begin
-				case (CYCLE_NUM[2:1])
-					2'b10: begin
-						OP5_SCR6 <= SCR_SCR6_Q;
-						OP5_LFO_DATA <= LFO_RAM_Q[7:0];
-					end
-				endcase
-			end
-			
-			ALFO_WAVE <= ALFOCalc(OP5_LFO_DATA, NOISE[7:0], OP5_SCR6.ALFOWS, OP5_SCR6.ALFOS);
 			if (SLOT1_CE) begin
 				OP6.SLOT <= OP5.SLOT;
 				OP6.RST <= OP5.RST;
 				OP6.KON <= OP5.KON;
 				OP6.KOFF <= OP5.KOFF;
-				OP6.LEVEL <= LevelAddALFO(OP5.EVOL, ALFO_WAVE);
+				OP6.LEVEL <= LevelAddALFO(OP5.EVOL, OP5.ALFO);
 				OP6.WD <= OP5.WD;
 			end
 		end
@@ -1160,7 +1192,7 @@ module SCSP (
 			PAN_L = PanLCalc(TEMP,OP7_SCR8.EFPAN);
 			PAN_R = PanRCalc(TEMP,OP7_SCR8.EFPAN);
 			
-			if (SLOT0_CE) begin
+			if (SLOT0_EN & CYCLE0_CE) begin
 				EFREG_Q <= EFREG_RAM_Q;
 			end
 			
@@ -2008,6 +2040,7 @@ module SCSP (
 	assign SCAVEC_N = ~&SCFC;
 	
 `ifdef DEBUG
+	assign KON_DBG = KEYON[SLOT];
 	assign PCM_EN_DBG = PCM_EN;
 	assign SCA_DBG = {SCA,1'b0};
 	assign SCR0_DBG = OP2_SCR0;
@@ -2018,8 +2051,8 @@ module SCSP (
 	assign SCR2_DBG = OP4_SCR2;
 	assign SCR3_DBG = OP6_SCR3;
 	assign SCR4_DBG = OP2_SCR4;
-	assign SCR5_DBG = OP4_SCR5;
-	assign SCR6_DBG = OP5_SCR6;
+	assign SCR5_DBG = OP1_SCR5;
+	assign SCR6_DBG = OP1_SCR6;
 	assign SCR7_DBG = OP7_SCR7;
 	assign SCR8_DBG = OP7_SCR8;
 	assign EST_DBG = OP4_EST;
@@ -2419,7 +2452,7 @@ module SCSP_STACK_RAM
 	output [15:0] Q
 );
 	
-//`if DEBUG
+//`ifdef DEBUG
 
 	wire [15:0] sub_wire0;
 	
