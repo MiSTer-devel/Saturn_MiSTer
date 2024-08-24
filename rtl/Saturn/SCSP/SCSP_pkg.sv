@@ -34,7 +34,7 @@ package SCSP_PKG;
 	
 	typedef struct packed		//RW,0A
 	{
-		bit         UNUSED;
+		bit         EGBP;
 		bit         LPSLNK;
 		bit [ 3: 0] KRS;
 		bit [ 4: 0] DL;
@@ -61,7 +61,7 @@ package SCSP_PKG;
 	
 	typedef struct packed		//RW,10
 	{
-		bit         UNUSED;
+		bit         MSK;
 		bit [ 3: 0] OCT;
 		bit [10: 0] FNS;
 	} SCR5_t;
@@ -148,7 +148,8 @@ package SCSP_PKG;
 		bit [14: 0] DMEAL;
 		bit         UNUSED;
 	} CR5_t;
-	parameter bit [15:0] CR5_MASK = 16'hFFFE;
+	parameter bit [15:0] CR5_WMASK = 16'hFFFE;
+	parameter bit [15:0] CR5_RMASK = 16'h0000;
 	
 	typedef struct packed		//RW,100414
 	{
@@ -156,7 +157,8 @@ package SCSP_PKG;
 		bit [10: 0] DRGA;
 		bit         UNUSED;
 	} CR6_t;
-	parameter bit [15:0] CR6_MASK = 16'hFFFE;
+	parameter bit [15:0] CR6_WMASK = 16'hFFFE;
+	parameter bit [15:0] CR6_RMASK = 16'h0000;
 	
 	typedef struct packed		//RW,100416
 	{
@@ -167,7 +169,8 @@ package SCSP_PKG;
 		bit [10: 0] DTLG;
 		bit         UNUSED2;
 	} CR7_t;
-	parameter bit [15:0] CR7_MASK = 16'h7FFE;
+	parameter bit [15:0] CR7_WMASK = 16'h7FFE;
+	parameter bit [15:0] CR7_RMASK = 16'h7000;
 	
 	typedef struct packed		//RW,100418
 	{
@@ -345,8 +348,9 @@ package SCSP_PKG;
 		bit         KON;	//
 		bit         KOFF;	//
 		bit [13: 0] PHASE_FRAC;//Phase fractional
+		bit         MSK;	//
 	} OP2_t;
-	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,14'h0000};
+	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,14'h0000,1'b0};
 	
 	typedef struct packed
 	{
@@ -354,11 +358,14 @@ package SCSP_PKG;
 		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
-		bit         LOOP;//Loop processing 
-		bit         LOOP_END;//Loop processing end
+		bit         ALLOW;
+		bit         LOOP;	//Loop processing 
+		bit [15: 0] SO;	//Sample offset
+		bit [21: 0] MOD;	//Modulation
+		bit [19: 0] MASK;	//Wave mask
 		bit [13: 0] PHASE_FRAC;//Phase fractional
 	} OP3_t;
-	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,14'h0000};
+	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,16'h0000,22'h000000,20'h00000,14'h0000};
 	
 	typedef struct packed
 	{
@@ -367,13 +374,12 @@ package SCSP_PKG;
 		bit         KON;	//
 		bit         KOFF;	//
 		bit         LOOP;//Loop processing 
-		bit         LOOP_END;//Loop processing end
-		bit [13: 0] PHASE_FRAC;//Phase fractional
-		bit [15: 0] WD0;//Wave form data
+		bit [ 5: 0] MODF;	//Modulation fractional
 		bit [ 1: 0] SSCTL;
 		bit [ 1: 0] SBCTL;
+		bit         PCM8B;	//
 	} OP4_t;
-	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,14'h0000,16'h0000,2'b00,2'b00};
+	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,6'h00,2'b00,2'b00,1'b0};
 	
 	typedef struct packed
 	{
@@ -435,14 +441,14 @@ package SCSP_PKG;
 		return SD;
 	endfunction
 
-	function bit signed [15:0] MDCalc(bit signed [15:0] X, bit signed [15:0] Y, bit [3:0] MDL);
-		bit signed [15:0] MD;
+	function bit signed [21:0] MDCalc(bit signed [15:0] X, bit signed [15:0] Y, bit [3:0] MDL);
 		bit signed [16:0] TEMP;
+		bit signed [22:0] MD;
 		
 		TEMP = $signed({X[15],X[15:0]}) + $signed({Y[15],Y[15:0]}); 
-		MD = $signed($signed(TEMP[16:1])>>>(~MDL));
+		MD = $signed($signed({TEMP[16:1],1'b0,6'b000000})>>>(4'h0-MDL));
 		
-		return MDL > 4'd4 ? {{5{MD[10]}},MD[10:0]} : '0;
+		return MDL > 4'd4 ? {{5{MD[16]}},MD[16:1],1'b0} : '0;
 	endfunction
 	
 	function bit [9:0] LFOFreqDiv(bit [4:0] LFOF);
@@ -465,7 +471,7 @@ package SCSP_PKG;
 			2'b11: WAVE = NOISE;
 		endcase
 		
-		RET = ALFOS ? ((WAVE/*&8'hFE*/)>>(~ALFOS)) : '0;
+		RET = ALFOS ? ((WAVE&8'hFE)>>(~ALFOS)) : '0;
 		
 		return RET;
 	endfunction
@@ -481,7 +487,7 @@ package SCSP_PKG;
 			2'b11: WAVE = NOISE;
 		endcase
 		
-		RET = PLFOS ? $signed($signed(WAVE/*&8'hFE*/)>>>(~PLFOS)) : '0;
+		RET = PLFOS ? $signed($signed(WAVE&8'hFE)>>>(~PLFOS)) : '0;
 		
 		return RET;
 	endfunction
@@ -500,6 +506,18 @@ package SCSP_PKG;
 		P = {14'b00000000000000,{1'b0,F}+FM}<<S;
 		
 		return P[25:4];
+	endfunction
+	
+	function bit [19:0] WaveMask(bit [15:0] LEA);
+		bit [19:0] RET;
+		
+		RET = 20'hFFFFF;
+		if (LEA[10]) RET = 20'h003FF;
+		if (LEA[ 9]) RET = 20'h001FF;
+		if (LEA[ 8]) RET = 20'h000FF;
+		if (LEA[ 7]) RET = 20'h0007F;
+		
+		return RET;
 	endfunction
 	
 	function bit [4:0] EffRateCalc(bit [4:0] RATE, bit [3:0] KRS, bit [3:0] OCT);
