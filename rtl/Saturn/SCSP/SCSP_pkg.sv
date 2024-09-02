@@ -349,8 +349,9 @@ package SCSP_PKG;
 		bit         KOFF;	//
 		bit [13: 0] PHASE_FRAC;//Phase fractional
 		bit         MSK;	//
+		bit [ 7: 0] ND;
 	} OP2_t;
-	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,14'h0000,1'b0};
+	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,14'h0000,1'b0,8'h00};
 	
 	typedef struct packed
 	{
@@ -360,12 +361,13 @@ package SCSP_PKG;
 		bit         KOFF;	//
 		bit         ALLOW;
 		bit         LOOP;	//Loop processing 
+		bit [13: 0] PHASE_FRAC;//Phase fractional
+		bit [ 7: 0] ND;
 		bit [15: 0] SO;	//Sample offset
 		bit [21: 0] MOD;	//Modulation
 		bit [19: 0] MASK;	//Wave mask
-		bit [13: 0] PHASE_FRAC;//Phase fractional
 	} OP3_t;
-	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,16'h0000,22'h000000,20'h00000,14'h0000};
+	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,14'h0000,8'h00,16'h0000,22'h000000,20'h00000};
 	
 	typedef struct packed
 	{
@@ -374,12 +376,13 @@ package SCSP_PKG;
 		bit         KON;	//
 		bit         KOFF;	//
 		bit         LOOP;//Loop processing 
+		bit [ 7: 0] ND;
 		bit [ 5: 0] MODF;	//Modulation fractional
 		bit [ 1: 0] SSCTL;
 		bit [ 1: 0] SBCTL;
 		bit         PCM8B;	//
 	} OP4_t;
-	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,6'h00,2'b00,2'b00,1'b0};
+	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,8'h00,6'h00,2'b00,2'b00,1'b0};
 	
 	typedef struct packed
 	{
@@ -484,7 +487,7 @@ package SCSP_PKG;
 			2'b00: WAVE = DATA;
 			2'b01: WAVE = { DATA[7],{7{~DATA[7]}} };
 			2'b10: WAVE = { {1'b0,DATA[5:0]^{6{DATA[6]}}} ^ {7{DATA[7]}},1'b0 };
-			2'b11: WAVE = NOISE;
+			2'b11: WAVE = NOISE ^ 8'h80;
 		endcase
 		
 		RET = PLFOS ? $signed($signed(WAVE&8'hFE)>>>(~PLFOS)) : '0;
@@ -520,8 +523,8 @@ package SCSP_PKG;
 		return RET;
 	endfunction
 	
-	function bit [4:0] EffRateCalc(bit [4:0] RATE, bit [3:0] KRS, bit [3:0] OCT);
-		bit [5:0] RES;
+	function bit [5:0] EffRateCalc(bit [4:0] RATE, bit [3:0] KRS, bit [3:0] OCT);
+		bit [4:0] RES;
 		bit [5:0] TEMP;
 		bit [3:0] KEY_EG_SCALE;
 		bit [5:0] TEMP2;
@@ -536,7 +539,7 @@ package SCSP_PKG;
 		TEMP2 = {1'b0,RATE} + {2'b00,KEY_EG_SCALE};
 		RES = TEMP2[5] ? 5'h1F : TEMP2[4:0];
 			
-		return RES;
+		return {TEMP2[5],RES};
 	endfunction
 	
 	function bit [3:0] EffRateBit(bit [4:0] ERATE);

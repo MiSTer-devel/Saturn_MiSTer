@@ -275,6 +275,7 @@ module SCSP (
 			KYONEX_PEND <= 0;
 			SLOT <= '0;
 			RST <= 1;
+			NOISE <= 17'h00001;
 			OP2 <= OP2_RESET;
 		end else begin
 			if (CYCLE0_CE) begin
@@ -302,6 +303,7 @@ module SCSP (
 				OP2.KON <= 0;
 				OP2.KOFF <= 0;
 				OP2.MSK <= OP1_SCR5.MSK;
+				OP2.ND <= NOISE[7:0];
 				
 				if (RST)
 					{OP2_PHASE_INT,NEW_PHASE_FRAC} <= '0;
@@ -341,6 +343,8 @@ module SCSP (
 			
 			//LFO
 			if (SLOT1_CE) begin
+				NOISE <= {NOISE[5]^NOISE[0],NOISE[16:1]};
+				
 				if (!OP1_LFO_DIV) begin
 					NEW_LFO_DIV = LFOFreqDiv(OP1_SCR6.LFOF);
 					NEW_LFO_DATA = OP1_LFO_DATA + 8'd1;
@@ -528,6 +532,7 @@ module SCSP (
 				OP3.MOD <= MDCalc(SOUSX, SOUSY, OP2_SCR4.MDL);
 				OP3.MASK <= WaveMask(OP2_LEA) | {20{~OP2.MSK}};
 				OP3.PHASE_FRAC <= OP2.PHASE_FRAC^{14{NEW_SADIR}};
+				OP3.ND <= OP2.ND;
 				
 				if (OP2.SLOT == 5'd31) begin
 					STACK_RGEN <= ~STACK_RGEN;
@@ -598,6 +603,7 @@ module SCSP (
 				OP4.KON <= OP3.KON;
 				OP4.KOFF <= OP3.KOFF;
 				OP4.LOOP <= OP3.LOOP;
+				OP4.ND <= OP3.ND;
 				OP4.MODF <= MOD_PHASE[5:0];
 				OP4.SSCTL <= OP3_SCR0.SSCTL;
 				OP4.SBCTL <= OP3_SCR0.SBCTL;
@@ -659,6 +665,7 @@ module SCSP (
 	end
 	
 	bit  [ 4: 0] EFF_RATE;	//Effective rate
+	bit          EFF_RATE_OVR;	//Effective rate over
 	bit  [ 3: 0] EFF_RATE_BIT;
 	bit          ENV_STEP;
 	always_comb begin
@@ -673,13 +680,15 @@ module SCSP (
 			EST_DECAY2: RATE = OP4_SCR1.D2R;
 			EST_RELEASE: RATE = OP4_SCR2.RR;
 		endcase
-		if (OP4_EST != EST_RELEASE && OP4.KOFF) begin
+		if (OP4_EST == EST_RELEASE && OP4.KON) begin
+			RATE = OP4_SCR1.AR;
+		end else if (OP4_EST != EST_RELEASE && OP4.KOFF) begin
 			RATE = OP4_SCR2.RR;
 		end
-		EFF_RATE = EffRateCalc(RATE, OP4_SCR2.KRS, OP4_SCR5.OCT);
+		{EFF_RATE_OVR,EFF_RATE} = EffRateCalc(RATE, OP4_SCR2.KRS, OP4_SCR5.OCT);
 		EFF_RATE_BIT = EffRateBit(EFF_RATE);
 		
-		if (RATE == 5'h00) 
+		if (RATE == 5'h00 || (EFF_RATE_OVR && OP4_EST == EST_ATTACK)) 
 			ENV_STEP <= 0;
 		else if (EFF_RATE < 5'h18 && EFF_RATE[0])
 			ENV_STEP <= SCNT_EDGE[EFF_RATE_BIT+1] | SCNT_EDGE[EFF_RATE_BIT+2];
@@ -696,7 +705,7 @@ module SCSP (
 		bit  [10: 0] VOL_INC_BASE;
 		bit  [ 4: 0] ERMAX;
 		bit  [ 5: 0] SRAC;
-		bit  [16: 0] NEW_NOISE;
+		bit  [ 7: 0] ND_PREV;
 		
 		if (!RST_N) begin
 			OP5 <= OP5_RESET;
@@ -714,7 +723,6 @@ module SCSP (
 			OP4_SCR5 <= '0;
 			OP4_SCR6 <= '0;
 			{OP4_EST,OP4_EVOL} <= '0;
-			NOISE <= 17'h00001;
 		end else begin
 			if (CYCLE0_CE) begin
 				OP4_SCR1 <= SCR_SCR1_Q;
@@ -797,7 +805,7 @@ module SCSP (
 					NEW_EVOL = 10'h3FF;
 					NEW_EST = EST_RELEASE;
 				end else if (OP4_EST == EST_RELEASE && OP4.KON) begin
-					NEW_EVOL = 10'h280;
+					NEW_EVOL = EFF_RATE_OVR ? 10'h000 : 10'h280;
 					NEW_EST = EST_ATTACK;
 `ifdef DEBUG
 					ATTACK_DBG <= 1;
@@ -820,12 +828,9 @@ module SCSP (
 				OP5.KON <= OP4.KON;
 				OP5.KOFF <= OP4.KOFF;
 				OP5.EVOL <= (NEW_EST == EST_ATTACK && OP4_SCR1.EGHOLD) || OP4_SCR2.EGBP ? '0 : NEW_EVOL;
-				
-				OP5.WD <= SoundSel(OP4_WD0, OP4_WD1, {NOISE[7:0],8'h00}, OP4.SSCTL, OP4.SBCTL, OP4.MODF);
-				
-				NEW_NOISE = {NOISE[5]^NOISE[0],NOISE[16:1]};
-				OP5.ALFO <= ALFOCalc(OP4_LFO_DATA, NEW_NOISE[7:0], OP4_SCR6.ALFOWS, OP4_SCR6.ALFOS);
-				NOISE <= NEW_NOISE;
+				OP5.WD <= SoundSel(OP4_WD0, OP4_WD1, {ND_PREV,8'h00}, OP4.SSCTL, OP4.SBCTL, OP4.MODF);
+				OP5.ALFO <= ALFOCalc(OP4_LFO_DATA, OP4.ND, OP4_SCR6.ALFOWS, OP4_SCR6.ALFOS);
+				ND_PREV <= OP4.ND;
 				
 				if (OP4.SLOT == CR4.MSLC) begin
 					MONITOR_SGC <= NEW_EST;
@@ -1190,8 +1195,6 @@ module SCSP (
 	
 	assign DSP_COEF_RA = MPRO0_Q.COEF;
 	assign DSP_MADRS_RA = MPRO0_Q.MASA;
-	
-//	assign DSP_MIXS_RA = MPRO0_Q.IRA[3:0];
 
 	assign DSP_EFREG_RA = OP7.SLOT[3:0];
 	assign DSP_EFREG_WA = MPRO1_Q.EWA;
@@ -2108,7 +2111,7 @@ module SCSP (
 	assign SCR7_DBG = OP7_SCR7;
 	assign SCR8_DBG = OP7_SCR8;
 	assign EST_DBG = OP4_EST;
-	assign OP4_EFF_RATE_DBG = EFF_RATE;
+	assign OP4_EFF_RATE_DBG = {EFF_RATE_OVR,EFF_RATE};
 	assign DSP_MPRO_DBG = MPRO0_Q;
 	assign ADP_DBG = ADP;
 `endif
