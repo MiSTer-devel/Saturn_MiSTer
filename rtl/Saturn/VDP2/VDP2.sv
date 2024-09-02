@@ -240,8 +240,9 @@ module VDP2 (
 	wire [8:0] VS_END    = !VRES[1] ? (!VRES[0] ? VS_END_224 : VS_END_240) : VS_END_256; //VS_END_224 + {VRES,4'h0};
 	wire [8:0] VBORD_START  = !VRES[1] ? (!VRES[0] ? 9'd263-9'd12 : 9'd263-9'd4) : 9'd313-9'd0;
 	wire [8:0] VBORD_END  = !VRES[1] ? (!VRES[0] ? 9'd224+9'd12 : 9'd240+9'd4) : 9'd256+9'd0;
-	wire [8:0] NEXT_TO_LAST_LINE  = !PAL ? (VRES_NTSC - 9'd2) : (VRES_PAL - 9'd2);
-	wire [8:0] LAST_LINE  = !PAL ? (VRES_NTSC - 9'd1) : (VRES_PAL - 9'd1);
+	wire [8:0] BREAK_LINE  = !PAL ? (VRES_NTSC - 9'd3) : (VRES_PAL - 9'd3);
+	wire [8:0] NEXT_TO_LAST_LINE  = 9'h1FE;
+	wire [8:0] LAST_LINE  = 9'h1FF;
 	wire IS_LAST_LINE = (V_CNT == LAST_LINE);
 	
 	bit  [ 8: 0] HDISP_CNT;
@@ -266,7 +267,9 @@ module VDP2 (
 			if (LAST_DOT) begin
 				H_CNT <= '0;
 				V_CNT <= V_CNT + 9'd1;
-				if (V_CNT == LAST_LINE) begin
+				if (V_CNT == BREAK_LINE) begin
+					V_CNT <= 9'h1FE;
+				end else if (V_CNT == LAST_LINE) begin
 					V_CNT <= '0;
 				end
 			end
@@ -1349,7 +1352,7 @@ module VDP2 (
 					LS_TBL_OFFS[1] <= !NSxREG[1].LSS && DDI && !ODD ? NxLSTblSize(NSxREG[1].LSCX,NSxREG[1].LSCY,NSxREG[1].LZMX,0) : '0;
 				end
 				
-				if (LAST_DOT && V_CNT == VRES_NTSC - 2) begin
+				if (LAST_DOT && V_CNT == NEXT_TO_LAST_LINE) begin
 					LW_POS <= 0;
 					LW_OFFS <= '0;
 					BS_OFFS <= '0;
@@ -3056,13 +3059,13 @@ module VDP2 (
 			N3COEN = NSxREG[3].COEN;    N3COSL = NSxREG[3].COSL;
 			BKCOEN = REGS.CLOFEN.BKCOEN;BKCOSL = REGS.CLOFSL.BKCOSL;
 			
-			BKSDEN = REGS.SDCTL.BKSDEN & SDOT.SD & SCRN_EN[7];
-			SSDEN  =                     SDOT.SD & SCRN_EN[7];
-			R0SDEN = REGS.SDCTL.R0SDEN & SDOT.SD & SCRN_EN[7];
-			N0SDEN = REGS.SDCTL.N0SDEN & SDOT.SD & SCRN_EN[7];
-			N1SDEN = REGS.SDCTL.N1SDEN & SDOT.SD & SCRN_EN[7];
-			N2SDEN = REGS.SDCTL.N2SDEN & SDOT.SD & SCRN_EN[7];
-			N3SDEN = REGS.SDCTL.N3SDEN & SDOT.SD & SCRN_EN[7];
+			BKSDEN = REGS.SDCTL.BKSDEN & SDOT.SD &                 & SCRN_EN[7];
+//			SSDEN  =                     SDOT.SD                   & SCRN_EN[7];
+			R0SDEN = REGS.SDCTL.R0SDEN & SDOT.SD & SPRIN >= R0PRIN & SCRN_EN[7];
+			N0SDEN = REGS.SDCTL.N0SDEN & SDOT.SD & SPRIN >= N0PRIN & SCRN_EN[7];
+			N1SDEN = REGS.SDCTL.N1SDEN & SDOT.SD & SPRIN >= N1PRIN & SCRN_EN[7];
+			N2SDEN = REGS.SDCTL.N2SDEN & SDOT.SD & SPRIN >= N2PRIN & SCRN_EN[7];
+			N3SDEN = REGS.SDCTL.N3SDEN & SDOT.SD & SPRIN >= N3PRIN & SCRN_EN[7];
 			
 			SLCEN = REGS.LNCLEN.SPLCEN;
 			R0LCEN = REGS.LNCLEN.R0LCEN;
@@ -3078,7 +3081,7 @@ module VDP2 (
 				if          (SON  && SPRIN                     ) begin
 					THD = SEC; THD_PRI = SEC_PRI;
 					SEC = FST; SEC_PRI = FST_PRI;
-					FST = {SCAOS,SCCEN,SCCM3,SCCRT,SCOEN,SCOSL,SSDEN,SLCEN,SDOT.P,SDOT.DC}; FST_PRI = SPRIN;
+					FST = {SCAOS,SCCEN,SCCM3,SCCRT,SCOEN,SCOSL,1'b0,SLCEN,SDOT.P,SDOT.DC}; FST_PRI = SPRIN;
 				end
 `ifdef DEBUG
 				FST_PRI5_DBG <= FST_PRI;
