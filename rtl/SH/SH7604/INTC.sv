@@ -172,7 +172,8 @@ module SH7604_INTC (
 		endcase
 	end
 	
-	wire [7:0] IRL_VEC = !ICR.VECMD ? {5'b01000,IRL_LVL[3:1]} : VBUS_DI;
+	bit  [ 3: 0] IRL_LVL_SAVE;
+	wire [ 7: 0] IRL_VEC = !ICR.VECMD ? {5'b01000,IRL_LVL_SAVE[3:1]} : VBUS_DI;
 	always_comb begin
 		case (INT_ACCEPTED)
 			NMI_INT:     INT_VEC <= 8'd11;
@@ -209,7 +210,10 @@ module SH7604_INTC (
 				VBREQ <= 0;
 			end
 		end else if (EN && CE_R) begin	
-			if (INT_ACP) INT_ACCEPTED <= INT_ACTIVE;
+			if (INT_ACP) begin 
+				INT_ACCEPTED <= INT_ACTIVE; 
+				IRL_LVL_SAVE <= IRL_LVL; 
+			end
 			if (INT_ACK) INT_ACCEPTED <= '0;
 		end
 	end

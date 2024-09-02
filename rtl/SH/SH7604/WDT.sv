@@ -103,7 +103,7 @@ module SH7604_WDT
 				RSTCSR <= RSTCSR_INIT;
 			end else if (EN && CE_R && !DISABLE) begin
 				if (WT_CE) begin
-					if (WTCSR.TME && !WTCSR.OVF) begin//?
+					if (WTCSR.TME) begin
 						WTCNT <= WTCNT + 8'd1;
 					end
 					

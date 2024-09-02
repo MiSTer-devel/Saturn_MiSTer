@@ -134,6 +134,8 @@ module SH7604_DIVU (
 			DVDNTH <= DVDNT_INIT;
 			DVCR <= DVCR_INIT;
 			VCRDIV <= VCRDIV_INIT;
+			DVDNTL2 <= DVDNT_INIT;
+			DVDNTH2 <= DVDNT_INIT;
 			// synopsys translate_off
 			
 			// synopsys translate_on
@@ -145,6 +147,8 @@ module SH7604_DIVU (
 				DVDNTH <= DVDNT_INIT;
 				DVCR <= DVCR_INIT;
 				VCRDIV <= VCRDIV_INIT;
+				DVDNTL2 <= DVDNT_INIT;
+				DVDNTH2 <= DVDNT_INIT;
 			end
 			else if (REG_SEL && IBUS_WE && IBUS_REQ && !OPERATE) begin
 				case ({IBUS_A[4:2],2'b00})

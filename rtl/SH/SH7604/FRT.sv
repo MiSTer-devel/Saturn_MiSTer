@@ -13,6 +13,7 @@ module SH7604_FRT (
 	input             FTCI,
 	input             FTI,
 	
+	input             CLK4_CE,
 	input             CLK8_CE,
 	input             CLK32_CE,
 	input             CLK128_CE,
@@ -195,40 +196,43 @@ module SH7604_FRT (
 		end
 	end
 	
-	bit [31:0] REG_DO;
-	bit [7 :0] FTCSR_READED;
+	bit [ 7: 0] REG_DO;
+	bit [ 7: 0] FTCSR_READED;
+	bit         BUSY;
 	always @(posedge CLK or negedge RST_N) begin
 		bit [7:0] TEMP;
 		bit [31:0] OCR;
 		
 		if (!RST_N) begin
 			REG_DO <= '0;
+			BUSY <= 0;
 		end
 		else if (CE_F) begin
 			if (REG_SEL && !IBUS_WE && IBUS_REQ) begin
 				OCR = !TOCR.OCRS ? OCRA : OCRB;
 				case (IBUS_A[3:0])
-					4'h0:       REG_DO <= {4{TIER & TIER_RMASK}};
-					4'h1: begin REG_DO <= {4{FTCSR & FTCSR_RMASK}}; FTCSR_READED <= FTCSR; end
-					4'h2: begin REG_DO <= {4{FRC[15:8]}}; 
-					            TEMP   <= FRC[7:0]; end
-					4'h3:       REG_DO <= {4{TEMP}};
-					4'h4: begin REG_DO <= {4{OCR[15:8]}}; 
+					4'h0:       REG_DO <= TIER & TIER_RMASK;
+					4'h1: begin REG_DO <= FTCSR & FTCSR_RMASK; FTCSR_READED <= FTCSR; end
+					4'h2: begin {REG_DO,TEMP} <= FRC; BUSY <= 1; end
+					4'h3:       REG_DO <= TEMP; 
+					4'h4: begin REG_DO <= OCR[15:8]; 
 					            TEMP   <= OCR[7:0]; end
-					4'h5:       REG_DO <= {4{TEMP}};
-					4'h6:       REG_DO <= {4{TCR & TCR_RMASK}};
-					4'h7:       REG_DO <= {4{(TOCR & TOCR_RMASK) | TOCR_INIT}};
-					4'h8:       REG_DO <= {4{TEMP}};
-					4'h9: begin REG_DO <= {4{ICR[15:8]}}; 
+					4'h5:       REG_DO <= TEMP;
+					4'h6:       REG_DO <= TCR & TCR_RMASK;
+					4'h7:       REG_DO <= (TOCR & TOCR_RMASK) | TOCR_INIT;
+					4'h8:       REG_DO <= TEMP;
+					4'h9: begin REG_DO <= ICR[15:8]; 
 					            TEMP   <= ICR[7:0]; end
 					default:;
 				endcase
 			end
+			
+			if (CLK4_CE && BUSY) BUSY <= 0;
 		end
 	end
 	
-	assign IBUS_DO = REG_SEL ? REG_DO : 8'h00;
-	assign IBUS_BUSY = 0;
+	assign IBUS_DO = REG_SEL ? {4{REG_DO}} : '0;
+	assign IBUS_BUSY = BUSY;
 	assign IBUS_ACT = REG_SEL;
 	
 endmodule
