@@ -599,7 +599,7 @@ module VDP1 (
 `ifdef DEBUG
 						DBG_SKIP <= (CMD_CURR == CMD_SKIP);
 `endif
-						if (!CMD.CMDCTRL.JP[2] && !CMD.CMDCTRL.END && (CMD_CURR != CMD_SKIP || !CMD_SKIP_EN)) begin
+						if (!CMD.CMDCTRL.JP[2] && !CMD.CMDCTRL.END /*&& (CMD_CURR != CMD_SKIP || !CMD_SKIP_EN)*/) begin
 							case (CMD.CMDCTRL.COMM) 
 								4'h0: begin	//normal sprite
 									if (CMD_SSPR_LEFT_OVER || CMD_SSPR_TOP_OVER || CMD_COORD_RIGHT_OVER[0] || CMD_COORD_BOTTOM_OVER[0]) begin
@@ -744,8 +744,6 @@ module VDP1 (
 								SYS_CLIP.X2 <= {1'b0,CMD.CMDXC[9:0]};
 								SYS_CLIP.Y2 <= {1'b0,CMD.CMDYC[9:0]};
 								//TODO: check on original hw
-								USR_CLIP.X1 <= '0; 
-								USR_CLIP.Y1 <= '0; 
 								USR_CLIP.X2 <= {1'b0,CMD.CMDXC[9:0]};
 								USR_CLIP.Y2 <= {1'b0,CMD.CMDYC[9:0]};
 								//
