@@ -28,7 +28,32 @@ module HPS2PAD (
    input      [ 7: 0] JOY2_Y2,
 
 	input      [ 2: 0] JOY1_TYPE,
-	input      [ 2: 0] JOY2_TYPE
+	input      [ 2: 0] JOY2_TYPE,
+
+  input      [24: 0] MOUSE
+);
+
+wire [3:0] mouse_flags;
+wire [3:0] mouse_buttons;
+wire [7:0] mouse_x;
+wire [7:0] mouse_y;
+
+// reset x/y delta accumulators after completed read by saturn (mouse STATE1 == 10)
+wire reset_acc = STATE1 == 5'd10; 
+
+ps2_mouse ps2mouse
+(
+  .clk(CLK),
+  .ce(SMPC_CE),
+  .reset(~RST_N),
+
+  .ps2_mouse(MOUSE),
+  .reset_acc(reset_acc),
+
+  .flags(mouse_flags),
+  .buttons(mouse_buttons),
+  .x(mouse_x),
+  .y(mouse_y),
 );
 
 	parameter PAD_DIGITAL     = 0;
@@ -41,8 +66,8 @@ module HPS2PAD (
 	
 	bit [ 3: 0] OUT1,OUT2;
 	bit         TL1,TL2;
+  bit [ 4: 0]  STATE1,STATE2;
 	always @(posedge CLK or negedge RST_N) begin
-		bit [ 4: 0]  STATE1,STATE2;
 		
 		if (!RST_N) begin
 			STATE1 <= '0;
@@ -75,12 +100,13 @@ module HPS2PAD (
 						5'd1: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'hB;                          TL1 <= 1; STATE1 <= 5'd2; end
 						5'd2: if (PDR1O[6:5] == 2'b00) begin OUT1 <= 4'hF;                          TL1 <= 0; STATE1 <= 5'd3; end
 						5'd3: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'hF;                          TL1 <= 1; STATE1 <= 5'd4; end
-						5'd4: if (PDR1O[6:5] == 2'b00) begin OUT1 <= {2'b00,JOY1_X1[7],JOY1_Y1[7]}; TL1 <= 0; STATE1 <= 5'd5; end
-						5'd5: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1[11: 8];                   TL1 <= 1; STATE1 <= 5'd6; end
-						5'd6: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1_X1[7:4]^4'h8;             TL1 <= 0; STATE1 <= 5'd7; end
-						5'd7: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1_X1[3:0];                  TL1 <= 1; STATE1 <= 5'd8; end
-						5'd8: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1_Y1[7:4]^4'h8;             TL1 <= 0; STATE1 <= 5'd9; end
-						5'd9: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1_Y1[3:0];                  TL1 <= 1; STATE1 <= 5'd10; end
+						5'd4: if (PDR1O[6:5] == 2'b00) begin OUT1 <= mouse_flags;                   TL1 <= 0; STATE1 <= 5'd5; end
+						5'd5: if (PDR1O[6:5] == 2'b01) begin OUT1 <= {~JOY1[11],mouse_buttons[2:0]};                   
+                                                                                        TL1 <= 1; STATE1 <= 5'd6; end
+						5'd6: if (PDR1O[6:5] == 2'b00) begin OUT1 <= mouse_x[7:4];                  TL1 <= 0; STATE1 <= 5'd7; end
+						5'd7: if (PDR1O[6:5] == 2'b01) begin OUT1 <= mouse_x[3:0];                  TL1 <= 1; STATE1 <= 5'd8; end
+						5'd8: if (PDR1O[6:5] == 2'b00) begin OUT1 <= mouse_y[7:4];                  TL1 <= 0; STATE1 <= 5'd9; end
+						5'd9: if (PDR1O[6:5] == 2'b01) begin OUT1 <= mouse_y[3:0];                  TL1 <= 1; STATE1 <= 5'd10; end
 					endcase
 					if (PDR1O[6:5] == 2'b11) begin OUT1 <= 4'h0; TL1 <= 1; STATE1 <= 5'd0; end
 				end

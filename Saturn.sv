@@ -894,7 +894,9 @@ module emu
 		.JOY2_Y2(joy1_y1),
 
 		.JOY1_TYPE(status[17:15]),
-		.JOY2_TYPE(status[20:18])
+		.JOY2_TYPE(status[20:18]),
+
+		.MOUSE(ps2_mouse)
 	);
 	
 	wire [13:1] CD_BUF_ADDR;
