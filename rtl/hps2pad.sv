@@ -27,10 +27,11 @@ module HPS2PAD (
    input      [ 7: 0] JOY2_X2,
    input      [ 7: 0] JOY2_Y2,
 
-	input      [ 2: 0] JOY1_TYPE,
-	input      [ 2: 0] JOY2_TYPE,
+   input      [ 2: 0] JOY1_TYPE,
+   input      [ 2: 0] JOY2_TYPE,
 
-  input      [24: 0] MOUSE
+   input      [24: 0] MOUSE,
+   input      [15: 0] MOUSE_EXT
 );
 
 wire [3:0] mouse_flags;
@@ -101,8 +102,8 @@ ps2_mouse ps2mouse
 						5'd2: if (PDR1O[6:5] == 2'b00) begin OUT1 <= 4'hF;                          TL1 <= 0; STATE1 <= 5'd3; end
 						5'd3: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'hF;                          TL1 <= 1; STATE1 <= 5'd4; end
 						5'd4: if (PDR1O[6:5] == 2'b00) begin OUT1 <= mouse_flags;                   TL1 <= 0; STATE1 <= 5'd5; end
-						5'd5: if (PDR1O[6:5] == 2'b01) begin OUT1 <= {~JOY1[11],mouse_buttons[2:0]};                   
-                                                                                        TL1 <= 1; STATE1 <= 5'd6; end
+						5'd5: if (PDR1O[6:5] == 2'b01) begin OUT1 <= {|MOUSE_EXT[15:8],mouse_buttons[2:0]};
+																														    TL1 <= 1; STATE1 <= 5'd6; end
 						5'd6: if (PDR1O[6:5] == 2'b00) begin OUT1 <= mouse_x[7:4];                  TL1 <= 0; STATE1 <= 5'd7; end
 						5'd7: if (PDR1O[6:5] == 2'b01) begin OUT1 <= mouse_x[3:0];                  TL1 <= 1; STATE1 <= 5'd8; end
 						5'd8: if (PDR1O[6:5] == 2'b00) begin OUT1 <= mouse_y[7:4];                  TL1 <= 0; STATE1 <= 5'd9; end

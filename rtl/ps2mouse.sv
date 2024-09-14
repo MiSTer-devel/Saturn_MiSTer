@@ -29,8 +29,6 @@ reg [10:0] curdx;
 reg [10:0] curdy;
 wire [10:0] newdx = curdx + {{3{ps2_mouse[4]}},ps2_mouse[15:8]};
 wire [10:0] newdy = curdy + {{3{ps2_mouse[5]}},ps2_mouse[23:16]};
-//wire [10:0] newdx = curdx + {{2{ps2_mouse[4]}},ps2_mouse[15: 8],1'b0};
-//wire [10:0] newdy = curdy + {{2{ps2_mouse[5]}},ps2_mouse[23:16],1'b0};
 wire  [7:0] dx = curdx[7:0];
 wire  [7:0] dy = curdy[7:0];
 
