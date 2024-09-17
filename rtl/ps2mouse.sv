@@ -14,7 +14,7 @@ module ps2_mouse
 	input	ce,
 
 	input	reset,
-  input reset_acc,
+	input	reset_acc,
 
 	input [24:0] ps2_mouse,
 	input [15:0] ps2_mouse_ext,
@@ -49,30 +49,30 @@ always @(posedge clk) old_stb <= ps2_mouse[24];
 
 /* Capture flags state */
 always@(posedge clk or posedge reset or posedge reset_acc) begin
-  if (reset || reset_acc) flags[3:0] <= 4'b0;
-  else if (strobe) begin
-    flags <= {y_ov,x_ov,sdy,sdx};
-  end
+	if (reset || reset_acc) flags[3:0] <= 4'b0;
+	else if (strobe) begin
+		flags <= {y_ov,x_ov,sdy,sdx};
+	end
 end
 
 /* Clip x accumulator */
 always@(posedge clk or posedge reset or posedge reset_acc) begin
-  if (reset || reset_acc) curdx <= 0;
-  else if (strobe) begin
-    if(x_ov_p) curdx <= 10'd255;
-    else if(x_ov_n) curdx <= -10'd256;
-    else curdx <= newdx;
-  end
+	if (reset || reset_acc) curdx <= 0;
+	else if (strobe) begin
+		if(x_ov_p) curdx <= 10'd255;
+		else if(x_ov_n) curdx <= -10'd256;
+		else curdx <= newdx;
+	end
 end
 
 /* Clip y accumulator */
 always@(posedge clk or posedge reset or posedge reset_acc) begin
-  if (reset || reset_acc) curdy <= 0;
-  else if (strobe) begin
-    if(y_ov_p) curdy <= 10'd255;
-    else if(y_ov_n) curdy <= -10'd256;
-    else curdy <= newdy;
-  end
+	if (reset || reset_acc) curdy <= 0;
+	else if (strobe) begin
+		if(y_ov_p) curdy <= 10'd255;
+		else if(y_ov_n) curdy <= -10'd256;
+		else curdy <= newdy;
+	end
 end
 
 /* Capture button state */
@@ -82,12 +82,12 @@ always@(posedge clk or posedge reset)
 
 always@(posedge clk or posedge reset) begin
 	if (reset) x <= 0;
-  else x <= dx;
+	else x <= dx;
 end
 
 always@(posedge clk or posedge reset) begin
 	if (reset) y <= 0;
-  else y <= dy;
+	else y <= dy;
 end
 
 endmodule
