@@ -77,13 +77,13 @@ module HPS2PAD (
 
 	// merge ps2 mouse with p1 joypad mouse
 	wire [3:0] p1_m_flags   = mouse_flags | {2'b0,p1_mjy_dz[7],p1_mjx_dz[7]};
-	wire [3:0] p1_m_buttons = {|MOUSE_EXT[15:8],mouse_buttons[2:0]} | ~JOY1[11: 8];
+	wire [3:0] p1_m_buttons = mouse_buttons | ~JOY1[11: 8];
 	wire [7:0] p1_m_x       = mouse_x | p1_mjx_dz;
 	wire [7:0] p1_m_y       = mouse_y | p1_mjy_dz;
 
 	// merge ps2 mouse with p2 joypad mouse
 	wire [3:0] p2_m_flags   = mouse_flags | {2'b0,p2_mjy_dz[7],p2_mjx_dz[7]};
-	wire [3:0] p2_m_buttons = {mouse_buttons[3:0]} | ~JOY2[11: 8];
+	wire [3:0] p2_m_buttons = mouse_buttons | ~JOY2[11: 8];
 	wire [7:0] p2_m_x       = mouse_x | p2_mjx_dz;
 	wire [7:0] p2_m_y       = mouse_y | p2_mjy_dz;
 
