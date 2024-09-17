@@ -14,9 +14,10 @@ module ps2_mouse
 	input	ce,
 
 	input	reset,
+  input reset_acc,
 
 	input [24:0] ps2_mouse,
-  input reset_acc,
+	input [15:0] ps2_mouse_ext,
 
 	output reg [3:0] flags,
 	output reg [3:0] buttons,
@@ -77,7 +78,7 @@ end
 /* Capture button state */
 always@(posedge clk or posedge reset)
 	if (reset) buttons[3:0] <= 4'b0;
-	else if (strobe) buttons[3:0] <= {1'b0,ps2_mouse[2:0]};
+	else if (strobe) buttons[3:0] <= {|ps2_mouse_ext[15:8],ps2_mouse[2:0]};
 
 always@(posedge clk or posedge reset) begin
 	if (reset) x <= 0;
