@@ -347,11 +347,11 @@ package SCSP_PKG;
 		bit         RST;	//
 		bit         KON;	//
 		bit         KOFF;	//
-		bit [13: 0] PHASE_FRAC;//Phase fractional
+		bit [22: 0] PHASE;
 		bit         MSK;	//
 		bit [ 7: 0] ND;
 	} OP2_t;
-	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,14'h0000,1'b0,8'h00};
+	parameter OP2_t OP2_RESET = '{5'h00,1'b0,1'b0,1'b0,23'h000000,1'b0,8'h00};
 	
 	typedef struct packed
 	{
@@ -365,9 +365,9 @@ package SCSP_PKG;
 		bit [ 7: 0] ND;
 		bit [15: 0] SO;	//Sample offset
 		bit [21: 0] MOD;	//Modulation
-		bit [19: 0] MASK;	//Wave mask
+		bit [16: 0] MASK;	//Wave mask
 	} OP3_t;
-	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,14'h0000,8'h00,16'h0000,22'h000000,20'h00000};
+	parameter OP3_t OP3_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,1'b0,14'h0000,8'h00,16'h0000,22'h000000,17'h00000};
 	
 	typedef struct packed
 	{
@@ -380,9 +380,8 @@ package SCSP_PKG;
 		bit [ 5: 0] MODF;	//Modulation fractional
 		bit [ 1: 0] SSCTL;
 		bit [ 1: 0] SBCTL;
-		bit         PCM8B;	//
 	} OP4_t;
-	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,8'h00,6'h00,2'b00,2'b00,1'b0};
+	parameter OP4_t OP4_RESET = '{5'h00,1'b0,1'b0,1'b0,1'b0,8'h00,6'h00,2'b00,2'b00};
 	
 	typedef struct packed
 	{
@@ -495,8 +494,8 @@ package SCSP_PKG;
 		return RET;
 	endfunction
 	
-	function bit [21:0] PhaseCalc(SCR5_t SCR5, bit signed [7:0] PLFO_WAVE);
-		bit [25:0] P;
+	function bit [22:0] PhaseCalc(SCR5_t SCR5, bit signed [7:0] PLFO_WAVE);
+		bit [26:0] P;
 		bit [3:0] S;
 		bit [10:0] F;
 		bit [14:0] TEMP;
@@ -506,19 +505,19 @@ package SCSP_PKG;
 		F = 11'h400 + SCR5.FNS;
 		TEMP = $signed(PLFO_WAVE) * F[10:4];
 		FM = {{3{TEMP[14]}},TEMP[14:6]};
-		P = {14'b00000000000000,{1'b0,F}+FM}<<S;
+		P = {15'b000000000000000,{1'b0,F}+FM}<<S;
 		
-		return P[25:4];
+		return P[26:4];
 	endfunction
 	
-	function bit [19:0] WaveMask(bit [15:0] LEA);
-		bit [19:0] RET;
+	function bit [16:0] WaveMask(bit [15:0] LEA);
+		bit [16:0] RET;
 		
-		RET = 20'hFFFFF;
-		if (LEA[10]) RET = 20'h003FF;
-		if (LEA[ 9]) RET = 20'h001FF;
-		if (LEA[ 8]) RET = 20'h000FF;
-		if (LEA[ 7]) RET = 20'h0007F;
+		RET = 17'h1FFFF;
+		if (LEA[10]) RET = 17'h003FF;
+		if (LEA[ 9]) RET = 17'h001FF;
+		if (LEA[ 8]) RET = 17'h000FF;
+		if (LEA[ 7]) RET = 17'h0007F;
 		
 		return RET;
 	endfunction
