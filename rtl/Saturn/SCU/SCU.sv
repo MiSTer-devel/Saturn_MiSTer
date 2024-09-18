@@ -218,10 +218,11 @@ module SCU
 	bit         CPU_ABUS_REQ;
 	
 	//BBUS
-	typedef enum bit [4:0] {
+	typedef enum bit [5:0] {
 		BBUS_IDLE,  
 		BBUS_ADDR16_H,
 		BBUS_ADDR16_L, 
+		BBUS_ADDR8_WAIT0,BBUS_ADDR8_WAIT1,
 		BBUS_ADDR8_HH, 
 		BBUS_ADDR8_HL, 
 		BBUS_ADDR8_LH, 
@@ -233,13 +234,16 @@ module SCU
 		BBUS_WRITE8_HL,
 		BBUS_WRITE8_LH,
 		BBUS_WRITE8_LL,
-		BBUS_WRITE8_END,
-		BBUS_READ16,
+		BBUS_WRITE8_END0,BBUS_WRITE8_END1,BBUS_WRITE8_END2,
+		BBUS_READ16_START,
+		BBUS_READ8_START,
+		BBUS_READ8_WAIT,
 		BBUS_READ8_H,
 		BBUS_READ8_L,
-		BBUS_READ_WAIT,
+		BBUS_READ16_WAIT,
 		BBUS_READ_NEXT,
 		BBUS_READ_NEXT2,
+		BBUS_READ_END0,BBUS_READ_END1,BBUS_READ_END2,
 		BBUS_DMA_RADDR1,
 		BBUS_DMA_RADDR2,
 		BBUS_DMA_READ,
@@ -877,21 +881,24 @@ module SCU
 			case (BBUS_ST)
 				BBUS_IDLE : if (CE_R) begin
 					if (CPU_BBUS_REQ) begin
-						case (CA_INNER[22:21])
-							2'b01: BCSS_N <= 0;
-							2'b10: BCS1_N <= 0;
-							2'b11: BCS2_N <= 0;
-						endcase
-						BDO <= {1'b0,&CDQMN_INNER,2'b00,CA_INNER[20:9]};
-						BDTEN_N <= 1;
-						BADDT_N <= 1;
-					
 						BBUS_A1 <= CA_INNER[1];
 						BBUS_RD <= ~CRDN_INNER;
 						BBUS_WORD <= {~&CDQMN_INNER[3:2],~&CDQMN_INNER[1:0]} | {2{~CRDN_INNER}};
 						CPU_BBUS_REQ <= 0;
 						CPU_BBUS_ACT <= 1;
-						BBUS_ST <= !CA_INNER[22] ? BBUS_ADDR8_HL : BBUS_ADDR16_L;
+						
+						if (CA_INNER[22]) begin
+							case (CA_INNER[21])
+								1'b0: BCS1_N <= 0;
+								1'b1: BCS2_N <= 0;
+							endcase
+							BDO <= {1'b0,&CDQMN_INNER,2'b00,CA_INNER[20:9]};
+							BDTEN_N <= 1;
+							BADDT_N <= 1;
+							BBUS_ST <= BBUS_ADDR16_L;
+						end else begin
+							BBUS_ST <= BBUS_ADDR8_HH;
+						end
 					end else if (DMA_READ_B && !DMA_WRITE_B && ((!DMA_DSP && ((!CBRLS && DMA_WRITE_C) || DMA_WRITE_A)) || (DMA_DSP && !DSP_DMA_WE))) begin
 						case (DMA_RA[22:21])
 							2'b01: BCSS_N <= 0;
@@ -946,37 +953,8 @@ module SCU
 							BDO <= {2'b10,CDQMN_INNER[1:0],4'b0000,CA_INNER[8:1]};
 						BDTEN_N <= 1;
 						BADDT_N <= 1;
-						BBUS_ST <= BBUS_RD ? BBUS_READ16 : BBUS_WORD[1] ? BBUS_WRITE16_H : BBUS_WRITE16_L;
+						BBUS_ST <= BBUS_RD ? BBUS_READ16_START : BBUS_WORD[1] ? BBUS_WRITE16_H : BBUS_WRITE16_L;
 					end
-				end
-				
-				BBUS_ADDR8_HH: if (CE_R) begin
-					BCSS_N <= 0;
-					BDO <= {1'b0,&CDQMN_INNER,2'b00,CA_INNER[20:9]};
-					BDTEN_N <= 1;
-					BADDT_N <= 1;
-					BBUS_ST <= BBUS_ADDR8_HL;
-				end
-				
-				BBUS_ADDR8_HL: if (CE_R) begin
-					if (!CRDN_INNER) 
-						BDO <= {2'b10,2'b00,4'b0000,CA_INNER[8:2],BBUS_A1};
-					else if (!(&CDQMN_INNER[3:2])) 
-						BDO <= {2'b10,CDQMN_INNER[3:2],4'b0000,CA_INNER[8:1]};
-					else
-						BDO <= {2'b10,CDQMN_INNER[1:0],4'b0000,CA_INNER[8:1]};
-					BDTEN_N <= 1;
-					BADDT_N <= 1;
-					BBUS_ST <= BBUS_ADDR8_LH;
-				end
-				
-				BBUS_ADDR8_LH: if (CE_R) begin
-					BADDT_N <= 0;
-					BBUS_ST <= BBUS_ADDR8_LL;
-				end
-				
-				BBUS_ADDR8_LL: if (CE_R) begin
-					BBUS_ST <= BBUS_RD ? BBUS_READ8_H : BBUS_WORD[1] ? BBUS_WRITE8_HH : BBUS_WRITE8_LH;
 				end
 				
 				BBUS_WRITE16_H: if (CE_R) begin
@@ -1023,83 +1001,21 @@ module SCU
 					BBUS_ST <= BBUS_IDLE;
 				end
 				
-				BBUS_WRITE8_HH: if (CE_R) begin
-`ifdef DEBUG
-					DBG_BBUS_WAIT_CNT <= DBG_BBUS_WAIT_CNT + 1'd1;
-`endif
-					if (BBUS_RDY) begin
-						BDO <= CDI_INNER[31:16];
-						BDTEN_N <= 0;
-						BADDT_N <= 0;
-						BREQ_N <= 0;
-						BBUS_ST <= BBUS_WRITE8_HL;
-`ifdef DEBUG
-					DBG_BBUS_WAIT_CNT <= '0;
-`endif
-					end
-				end
-				
-				BBUS_WRITE8_HL: if (CE_R) begin
-					BDTEN_N <= 1;
-					
-					BBUS_WORD[1] <= 0;
-					if (BBUS_WORD[0]) begin
-						BBUS_ST <= BBUS_WRITE8_LH;
-					end else begin
-						CPU_BBUS_ACT <= 0;
-						CPU_WAIT_CLR <= 1;
-						BBUS_ST <= BBUS_WRITE8_END;
-					end
-				end
-				
-				BBUS_WRITE8_LH: if (CE_R) begin
-					if (BBUS_RDY) begin
-						BDO <= CDI_INNER[15:0];
-						BDTEN_N <= 0;
-						BADDT_N <= 0;
-						BREQ_N <= 0;
-						BBUS_ST <= BBUS_WRITE8_LL;
-					end
-				end
-				
-				BBUS_WRITE8_LL: if (CE_R) begin
-					BDTEN_N <= 1;
-
-					BBUS_WORD[0] <= 0;
-					CPU_BBUS_ACT <= 0;
-					CPU_WAIT_CLR <= 1;
-					BBUS_ST <= BBUS_WRITE8_END;
-				end
-				
-				BBUS_WRITE8_END: if (CE_R) begin
-					BDTEN_N <= 1;
-					BCSS_N <= 1;
-					BCS1_N <= 1;
-					BCS2_N <= 1;
-					BBUS_ST <= BBUS_IDLE;
-				end
-				
-				BBUS_READ16,
-				BBUS_READ8_H: if (CE_R) begin
+				BBUS_READ16_START: if (CE_R) begin
 					if (BBUS_RDY) begin
 						BADDT_N <= 0;
 						BREQ_N <= 0;
 						
-						BBUS_ST <= !CA_INNER[22] ? BBUS_READ8_L : BBUS_READ_WAIT;
+						BBUS_ST <= BBUS_READ16_WAIT;
 					end
 //					DBG_BBUS_WAIT_CNT <= '0;
 				end
-				
-				BBUS_READ8_L: if (CE_R) begin
-					BBUS_ST <= BBUS_READ_WAIT;
-				end
 					
-				BBUS_READ_WAIT: if (CE_R) begin
+				BBUS_READ16_WAIT: if (CE_R) begin
 `ifdef DEBUG
 					DBG_BBUS_WAIT_CNT <= DBG_BBUS_WAIT_CNT + 1'd1;
 `endif
 					if (BBUS_RDY) begin
-						BCSS_N <= 1;
 						BCS1_N <= 1;
 						BCS2_N <= 1;
 						if (BBUS_WORD[1]) BBUS_BUF[31:16] <= BDI;
@@ -1108,15 +1024,145 @@ module SCU
 						BBUS_WORD[1] <= 0;
 						if (BBUS_WORD[1] && BBUS_WORD[0]) begin
 							BBUS_A1 <= 1;
-							BBUS_ST <= CA_INNER[22] && CA_INNER[21] ? BBUS_READ_NEXT : BBUS_READ_NEXT2;//BBUS_ADDR16_H;
+							BBUS_ST <= CA_INNER[22] && CA_INNER[21] ? BBUS_READ_NEXT : BBUS_READ_NEXT2;
 						end else begin
-							CPU_WAIT_CLR <= 1;
-							CPU_BBUS_ACT <= 0;
-							BBUS_ST <= BBUS_IDLE;
+							BBUS_ST <= BBUS_READ_END0;
 						end
 `ifdef DEBUG
 					DBG_BBUS_WAIT_CNT <= '0;
 `endif
+					end
+				end
+				
+				BBUS_ADDR8_WAIT0: if (CE_R) begin
+					if (!BRDYS_N) begin
+						BBUS_ST <= BBUS_ADDR8_WAIT1;
+					end
+				end
+				
+				BBUS_ADDR8_WAIT1: if (CE_R) begin
+					BBUS_ST <= BBUS_ADDR8_HH;
+				end
+				
+				BBUS_ADDR8_HH: if (CE_R) begin
+					if (!BRDYS_N) begin
+						BCSS_N <= 0;
+						BDO <= {1'b0,&CDQMN_INNER,2'b00,CA_INNER[20:9]};
+						BDTEN_N <= 1;
+						BADDT_N <= 1;
+						BBUS_ST <= BBUS_ADDR8_HL;
+					end else begin
+						BBUS_ST <= BBUS_ADDR8_WAIT0;
+					end
+				end
+				
+				BBUS_ADDR8_HL: if (CE_R) begin
+					if (!CRDN_INNER) 
+						BDO <= {2'b10,2'b00,4'b0000,CA_INNER[8:2],BBUS_A1};
+					else if (!(&CDQMN_INNER[3:2])) 
+						BDO <= {2'b10,CDQMN_INNER[3:2],4'b0000,CA_INNER[8:1]};
+					else
+						BDO <= {2'b10,CDQMN_INNER[1:0],4'b0000,CA_INNER[8:1]};
+					BDTEN_N <= 1;
+					BADDT_N <= 1;
+					BBUS_ST <= BBUS_ADDR8_LH;
+				end
+				
+				BBUS_ADDR8_LH: if (CE_R) begin
+					BADDT_N <= 0;
+					BBUS_ST <= BBUS_ADDR8_LL;
+				end
+				
+				BBUS_ADDR8_LL: if (CE_R) begin
+					BBUS_ST <= BBUS_RD ? BBUS_READ8_START : BBUS_WORD[1] ? BBUS_WRITE8_HH : BBUS_WRITE8_LH;
+				end
+				
+				BBUS_WRITE8_HH: if (CE_R) begin
+//					if (!BRDYS_N) begin
+						BDTEN_N <= 0;
+						BADDT_N <= 0;
+						BBUS_ST <= BBUS_WRITE8_HL;
+//					end
+				end
+				
+				BBUS_WRITE8_HL: if (CE_R) begin
+					BDO <= CDI_INNER[31:16];
+					BDTEN_N <= 0;
+					BADDT_N <= 0;
+					BREQ_N <= 0;
+					
+					BBUS_WORD[1] <= 0;
+					if (BBUS_WORD[0]) begin
+						BBUS_ST <= BBUS_WRITE8_LH;
+					end else begin
+						BBUS_ST <= BBUS_WRITE8_END0;
+					end
+				end
+				
+				BBUS_WRITE8_LH: if (CE_R) begin
+					if (!BRDYS_N) begin
+						BDTEN_N <= 0;
+						BADDT_N <= 0;
+						BBUS_ST <= BBUS_WRITE8_LL;
+					end
+				end
+				
+				BBUS_WRITE8_LL: if (CE_R) begin
+					BDO <= CDI_INNER[15:0];
+					BDTEN_N <= 0;
+					BADDT_N <= 0;
+					BREQ_N <= 0;
+
+					BBUS_WORD[0] <= 0;
+					BBUS_ST <= BBUS_WRITE8_END0;
+				end
+				
+				BBUS_WRITE8_END0: if (CE_R) begin
+					BDTEN_N <= 1;
+					BCSS_N <= 1;
+					BBUS_ST <= BBUS_WRITE8_END1;
+				end
+				
+				BBUS_WRITE8_END1: if (CE_R) begin
+					BBUS_ST <= BBUS_WRITE8_END2;
+				end
+				
+				BBUS_WRITE8_END2: if (CE_R) begin
+					CPU_BBUS_ACT <= 0;
+					CPU_WAIT_CLR <= 1;
+					BBUS_ST <= BBUS_IDLE;
+				end
+				
+				BBUS_READ8_START: if (CE_R) begin
+//					if (!BRDYS_N) begin
+						BADDT_N <= 0;
+						BREQ_N <= 0;
+						
+						BBUS_ST <= BBUS_READ8_WAIT;
+//					end
+				end
+				
+				BBUS_READ8_WAIT: if (CE_R) begin
+					if (!BRDYS_N) begin
+						BBUS_ST <= BBUS_READ8_H;
+					end
+				end
+				
+				BBUS_READ8_H: if (CE_R) begin
+					BBUS_ST <= BBUS_READ8_L;
+				end
+				
+				BBUS_READ8_L: if (CE_R) begin
+					BCSS_N <= 1;
+					if (BBUS_WORD[1]) BBUS_BUF[31:16] <= BDI;
+					else              BBUS_BUF[15: 0] <= BDI;
+					
+					BBUS_WORD[1] <= 0;
+					if (BBUS_WORD[1] && BBUS_WORD[0]) begin
+						BBUS_A1 <= 1;
+						BBUS_ST <= BBUS_READ_NEXT2;
+					end else begin
+						BBUS_ST <= BBUS_READ_END0;
 					end
 				end
 				
@@ -1126,6 +1172,20 @@ module SCU
 				
 				BBUS_READ_NEXT2: if (CE_R) begin
 					BBUS_ST <= !CA_INNER[22] ? BBUS_ADDR8_HH : BBUS_ADDR16_H;
+				end
+				
+				BBUS_READ_END0: if (CE_R) begin
+					BBUS_ST <= BBUS_READ_END1;
+				end
+				
+				BBUS_READ_END1: if (CE_R) begin
+					BBUS_ST <= BBUS_READ_END2;
+				end
+				
+				BBUS_READ_END2: if (CE_R) begin
+					CPU_WAIT_CLR <= 1;
+					CPU_BBUS_ACT <= 0;
+					BBUS_ST <= BBUS_IDLE;
 				end
 				
 				BBUS_DMA_RADDR1: if (CE_R) begin
