@@ -92,6 +92,7 @@ module SMPC (
 		PS_DPAD_0,PS_DPAD_1,PS_DPAD_2,PS_DPAD_3,PS_DPAD_4,PS_DPAD_5,PS_DPAD_6,PS_DPAD_7,
 		PS_MOUSE_0,PS_MOUSE_1,PS_MOUSE_2,PS_MOUSE_3,PS_MOUSE_4,PS_MOUSE_5,PS_MOUSE_6,PS_MOUSE_7,PS_MOUSE_8,PS_MOUSE_9,PS_MOUSE_10,
 		PS_ID5_0,PS_ID5_1,PS_ID5_2,PS_ID5_3,PS_ID5_4,PS_ANALOG_5,PS_ANALOG_6,PS_ANALOG_7,PS_ANALOG_8,PS_ANALOG_9,PS_ANALOG_10,
+		PS_NOTHING_STUNNER,
 		PS_NEXT,
 		PS_END
 	} PortState_t;
@@ -796,7 +797,7 @@ module SMPC (
 							PDR_O[PORT_NUM] <= '1; 
 							PORT_ST <= PS_ID1_0;
 						end else begin
-							OREG_DATA <= 8'hF0;
+							OREG_DATA <= 8'hA0;//8'hF0; //temporary hack
 							OREG_WRITE <= 1;
 							PORT_ST <= PS_NEXT;
 						end
@@ -840,11 +841,18 @@ module SMPC (
 							PORT_ST <= PS_MOUSE_0;
 						else if (MD_ID == 4'h5)
 							PORT_ST <= PS_ID5_0;
-						else if (MD_ID == 4'hF)
-							PORT_ST <= PS_NEXT;
+						else if (MD_ID == 4'hF || 4'hA)
+							PORT_ST <= PS_NOTHING_STUNNER;
 						else 
 							PORT_ST <= PS_END;
 					end
+					
+					//Nothing Detected or Stunner
+					PS_NOTHING_STUNNER: begin
+						OREG_DATA <= {MD_ID,4'b0000};
+						OREG_WRITE <= 1;
+						PORT_ST <= PS_NEXT;
+					end		
 					
 					//Standart PAD
 					PS_DPAD_0: begin
