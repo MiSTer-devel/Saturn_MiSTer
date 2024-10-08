@@ -473,22 +473,22 @@ module VDP1 (
 //			end
 			
 			
-			CMD_COORD_LEFT_OVER   <= {$signed(CMD.CMDXD[12:0]) < $signed(SYS_CLIP_X1),
-			                          $signed(CMD.CMDXC[12:0]) < $signed(SYS_CLIP_X1), 
-			                          $signed(CMD.CMDXB[12:0]) < $signed(SYS_CLIP_X1), 
-			                          $signed(CMD.CMDXA[12:0]) < $signed(SYS_CLIP_X1)};
-			CMD_COORD_RIGHT_OVER  <= {$signed(CMD.CMDXD[12:0]) > $signed(SYS_CLIP_X2),
-			                          $signed(CMD.CMDXC[12:0]) > $signed(SYS_CLIP_X2), 
-			                          $signed(CMD.CMDXB[12:0]) > $signed(SYS_CLIP_X2), 
-			                          $signed(CMD.CMDXA[12:0]) > $signed(SYS_CLIP_X2)};
-			CMD_COORD_TOP_OVER    <= {$signed(CMD.CMDYD[12:0]) < $signed(SYS_CLIP_Y1),
-								           $signed(CMD.CMDYC[12:0]) < $signed(SYS_CLIP_Y1),
-								           $signed(CMD.CMDYB[12:0]) < $signed(SYS_CLIP_Y1),
-								           $signed(CMD.CMDYA[12:0]) < $signed(SYS_CLIP_Y1)};
-			CMD_COORD_BOTTOM_OVER <= {$signed(CMD.CMDYD[12:0]) > $signed(SYS_CLIP_Y2),
-								           $signed(CMD.CMDYC[12:0]) > $signed(SYS_CLIP_Y2),
-								           $signed(CMD.CMDYB[12:0]) > $signed(SYS_CLIP_Y2),
-								           $signed(CMD.CMDYA[12:0]) > $signed(SYS_CLIP_Y2)};
+			CMD_COORD_LEFT_OVER   <= {$signed(CMD.CMDXD[13:0]) < $signed({SYS_CLIP_X1[12],SYS_CLIP_X1}),
+			                          $signed(CMD.CMDXC[13:0]) < $signed({SYS_CLIP_X1[12],SYS_CLIP_X1}), 
+			                          $signed(CMD.CMDXB[13:0]) < $signed({SYS_CLIP_X1[12],SYS_CLIP_X1}), 
+			                          $signed(CMD.CMDXA[13:0]) < $signed({SYS_CLIP_X1[12],SYS_CLIP_X1})};
+			CMD_COORD_RIGHT_OVER  <= {$signed(CMD.CMDXD[13:0]) > $signed({SYS_CLIP_X2[12],SYS_CLIP_X2}),
+			                          $signed(CMD.CMDXC[13:0]) > $signed({SYS_CLIP_X2[12],SYS_CLIP_X2}), 
+			                          $signed(CMD.CMDXB[13:0]) > $signed({SYS_CLIP_X2[12],SYS_CLIP_X2}), 
+			                          $signed(CMD.CMDXA[13:0]) > $signed({SYS_CLIP_X2[12],SYS_CLIP_X2})};
+			CMD_COORD_TOP_OVER    <= {$signed(CMD.CMDYD[13:0]) < $signed({SYS_CLIP_Y1[12],SYS_CLIP_Y1}),
+								           $signed(CMD.CMDYC[13:0]) < $signed({SYS_CLIP_Y1[12],SYS_CLIP_Y1}),
+								           $signed(CMD.CMDYB[13:0]) < $signed({SYS_CLIP_Y1[12],SYS_CLIP_Y1}),
+								           $signed(CMD.CMDYA[13:0]) < $signed({SYS_CLIP_Y1[12],SYS_CLIP_Y1})};
+			CMD_COORD_BOTTOM_OVER <= {$signed(CMD.CMDYD[13:0]) > $signed({SYS_CLIP_Y2[12],SYS_CLIP_Y2}),
+								           $signed(CMD.CMDYC[13:0]) > $signed({SYS_CLIP_Y2[12],SYS_CLIP_Y2}),
+								           $signed(CMD.CMDYB[13:0]) > $signed({SYS_CLIP_Y2[12],SYS_CLIP_Y2}),
+								           $signed(CMD.CMDYA[13:0]) > $signed({SYS_CLIP_Y2[12],SYS_CLIP_Y2})};
 											  			
 			if (CMD.CMDCTRL.COMM == 4'h0) begin
 				CMD_SSPR_LEFT = CMD.CMDXA[12:0]; 
@@ -600,7 +600,11 @@ module VDP1 (
 `ifdef DEBUG
 						DBG_SKIP <= (CMD_CURR == CMD_SKIP);
 `endif
-						if (!CMD.CMDCTRL.JP[2] && !CMD.CMDCTRL.END /*&& (CMD_CURR != CMD_SKIP || !CMD_SKIP_EN)*/) begin
+						if (!CMD.CMDCTRL.JP[2] && !CMD.CMDCTRL.END 
+`ifdef DEBUG
+						    && (CMD_CURR != CMD_SKIP || !CMD_SKIP_EN)
+`endif
+						                                             ) begin
 							case (CMD.CMDCTRL.COMM) 
 								4'h0: begin	//normal sprite
 									if (CMD_SSPR_LEFT_OVER || CMD_SSPR_TOP_OVER || CMD_COORD_RIGHT_OVER[0] || CMD_COORD_BOTTOM_OVER[0]) begin
@@ -941,7 +945,7 @@ module VDP1 (
 						COL_TEXT_D <= ({5'b00000,ORIG_HEIGHT} >> 1) - {12'b000000000000,~ORIG_HEIGHT[0]};
 					end else begin
 						SPR_COL_ENLARGE <= 0;
-						COL_TEXT_D <= (COL_HEIGHT >> 1) /*+ {12'b000000000000,COL_HEIGHT[0]}*/;
+						COL_TEXT_D <= !TEXT_DIRY ? (COL_HEIGHT >> 1) + {12'b000000000000,COL_HEIGHT[0]} : ORIG_HEIGHT - ((COL_HEIGHT >> 1) + {12'b000000000000,COL_HEIGHT[0]});
 					end
 					
 					SPR_OFFSY <= TEXT_DIRY ? (ORIG_HEIGHT - 8'd1) * ORIG_WIDTH[8:3] : '0;
@@ -1102,7 +1106,7 @@ module VDP1 (
 						HSS_EN <= 0;
 					end else if (!CMD.CMDPMOD.HSS) begin
 						SPR_ROW_ENLARGE <= 0;
-						ROW_TEXT_D <= ROW_WIDTH >> 1;
+						ROW_TEXT_D <= !TEXT_DIRX ? ((ROW_WIDTH >> 1) + {12'b000000000000,ROW_WIDTH[0]}) : ORIG_WIDTH - ((ROW_WIDTH >> 1) + {12'b000000000000,ROW_WIDTH[0]});
 						HSS_EN <= 0;
 					end else begin
 						if ({5'b00000,ORIG_WIDTH[8:1]} <= ROW_WIDTH) begin
@@ -1110,7 +1114,7 @@ module VDP1 (
 							ROW_TEXT_D <= {5'b00000,ORIG_WIDTH[8:1]}>>1;
 						end else begin
 							SPR_ROW_ENLARGE <= 0;
-							ROW_TEXT_D <= ROW_WIDTH >> 1;
+							ROW_TEXT_D <= !TEXT_DIRX ? ((ROW_WIDTH >> 1) + {12'b000000000000,ROW_WIDTH[0]}) : ORIG_WIDTH - ((ROW_WIDTH >> 1) + {12'b000000000000,ROW_WIDTH[0]});
 						end
 						HSS_EN <= 1;
 					end
@@ -1185,7 +1189,7 @@ module VDP1 (
 						HSS_EN <= 0;
 					end else if (!CMD.CMDPMOD.HSS) begin
 						SPR_ROW_ENLARGE <= 0;
-						ROW_TEXT_D <= ROW_WIDTH >> 1;
+						ROW_TEXT_D <= !TEXT_DIRX ? ((ROW_WIDTH >> 1) + {12'b000000000000,ROW_WIDTH[0]}) : ORIG_WIDTH - ((ROW_WIDTH >> 1) + {12'b000000000000,ROW_WIDTH[0]});
 						HSS_EN <= 0;
 					end else begin
 						if ({5'b00000,ORIG_WIDTH[8:1]} <= ROW_WIDTH) begin
@@ -1193,7 +1197,7 @@ module VDP1 (
 							ROW_TEXT_D <= {5'b00000,ORIG_WIDTH[8:1]} >> 1;
 						end else begin
 							SPR_ROW_ENLARGE <= 0;
-							ROW_TEXT_D <= ROW_WIDTH >> 1;
+							ROW_TEXT_D <= !TEXT_DIRX ? ((ROW_WIDTH >> 1) + {12'b000000000000,ROW_WIDTH[0]}) : ORIG_WIDTH - ((ROW_WIDTH >> 1) + {12'b000000000000,ROW_WIDTH[0]});
 						end
 						HSS_EN <= 1;
 					end
