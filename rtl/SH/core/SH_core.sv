@@ -217,6 +217,8 @@ module SH_core
 			PIPE.ID.IR <= {8'hF0,6'b000000,NMI_N,1'b0};
 			PIPE.ID.PC <= '0;
 			SAVE_IR <= '0;
+			INT_REQ_LATCH <= 0;
+			INT_LVL_LATCH <= '0;
 		end
 		else if (EN && CE) begin
 			if (!PC[1] || PIPE.MA.BC) begin
