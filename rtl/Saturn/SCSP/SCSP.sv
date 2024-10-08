@@ -342,7 +342,7 @@ module SCSP (
 			end
 			
 `ifdef DEBUG
-			KON_DBG <= KEYON[SLOT];
+			KON_DBG <= KEY_RAM_Q[0];
 			DBG_PHASE <= PHASE; 
 `endif
 		end
@@ -392,7 +392,14 @@ module SCSP (
 		bit          NEW_SADIR;
 		bit          NEW_SALOOP;
 		bit          NEW_LOOPEND;
+		bit          COMP;
 		bit          ALLOW;
+		bit          EVENT,LOOP0_DELAYED;
+		
+`ifdef DEBUG
+		bit  [ 7: 0] DBG_EXT_OLD;
+		bit  [22: 0] DBG_PHASE_SHIFT;
+`endif
 		
 		if (!RST_N) begin
 			// synopsys translate_off
@@ -438,11 +445,14 @@ module SCSP (
 			end
 		
 			{CUR_LOOPEND,CUR_SALOOP,CUR_SADIR,CUR_SO} = OP2.KON ? '0 : SO_RAM_Q;
+			COMP = ((CUR_SO^{16{CUR_SADIR&OP2_SCR0.LPCTL[1]}}) + 16'd1) > ((CUR_SADIR && OP2_SCR0.LPCTL[1]) || !CUR_SALOOP ? OP2_LSA : OP2_LEA);
+			
 			CUR_PHASE_FRAC = OP2.KON ? '0 : PHASE_FRAC_RAM_Q;
 						
 			ALLOW = 1;
 			if (SLOT1_CE) begin
 				//Sample offset
+				EVENT = 0;
 				if (OP2.RST) begin
 					{NEW_LOOPEND,NEW_SALOOP,NEW_SADIR,NEW_SAO} = '0;
 					ALLOW = 0;
@@ -454,55 +464,66 @@ module SCSP (
 					case (OP2_SCR0.LPCTL)
 					2'b00: begin	//Loop off
 						if (!CUR_SALOOP) begin
-							if (CUR_SO + 16'd1 > OP2_LSA) begin
+							if (COMP) begin
 								NEW_SALOOP = 1;
+								EVENT = 1;
 							end
 						end else if (!CUR_LOOPEND) begin
-							if (CUR_SO + 16'd1 > OP2_LEA) begin
+							if (COMP && !LOOP0_DELAYED) begin
 								NEW_LOOPEND = 1;
+								EVENT = 1;
 								ALLOW = 0;
 							end
 						end
 					end
 					2'b01: begin	//Normal loop
 						if (!CUR_SALOOP) begin
-							if (CUR_SO + 16'd1 > OP2_LSA) begin
+							if (COMP) begin
 								NEW_SALOOP = 1;
+								EVENT = 1;
 							end
 						end else begin
-							if (CUR_SO + 16'd1 > OP2_LEA) begin
+							if (COMP) begin
 								NEW_SAO = CUR_SO + (OP2_LSA - OP2_LEA);
+								EVENT = 1;
 							end
 						end
 					end
 					2'b10: begin	//Reverse loop
 						if (!CUR_SALOOP) begin
-							if (CUR_SO + 16'd1 > OP2_LSA) begin
+							if (COMP) begin
 								NEW_SAO = CUR_SO - (OP2_LSA + OP2_LEA);
 								NEW_SALOOP = 1;
 								NEW_SADIR = 1;
+								EVENT = 1;
 							end
 						end else begin
-							if (!(~CUR_SO + 16'd1 > OP2_LSA)) begin
+							if (!COMP) begin
 								NEW_SAO = CUR_SO + (OP2_LSA - OP2_LEA);
+							end else begin
+								EVENT = 1;
 							end
 						end
 					end
 					2'b11: begin	//Alternative loop
 						if (!CUR_SALOOP) begin
-							if (CUR_SO + 16'd1 > OP2_LSA) begin
+							if (COMP) begin
 								NEW_SALOOP = 1;
 								NEW_SADIR = 0;
+								EVENT = 1;
 							end
 						end else if (!CUR_SADIR) begin
-							if (CUR_SO + 16'd1 > OP2_LEA) begin
+							if (COMP) begin
 								NEW_SAO = CUR_SO - (OP2_LEA<<1);
 								NEW_SADIR = 1;
+								EVENT = 1;
 							end
 						end else begin
-							if (!(~CUR_SO + 16'd1 > OP2_LSA)) begin
+							if (!COMP) begin
 								NEW_SAO = CUR_SO + (OP2_LSA<<1);
 								NEW_SADIR = 0;
+							end else begin
+								EVENT = 1;
 							end
 						end
 					end
@@ -510,6 +531,7 @@ module SCSP (
 					
 					if (NEW_LOOPEND) ALLOW = 0;
 				end
+				LOOP0_DELAYED <= EVENT;
 				
 				//Phase accum
 				if (OP2.RST)
@@ -763,52 +785,6 @@ module SCSP (
 				
 				ATTACK_VOL_CALC = {1'b0,OP4_EVOL} + (ENV_STEP ? $signed($signed(~{1'b0,OP4_EVOL}) >>> SRAC[4:0]) : 11'd0);
 				DECAY_VOL_CALC = {1'b0,OP4_EVOL} + (ENV_STEP ? $signed(10'd16 >>> SRAC[4:0]) : 11'd0);
-				case (OP4_EST)
-					EST_ATTACK: begin
-						if (!ATTACK_VOL_CALC[10]) begin
-							NEW_EVOL = ATTACK_VOL_CALC[9:0];
-						end else begin
-							NEW_EVOL = 10'h000;
-						end
-						if ((!OP4_EVOL && !OP4_SCR2.LPSLNK) || (OP4.LOOP && OP4_SCR2.LPSLNK)) begin
-							NEW_EST = EST_DECAY1;
-`ifdef DEBUG
-							DECAY1_DBG <= 1;
-`endif
-						end
-					end
-					
-					EST_DECAY1: begin
-						if (!DECAY_VOL_CALC[10]) begin
-							NEW_EVOL = DECAY_VOL_CALC[9:0];
-						end else begin
-							NEW_EVOL = 10'h3FF;
-						end
-						if (OP4_EVOL[9:5] == OP4_SCR2.DL) begin
-							NEW_EST = EST_DECAY2;
-`ifdef DEBUG
-							DECAY2_DBG <= 1;
-`endif
-						end
-					end
-					
-					EST_DECAY2: begin
-						if (!DECAY_VOL_CALC[10]) begin
-							NEW_EVOL = DECAY_VOL_CALC[9:0];
-						end else begin
-							NEW_EVOL = 10'h3FF;
-						end
-					end
-					
-					EST_RELEASE: begin
-						if (!DECAY_VOL_CALC[10]) begin
-							NEW_EVOL = DECAY_VOL_CALC[9:0];
-						end else begin
-							NEW_EVOL = 10'h3FF;
-						end
-					end
-				endcase
-				
 				if (OP4.RST) begin
 					NEW_EVOL = 10'h3FF;
 					NEW_EST = EST_RELEASE;
@@ -819,15 +795,56 @@ module SCSP (
 					ATTACK_DBG <= 1;
 `endif
 				end else if (OP4_EST != EST_RELEASE && OP4.KOFF) begin
-					if (!DECAY_VOL_CALC[10]) begin
-						NEW_EVOL = DECAY_VOL_CALC[9:0];
-					end else begin
-						NEW_EVOL = 10'h3FF;
-					end
 					NEW_EST = EST_RELEASE;
 `ifdef DEBUG
 					RELEASE_DBG <= 1;
 `endif
+				end else begin
+					case (OP4_EST)
+						EST_ATTACK: begin
+							if (!ATTACK_VOL_CALC[10]) begin
+								NEW_EVOL = ATTACK_VOL_CALC[9:0];
+							end else begin
+								NEW_EVOL = 10'h000;
+							end
+							if ((!OP4_EVOL && !OP4_SCR2.LPSLNK) || (OP4.LOOP && OP4_SCR2.LPSLNK)) begin
+								NEW_EST = EST_DECAY1;
+`ifdef DEBUG
+								DECAY1_DBG <= 1;
+`endif
+							end
+						end
+						
+						EST_DECAY1: begin
+							if (!DECAY_VOL_CALC[10]) begin
+								NEW_EVOL = DECAY_VOL_CALC[9:0];
+							end else begin
+								NEW_EVOL = 10'h3FF;
+							end
+							if (OP4_EVOL[9:5] == OP4_SCR2.DL) begin
+								NEW_EST = EST_DECAY2;
+`ifdef DEBUG
+								DECAY2_DBG <= 1;
+`endif
+							end
+						end
+						
+						EST_DECAY2: begin
+							if (!DECAY_VOL_CALC[10]) begin
+								NEW_EVOL = DECAY_VOL_CALC[9:0];
+							end else begin
+								NEW_EVOL = 10'h3FF;
+							end
+						end
+						
+						EST_RELEASE: begin
+							if (!DECAY_VOL_CALC[10]) begin
+								NEW_EVOL = DECAY_VOL_CALC[9:0];
+							end else begin
+								NEW_EVOL = 10'h3FF;
+							end
+						end
+					endcase
 				end
 				EVOL_RAM_D <= {NEW_EST,NEW_EVOL};
 				
