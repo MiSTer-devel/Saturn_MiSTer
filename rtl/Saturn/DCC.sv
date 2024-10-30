@@ -46,6 +46,9 @@ module DCC
 	output            MWR_N
 );
 
+	const bit [3:0] DRAM_CYC = 4'd7;
+	const bit [3:0] ROM_SRAM_SMPC_CYC = 4'd8;
+	
 	//SCU bus arbitration
 	bit          SSH_ACTIVE;
 	bit          SCU_ACTIVE;
@@ -83,22 +86,22 @@ module DCC
 	always @(posedge CLK or negedge RST_N) begin
 		bit          RD_N_OLD;
 		bit          WE_N_OLD;
-		bit  [ 2: 0] WAIT_CNT;
+		bit  [ 3: 0] WAIT_CNT;
 		
 		if (!RST_N) begin
 			MEM_WAIT <= 0;
 			WAIT_CNT <= '0;
 		end else begin
 			RD_N_OLD <= RD_N;
-			WE_N_OLD <= |WE_N;
-			if ((!RD_N && RD_N_OLD && !CS0_N) || (!WE_N && WE_N_OLD && !CS0_N)) begin
+			WE_N_OLD <= &WE_N;
+			if ((!RD_N && RD_N_OLD && !CS0_N) || (!(&WE_N) && WE_N_OLD && !CS0_N)) begin
 				MEM_WAIT <= 1;
-				WAIT_CNT <= !DCE_N || !SMPCCE_N ? (FAST ? 3'd4 : 3'd6) : 3'd7;
+				WAIT_CNT <= (!DCE_N ? (FAST ? DRAM_CYC - 4'd2 : DRAM_CYC) : ROM_SRAM_SMPC_CYC) - 4'd2;
 			end else if (!WAIT_CNT && CE_F) begin
 				MEM_WAIT <= 0;
 			end
 			
-			if (WAIT_CNT && CE_R) WAIT_CNT <= WAIT_CNT - 3'd1;
+			if (WAIT_CNT && CE_R) WAIT_CNT <= WAIT_CNT - 4'd1;
 		end
 	end
 	
