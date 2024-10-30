@@ -182,10 +182,10 @@ wire io_dig = mcp_en ? mcp_mode : SW[3];
 	assign LED_USER  = av_dis ? 1'bZ : mcp_en ? ~vga_tx_clk  : led_u ? 1'bZ : 1'b0;
 	wire   BTN_DIS   = VGA_EN;
 `else
-	wire   BTN_RESET = SDRAM2_DQ[9];
-	wire   BTN_OSD   = SDRAM2_DQ[13];
-	wire   BTN_USER  = SDRAM2_DQ[11];
-	wire   BTN_DIS   = SDRAM2_DQ[15];
+	wire   BTN_RESET = 1'b1;//SDRAM2_DQ[9];
+	wire   BTN_OSD   = 1'b1;//SDRAM2_DQ[13];
+	wire   BTN_USER  = 1'b1;//SDRAM2_DQ[11];
+	wire   BTN_DIS   = 1'b1;//SDRAM2_DQ[15];
 `endif
 
 reg BTN_EN = 0;

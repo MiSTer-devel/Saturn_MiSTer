@@ -348,7 +348,8 @@ module sdram1
 	always @(posedge clk) begin
 		reg [15:0] rbuf0,rbuf1;
 		
-		if (data_read) begin rbuf1 <= rbuf0; rbuf0 <= SDRAM_DQ; end
+		rbuf1 <= rbuf0; 
+		rbuf0 <= SDRAM_DQ;
 
 		if (out_read && !out_bank[1] && out_word) dout[{out_bank[0],out_half}] <= {rbuf1,rbuf0};
 		if (out_read &&  out_bank[1]) dout2 <= rbuf0;

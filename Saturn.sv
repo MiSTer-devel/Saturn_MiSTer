@@ -528,9 +528,16 @@ module emu
 	reg rst_ram = 0;
 	reg download;
 	always @(posedge clk_sys) begin
+		reg [7:0] delay_cnt;
+		
 		download <= bios_download || cart_download;
-		rst_ram <= 0;
-		if (!bios_download && !cart_download && download) rst_ram <= 1;
+		if (delay_cnt) delay_cnt <= delay_cnt - 8'd1;
+		else rst_ram <= 0;
+		
+		if ((!bios_download && !cart_download && download) || reset) begin
+			rst_ram <= 1;
+			delay_cnt <= '1;
+		end
 	end
 	
 	wire rst_sys = reset | download | rst_ram;
@@ -589,6 +596,7 @@ module emu
 	wire        SRAM_CS_N;
 	wire        RAML_CS_N;
 	wire        RAMH_CS_N;
+	wire        RAMH_RFS;
 	wire  [3:0] MEM_DQM_N;
 	wire        MEM_RD_N;
 	wire        MEM_WAIT_N;
@@ -757,6 +765,7 @@ module emu
 		.SRAM_CS_N(SRAM_CS_N),
 		.RAML_CS_N(RAML_CS_N),
 		.RAMH_CS_N(RAMH_CS_N),
+		.RAMH_RFS(RAMH_RFS),
 		.MEM_RD_N(MEM_RD_N),
 		.MEM_WAIT_N(MEM_WAIT_N),
 		
@@ -949,7 +958,7 @@ module emu
 		.SDRAM_CKE(SDRAM_CKE),
 		
 		.clk(clk_ram),
-		.init(reset),
+		.init(rst_ram),
 		.sync(DCE_R),
 	
 		.addr_a0(VDP2_RA0_A[17:1]),
@@ -999,27 +1008,27 @@ module emu
 		.*,
 		.clk(clk_ram),
 		.rst(reset || rst_ram),
-	
+		
 		//CPU bus (RAMH)
+`ifdef MISTER_DUAL_SDRAM
+		.ramh_addr('0),
+		.ramh_din ('0),
+		.ramh_wr  ('0),
+		.ramh_rd  (0),
+`else
 		.ramh_addr(MEM_A[19:2]),
 		.ramh_din (MEM_DO),
 		.ramh_wr  ({4{~RAMH_CS_N}} & ~MEM_DQM_N),
 		.ramh_rd  (~RAMH_CS_N & ~MEM_RD_N),
+`endif
 		.ramh_dout(ramh_do),
 		.ramh_busy(ramh_busy),
 		
 		//CD RAM
-`ifdef MISTER_DUAL_SDRAM
-		.cdram_addr('0),
-		.cdram_din ('0),
-		.cdram_wr  ('0),
-		.cdram_rd  (0),
-`else
 		.cdram_addr(CD_RAM_A[18:1]),
 		.cdram_din (CD_RAM_D),
 		.cdram_wr  (CD_RAM_WE & {2{CD_RAM_CS}}),
 		.cdram_rd  (CD_RAM_RD & CD_RAM_CS),
-`endif
 		.cdram_dout(cdram_do),
 		.cdram_busy(cdram_busy),
 	
@@ -1041,17 +1050,10 @@ module emu
 		.vdp1vram_busy(vdp1vram_busy),
 	
 		//VDP1 FB (rest)
-`ifdef DEBUG
-		.vdp1fb_addr('0),
-		.vdp1fb_din ('0),
-		.vdp1fb_wr  ('0),
-		.vdp1fb_rd  (0),
-`else
 		.vdp1fb_addr(VDP1_A),
 		.vdp1fb_din (VDP1_D),
 		.vdp1fb_wr  (VDP1_WE),
 		.vdp1fb_rd  (VDP1_RD),
-`endif
 		.vdp1fb_dout(vdp1fb_do),
 		.vdp1fb_busy(vdp1fb_busy),
 		
@@ -1092,26 +1094,21 @@ module emu
 	);
 	assign VDP1_VRAM_Q = vdp1vram_do;
 	assign VDP1_VRAM_RDY = ~vdp1vram_busy;
-//	assign VDP1_FB_RDY = 1;
-	
-	assign MEM_DI     = !RAMH_CS_N ? ramh_do : raml_do;
-	assign MEM_WAIT_N = ~(raml_busy | ramh_busy);
 
 	assign CD_BUF_DI = cdbuf_do;
 	assign CD_BUF_RDY = ~cdbuf_busy;
 	
 	assign CART_MEM_Q = cart_do;
 	assign CART_MEM_RDY = ~cart_busy;
-`ifndef MISTER_DUAL_SDRAM
+	
 	assign CD_RAM_Q = cdram_do;
 	assign CD_RAM_RDY = ~cdram_busy;
-`endif
 
 
 `ifdef MISTER_DUAL_SDRAM
 	//SDRAM2
-	wire sdr2_busy0, sdr2_busy1, sdr2_busy2;
-	wire [15:0] sdr2_do0,sdr2_do1,sdr2_do2;
+	wire sdr2_busy;
+	wire [31:0] sdr2_do;
 	sdram2 sdram2
 	(
 		.SDRAM_CLK(SDRAM2_CLK),
@@ -1123,39 +1120,25 @@ module emu
 		.SDRAM_nRAS(SDRAM2_nRAS),
 		.SDRAM_nCAS(SDRAM2_nCAS),
 		
-		.init(reset),
+		.init(rst_ram),
 		.clk(clk_ram),
-
-		.rfs(0/*SCSP_RAM_RFS*/),
 		
-		.addr0({6'b000001,SCSP_RAM_A[18:1]}),
-		.din0(SCSP_RAM_D),
-		.dout0(sdr2_do0),
-		.rd0(0/*SCSP_RAM_RD & SCSP_RAM_CS*/),
-		.wrl0(0/*SCSP_RAM_WE[0] & SCSP_RAM_CS*/),
-		.wrh0(0/*SCSP_RAM_WE[1] & SCSP_RAM_CS*/),
-		.busy0(sdr2_busy0),
-
-		.addr1({6'b000000,CD_RAM_A[18:1]}),
-		.din1(CD_RAM_D),
-		.dout1(sdr2_do1),
-		.rd1(CD_RAM_RD & CD_RAM_CS),
-		.wrl1(CD_RAM_WE[0] & CD_RAM_CS),
-		.wrh1(CD_RAM_WE[1] & CD_RAM_CS),
-		.busy1(sdr2_busy1),
-
-		.addr2({6'b000010,VDP1_VRAM_A[18:1]}),
-		.din2(VDP1_VRAM_D),
-		.dout2(sdr2_do2),
-		.rd2(0/*VDP1_VRAM_RD*/),
-		.wrl2(0/*VDP1_VRAM_WE[0]*/),
-		.wrh2(0/*VDP1_VRAM_WE[1]*/),
-		.busy2(sdr2_busy2)
+		.addr({MEM_A[19:2],1'b0}),
+		.din(MEM_DO),
+		.wr({4{~RAMH_CS_N}} & ~MEM_DQM_N),
+		.rd(~RAMH_CS_N & ~MEM_RD_N),
+		.dout(sdr2_do),
+		.rfs(RAMH_RFS),
+		.busy(sdr2_busy)
 	);
-//	assign SCSP_RAM_Q = sdr2_do0;
-//	assign SCSP_RAM_RDY = ~sdr2_busy0;
-	assign CD_RAM_Q = sdr2_do1;
-	assign CD_RAM_RDY = ~sdr2_busy1;
+`endif
+	
+`ifdef MISTER_DUAL_SDRAM
+	assign MEM_DI     = !RAMH_CS_N ? sdr2_do : raml_do;
+	assign MEM_WAIT_N = !RAMH_CS_N ? ~sdr2_busy : ~raml_busy;
+`else
+	assign MEM_DI     = !RAMH_CS_N ? ramh_do : raml_do;
+	assign MEM_WAIT_N = !RAMH_CS_N ? ~ramh_busy : ~raml_busy;
 `endif
 
 
@@ -1569,6 +1552,7 @@ module emu
 		old_state <= ps2_key[10];
 		if((ps2_key[10] != old_state) && pressed) begin
 			casex(code)
+`ifdef DEBUG
 				'h005: begin SCRN_EN[0] <= ~SCRN_EN[0]; end 	// F1
 				'h006: begin SCRN_EN[1] <= ~SCRN_EN[1]; end 	// F2
 				'h004: begin SCRN_EN[2] <= ~SCRN_EN[2]; end 	// F3
@@ -1576,19 +1560,20 @@ module emu
 				'h003: begin SCRN_EN[4] <= ~SCRN_EN[4]; end 	// F5
 				'h00B: begin SCRN_EN[5] <= ~SCRN_EN[5]; end 	// F6
 				'h083: begin SCRN_EN[6] <= ~SCRN_EN[6]; end 	// F7
-				'h00A: begin SND_EN[0] <= ~SND_EN[0]; end 	// F8
+				'h00A: begin SCRN_EN[7] <= ~SCRN_EN[7];
+				             SND_EN[0] <= ~SND_EN[0]; end 	// F8
 				'h001: begin SND_EN[1] <= ~SND_EN[1]; end 	// F9
 				'h009: begin SND_EN[2] <= ~SND_EN[2]; end 	// F10
 				'h078: begin SCRN_EN <= '1; SND_EN <= '1; DBG_EXT <= '0; end 	// F11
-`ifdef DEBUG
 //				'h009: begin DBG_BREAK <= ~DBG_BREAK; end 	// F10
 //				'h078: begin DBG_RUN <= 1; end 	// F11
 				'h177: begin DBG_PAUSE <= ~DBG_PAUSE; end 	// Pause
 `endif
+				default:;
 			endcase
 		end
 		
-		if((ps2_key[10] != old_state) && pressed) begin
+		if(/*(ps2_key[10] != old_state) &&*/ pressed) begin
 			casex(code)
 `ifdef DEBUG
 				'h016: begin DBG_EXT[0] <= 1/*~DBG_EXT[0]*/; end 	// 1
