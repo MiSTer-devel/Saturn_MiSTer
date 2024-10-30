@@ -213,7 +213,7 @@ module SMPC (
 		bit         IRQV_N_OLD;
 		bit [ 1: 0] FRAME_CNT;
 		bit [15: 0] WAIT_CNT;
-		bit [15: 0] INTBACK_WAIT_CNT;
+		bit [16: 0] TIME_CNT,INTBACK_TIME;
 		bit         SRES_EXEC;
 		bit         INTBACK_EXEC;
 		bit         INTBACK_PERI;
@@ -312,15 +312,17 @@ module SMPC (
 					SSHNMI_N <= 1;
 				end
 				
+				TIME_CNT <= TIME_CNT + 17'd1;
+				if (!IRQV_N && IRQV_N_OLD) begin
+					INTBACK_TIME <= TIME_CNT - 17'd4000;//1ms prior to vblank
+					TIME_CNT <= '0;
+				end
+				
 				if (!IRQV_N) begin
 					INTBACK_OPTIM_COND <= 0;
-					INTBACK_WAIT_CNT <= 16'd51700;
 				end
-				else if (!INTBACK_WAIT_CNT) begin
+				else if (TIME_CNT == INTBACK_TIME) begin
 					INTBACK_OPTIM_COND <= 1;
-				end
-				else begin
-					INTBACK_WAIT_CNT <= INTBACK_WAIT_CNT - 16'd1;
 				end
 				
 				SR[4:0] <= {~SRES_N,IREG[1][7:4]};
