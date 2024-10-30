@@ -468,9 +468,6 @@ module SCU_DSP (
 	
 	//Control port
 	always @(posedge CLK or negedge RST_N) begin
-		bit WE_OLD;
-		bit RE_OLD;
-		
 		if (!RST_N) begin
 			EX <= 0;
 			EP <= 0; 
@@ -497,8 +494,7 @@ module SCU_DSP (
 				if (PRG_TRANS_WE) PRG_TRANS_ADDR <= PRG_TRANS_ADDR + 8'd1;
 				if (DATA_TRANS_WE) DATA_TRANS_ADDR <= DATA_TRANS_ADDR + 8'd1;
 				
-				WE_OLD <= |WE;
-				if (WE && !WE_OLD) begin
+				if (WE) begin
 					case (A)
 						2'b00: begin
 							EX <= DI[16];
@@ -528,12 +524,13 @@ module SCU_DSP (
 						default:;
 					endcase
 				end
-			end else if (CE_F) begin
+			end 
+			
+			begin
 				DATA_TRANS_RE <= 0;
 				if (DATA_TRANS_RE) DATA_TRANS_ADDR <= DATA_TRANS_ADDR + 8'd1;
 				
-				RE_OLD <= RE;
-				if (RE && !RE_OLD) begin
+				if (RE) begin
 					case (A)
 						2'b00: DO <= {8'h00,T0,S,Z,C,V,E,1'b0,EX,8'h00,PC};
 						2'b01: DO <= '0;
@@ -566,7 +563,7 @@ module SCU_DSP (
 	//PRG RAM
 	assign PRG_RAM_ADDR = T0 || RUN ? PC : PRG_TRANS_ADDR;
 	assign PRG_RAM_D = T0 ? D0BUSI : DI;
-	assign PRG_RAM_WE = T0 ? DMAI.PRGW & DMA_EN & CE_R : !RUN && PRG_TRANS_WE;
+	assign PRG_RAM_WE = T0 ? DMAI.PRGW & DMA_EN & CE_R : !RUN & PRG_TRANS_WE & CE_R;
 	DSP_PRG_RAM #(8,32," ","prg.txt") PRG_RAM(CLK, PRG_RAM_ADDR, PRG_RAM_D, PRG_RAM_WE & CE_R, PRG_RAM_Q);
 
 	
