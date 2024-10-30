@@ -246,6 +246,8 @@ module VDP2 (
 	wire IS_LAST_LINE = (V_CNT == LAST_LINE);
 	
 	bit  [ 8: 0] HDISP_CNT;
+	bit  [ 8: 0] VSYNC_START;
+	bit  [ 8: 0] VSYNC_HSTART;
 	bit          VBLANK,VBLANK2;
 	bit          HBLANK;
 	bit          ODD;
@@ -259,6 +261,8 @@ module VDP2 (
 			VSYNC <= 0;
 			HBLANK <= 0;
 			VBLANK <= 0;
+			VSYNC_HSTART<=0;
+			VSYNC_START<=0;
 			ODD <= 0;
 			HDISP_CNT <= '0;
 		end
@@ -288,8 +292,16 @@ module VDP2 (
 				HBLANK <= 1;
 			end
 			
-			if (H_CNT == 9'd352) begin
-				if (V_CNT == VS_START - 1) begin
+			if (REGS.TVMD.LSMD[1] && ODD) begin
+				VSYNC_HSTART<=9'd176;
+				VSYNC_START<=VS_START+1;
+			end else begin
+				VSYNC_HSTART<=9'd352;
+				VSYNC_START<=VS_START;
+			end
+
+			if (H_CNT == VSYNC_HSTART) begin
+				if (V_CNT == VSYNC_START - 1) begin
 					VSYNC <= 1;
 				end else if (V_CNT == VS_END - 1) begin
 					VSYNC <= 0;
