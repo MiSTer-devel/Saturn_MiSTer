@@ -308,7 +308,7 @@ module Saturn
 	bit  [15:0] CD_SL;
 	bit  [15:0] CD_SR;
 	
-	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1)) MSH
+	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .BUS_AREA_TIMIMG({RAMH_SLOW,3'b111}), .BUS_SIZE_BYTE_DISABLE(1)) MSH
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -333,7 +333,7 @@ module Saturn
 		.WE_N(MSHDQM_N),
 		.RD_N(MSHRD_N),
 		.IVECF_N(MSHIVECF_N),
-//		.RFS(MSRFS),
+		.RFS(MSRFS),
 		
 		.EA(SSHA),
 		.EDI(SSHDI),
@@ -376,7 +376,7 @@ module Saturn
 `endif
 	);
 	
-	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1)) SSH
+	SH7604 #(.UBC_DISABLE(1), .SCI_DISABLE(1), .BUS_AREA_TIMIMG({RAMH_SLOW,3'b111}), .BUS_SIZE_BYTE_DISABLE(1)) SSH
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -549,7 +549,7 @@ module Saturn
 	);
 	
 	
-	DCC #(.FAST(RAMH_SLOW)) DCC
+	DCC #(.FAST(0/*RAMH_SLOW*/)) DCC
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -604,7 +604,7 @@ module Saturn
 	assign SRAM_CS_N = SRAMCE_N;
 	assign RAML_CS_N = DRAMCE_N;
 	assign RAMH_CS_N = MSHCS3_N;
-	assign RAMH_RFS = /*MSRFS |*/ ECRFS;
+	assign RAMH_RFS = MSRFS | ECRFS;
 	
 	bit MRES_N;
 	always @(posedge CLK or negedge RST_N) begin
