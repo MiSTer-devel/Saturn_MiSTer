@@ -1415,7 +1415,8 @@ module SCSP (
 		bit         MEM_START;
 		bit [ 2: 0] MEM_DEV;
 		bit         REG_START;
-		bit         SCU_RPEND2,SCU_WPEND2;
+		bit         SCU_MEM_RPEND,SCU_MEM_WPEND;
+		bit         SCU_REG_RPEND,SCU_REG_WPEND;
 		
 		if (!RST_N) begin
 			MEM_ST <= MS_IDLE;
@@ -1440,21 +1441,7 @@ module SCSP (
 			SCU_RRDY <= 1;
 			SCU_WPEND <= 0;
 			SCU_WRDY <= 1;
-//		end else if (!RES_N) begin
-//			MEM_ST <= MS_IDLE;
-//			MEM_WE <= '0;
-//			MEM_RD <= 0;
-//			MEM_DEV_LATCH <= '0;
-//			REG_ST <= MS_IDLE;
-//			REG_WE <= '0;
-//			REG_RD <= 0;
-//			
-//			SCPU_PEND <= 0;
-//			SCDTACK_N <= 1;
-//			SCU_RPEND <= 0;
-//			SCU_RRDY <= 1;
-//			SCU_WPEND <= 0;
-//			SCU_WRDY <= 1;
+			{SCU_MEM_RPEND,SCU_MEM_WPEND,SCU_REG_RPEND,SCU_REG_WPEND} <= '0;
 		end else begin
 			if (!CS_N && DTEN_N && AD_N && CE_R) begin
 				if (!DI[15]) begin
@@ -1478,6 +1465,8 @@ module SCSP (
 			if ((MEM_DEV_LATCH == 3'd4 && CYCLE0_CE) || (REG_ST == MS_SCU_WAIT && REG_RD && CYCLE1_CE)) begin
 				SCU_RRDY <= 1;
 				SCU_RPEND <= 0;
+				SCU_MEM_RPEND <= 0;
+				SCU_REG_RPEND <= 0;
 			end
 			
 			//SCU write
@@ -1520,6 +1509,8 @@ module SCSP (
 			MEM_RFS <= 0;
 			case (MEM_ST)
 				MS_IDLE: if (MEM_START) begin
+					SCU_MEM_RPEND <= SCU_RPEND;
+					SCU_MEM_WPEND <= SCU_WPEND;
 					if (WD_READ && PCM_EN) begin
 						MEM_A <= ADP[18:1];
 						MEM_D <= '0;
@@ -1544,15 +1535,16 @@ module SCSP (
 						MEM_CS <= 1;
 						MEM_DEV <= 3'd3;
 						MEM_ST <= MS_DMA_WAIT;
-					end else if (!SCU_RA[20] && SCU_RPEND && MEM_DEV_LATCH != 3'd4) begin
+					end else if (!SCU_RA[20] && SCU_MEM_RPEND && MEM_DEV_LATCH != 3'd4) begin
 						MEM_A <= SCU_RA[18:1];
 						MEM_WE <= 2'b00;
 						MEM_RD <= 1;
 						MEM_CS <= ~SCU_RA[19];
 						MEM_DEV <= 3'd4;
 						MEM_ST <= MS_SCU_WAIT;
-					end else if (!SCU_WA[20] && SCU_WPEND) begin
+					end else if (!SCU_WA[20] && SCU_MEM_WPEND) begin
 						SCU_WPEND <= 0;
+						SCU_MEM_WPEND <= 0;
 						MEM_A <= SCU_WA[18:1];
 						MEM_D <= SCU_D;
 						MEM_WE <= SCU_WE;
@@ -1656,22 +1648,22 @@ module SCSP (
 			REG_START <= CYCLE0_CE;
 			case (REG_ST)
 				MS_IDLE: if (REG_START) begin
-					SCU_RPEND2 <= SCU_RPEND;
-					SCU_WPEND2 <= SCU_WPEND;
+					SCU_REG_RPEND <= SCU_RPEND;
+					SCU_REG_WPEND <= SCU_WPEND;
 					if (DMA_EXEC && (DMA_WR ^ DMA_DIR)) begin
 						REG_A <= DMA_RA;
 						REG_D <= DMA_DAT & {16{~CR7.DGATE}};
 						REG_WE <= ~{2{DMA_DIR}};
 						REG_RD <= DMA_DIR;
 						REG_ST <= MS_DMA_WAIT;
-					end else if (SCU_RA[20] && SCU_RPEND2) begin
-						SCU_RPEND2 <= 0;
+					end else if (SCU_RA[20] && SCU_REG_RPEND) begin
+//						SCU_REG_RPEND <= 0;
 						REG_A <= SCU_RA[11:1];
 						REG_WE <= 2'b00;
 						REG_RD <= 1;
 						REG_ST <= MS_SCU_WAIT;
-					end else if (SCU_WA[20] && SCU_WPEND2) begin
-						SCU_WPEND2 <= 0;
+					end else if (SCU_WA[20] && SCU_REG_WPEND) begin
+						SCU_REG_WPEND <= 0;
 						REG_A <= SCU_WA[11:1];
 						REG_D <= SCU_D;
 						REG_WE <= SCU_WE;
@@ -2263,14 +2255,58 @@ module SCSP_PHASE_RAM (
 	input	 [ 4: 0] RDADDR,
 	output [13: 0] Q);
 
+//`ifdef DEBUG
+
+//	wire [13:0] sub_wire0;
+//
+//	altdpram	altdpram_component (
+//				.data (DATA),
+//				.inclock (CLK),
+//				.rdaddress (RDADDR),
+//				.wraddress (WRADDR),
+//				.wren (WREN),
+//				.q (sub_wire0),
+//				.aclr (1'b0),
+//				.byteena (1'b1),
+//				.inclocken (1'b1),
+//				.rdaddressstall (1'b0),
+//				.rden (1'b1),
+//				//.sclr (1'b0),
+//				.wraddressstall (1'b0));
+//	defparam
+//		altdpram_component.indata_aclr = "OFF",
+//		altdpram_component.indata_reg = "INCLOCK",
+//		altdpram_component.intended_device_family = "Cyclone V",
+//		altdpram_component.lpm_type = "altdpram",
+//		altdpram_component.outdata_aclr = "OFF",
+//		altdpram_component.outdata_reg = "UNREGISTERED",
+//		altdpram_component.power_up_uninitialized = "TRUE",
+//		altdpram_component.ram_block_type = "MLAB",
+//		altdpram_component.rdaddress_aclr = "OFF",
+//		altdpram_component.rdaddress_reg = "UNREGISTERED",
+//		altdpram_component.rdcontrol_aclr = "OFF",
+//		altdpram_component.rdcontrol_reg = "UNREGISTERED",
+//		altdpram_component.read_during_write_mode_mixed_ports = "CONSTRAINED_DONT_CARE",
+//		altdpram_component.width = 14,
+//		altdpram_component.widthad = 5,
+//		altdpram_component.width_byteena = 1,
+//		altdpram_component.wraddress_aclr = "OFF",
+//		altdpram_component.wraddress_reg = "INCLOCK",
+//		altdpram_component.wrcontrol_aclr = "OFF",
+//		altdpram_component.wrcontrol_reg = "INCLOCK";
+//		
+//	assign Q = sub_wire0;
+	
+//`else
+
 	wire [13:0] sub_wire0;
 	
 	altsyncram	altsyncram_component (
 				.address_a (WRADDR),
-				.byteena_a (WREN),
+				.byteena_a (1'b1),
 				.clock0 (CLK),
 				.data_a (DATA),
-				.wren_a (|WREN),
+				.wren_a (WREN),
 				.address_b (RDADDR),
 				.q_b (sub_wire0),
 				.aclr0 (1'b0),
@@ -2312,6 +2348,8 @@ module SCSP_PHASE_RAM (
 		altsyncram_component.width_byteena_a = 1;
 	
 	assign Q = sub_wire0;
+	
+//`endif
 
 endmodule
 
@@ -2324,7 +2362,7 @@ module SCSP_LFO_RAM (
 	output [17: 0] Q);
 
 //`ifdef DEBUG
-//
+
 //	wire [17:0] sub_wire0;
 //
 //	altdpram	altdpram_component (
@@ -2364,17 +2402,17 @@ module SCSP_LFO_RAM (
 //		altdpram_component.wrcontrol_reg = "INCLOCK";
 //		
 //	assign Q = sub_wire0;
-//	
+	
 //`else
 
 	wire [17:0] sub_wire0;
 	
 	altsyncram	altsyncram_component (
 				.address_a (WRADDR),
-				.byteena_a (WREN),
+				.byteena_a (1'b1),
 				.clock0 (CLK),
 				.data_a (DATA),
-				.wren_a (|WREN),
+				.wren_a (WREN),
 				.address_b (RDADDR),
 				.q_b (sub_wire0),
 				.aclr0 (1'b0),
@@ -2430,8 +2468,8 @@ module SCSP_SO_RAM (
 	output [18: 0] Q);
 //
 //`ifdef DEBUG
-//
-//	wire [16:0] sub_wire0;
+
+//	wire [18:0] sub_wire0;
 //
 //	altdpram	altdpram_component (
 //				.data (DATA),
@@ -2461,7 +2499,7 @@ module SCSP_SO_RAM (
 //		altdpram_component.rdcontrol_aclr = "OFF",
 //		altdpram_component.rdcontrol_reg = "UNREGISTERED",
 //		altdpram_component.read_during_write_mode_mixed_ports = "CONSTRAINED_DONT_CARE",
-//		altdpram_component.width = 17,
+//		altdpram_component.width = 19,
 //		altdpram_component.widthad = 5,
 //		altdpram_component.width_byteena = 1,
 //		altdpram_component.wraddress_aclr = "OFF",
@@ -2470,17 +2508,17 @@ module SCSP_SO_RAM (
 //		altdpram_component.wrcontrol_reg = "INCLOCK";
 //		
 //	assign Q = sub_wire0;
-//	
+	
 //`else
 
 	wire [18:0] sub_wire0;
 	
 	altsyncram	altsyncram_component (
 				.address_a (WRADDR),
-				.byteena_a (WREN),
+				.byteena_a (1'b1),
 				.clock0 (CLK),
 				.data_a (DATA),
-				.wren_a (|WREN),
+				.wren_a (WREN),
 				.address_b (RDADDR),
 				.q_b (sub_wire0),
 				.aclr0 (1'b0),
@@ -2536,7 +2574,7 @@ module SCSP_EVOL_RAM (
 	output [11: 0] Q);
 
 //`ifdef DEBUG
-//	
+	
 //	wire [11:0] sub_wire0;
 //	
 //	altdpram	altdpram_component (
@@ -2576,17 +2614,17 @@ module SCSP_EVOL_RAM (
 //		altdpram_component.wrcontrol_reg = "INCLOCK";
 //		
 //	assign Q = sub_wire0;
-//	
+	
 //`else
 
 	wire [11:0] sub_wire0;
 	
 	altsyncram	altsyncram_component (
 				.address_a (WRADDR),
-				.byteena_a (WREN),
+				.byteena_a (1'b1),
 				.clock0 (CLK),
 				.data_a (DATA),
-				.wren_a (|WREN),
+				.wren_a (WREN),
 				.address_b (RDADDR),
 				.q_b (sub_wire0),
 				.aclr0 (1'b0),
@@ -3084,3 +3122,4 @@ module SCSP_MPRO_RAM
 `endif
 	
 endmodule
+
