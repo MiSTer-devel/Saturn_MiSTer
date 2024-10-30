@@ -12,9 +12,5 @@
 Current status is WIP/Beta
 
 Known issues:
+- Space Jam - freeze, graphic gliches in demo
 
-- Space Jam - freeze in demo
-- Battle Monsters (EU) - graphic gliches
-- Dragon Ball Z (EU) - freeze
-
-A lot of games have sound issues.
