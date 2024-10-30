@@ -1,59 +1,55 @@
 module YGR019 (
-	input             CLK,
-	input             RST_N,
+	input              CLK,
+	input              RST_N,
 	
-	input             RES_N,
+	input              RES_N,
 	
-	input             CE_R,
-	input             CE_F,
-	input      [14:1] AA,
-	input      [15:0] ADI,
-	output     [15:0] ADO,
-	input       [1:0] AFC,
-	input             ACS2_N,
-	input             ARD_N,
-	input             AWRL_N,
-	input             AWRU_N,
-	input             ATIM0_N,
-	input             ATIM2_N,
-	output            AWAIT_N,
-	output            ARQT_N,
+	input              CE_R,
+	input              CE_F,
+	input      [14: 1] AA,
+	input      [15: 0] ADI,
+	output     [15: 0] ADO,
+	input      [ 1: 0] AFC,
+	input              ACS2_N,
+	input              ARD_N,
+	input              AWRL_N,
+	input              AWRU_N,
+	input              ATIM0_N,
+	input              ATIM2_N,
+	output             AWAIT_N,
+	output             ARQT_N,
 	
-	input             SHCE_R,
-	input             SHCE_F,
-	input      [21:1] SA,
-	input      [15:0] SDI,
-	input      [15:0] BDI,
-	output     [15:0] SDO,
-	input             SWRL_N,
-	input             SWRH_N,
-	input             SRD_N,
-	input             SCS2_N,
-	input             SCS6_N,
-	input             DACK0,
-	input             DACK1,
-	output            DREQ0_N,
-	output            DREQ1_N,
-	output reg        SIRQL_N,
-	output reg        SIRQH_N,
+	input              SHCE_R,
+	input              SHCE_F,
+	input      [21: 1] SA,
+	input      [15: 0] SDI,
+	input      [15: 0] BDI,
+	output     [15: 0] SDO,
+	input              SWRL_N,
+	input              SWRH_N,
+	input              SRD_N,
+	input              SCS2_N,
+	input              SCS6_N,
+	input              DACK0,
+	input              DACK1,
+	output             DREQ0_N,
+	output             DREQ1_N,
+	output reg         SIRQL_N,
+	output reg         SIRQH_N,
 		
-	input      [15:0] CD_D,
-	input             CD_CK,
-	input             CD_AUDIO,
+	input      [15: 0] CD_D,
+	input              CD_CK,
+	input              CD_AUDIO,
 	
-	output     [15:0] CD_SL,
-	output     [15:0] CD_SR
+	output     [15: 0] CD_SL,
+	output     [15: 0] CD_SR
 	
 `ifdef DEBUG
-	                  ,
-	output     [31:0] DBG_HEADER,
-//	output     [7:0] DBG_CNT,
-//	output     [7:0] FIFO_CNT_DBG,
-	output    [15:0] ABUS_READ_CNT_DBG,
-	output     [7:0] ABUS_WAIT_CNT_DBG,
-	output reg  HOOK,
-	output reg  HOOK2,
-	output     [11:0] DBG_CDD_CNT
+	                   ,
+	output     [31: 0] DBG_HEADER,
+	output     [15: 0] ABUS_READ_CNT_DBG,
+	output     [ 7: 0] ABUS_WAIT_CNT_DBG,
+	output     [11: 0] DBG_CDD_CNT
 `endif
 );
 	import YGR019_PKG::*;
@@ -85,7 +81,6 @@ module YGR019 (
 	wire SCU_REG_SEL = (AA[14:12] == 3'b000) & ~ACS2_N;
 	wire SH_REG_SEL = (SA[21:20] == 2'b00) & ~SCS2_N;
 	wire SH_MPEG_SEL = (SA[21:20] == 2'b01) & ~SCS2_N;
-	wire ABUS_WAIT_EN = SCU_REG_SEL && AA[5:2] == 4'b0000;
 	bit [15:0] SCU_REG_DO;
 	bit        ABUS_WAIT;
 	bit [15:0] SH_REG_DO;
@@ -96,7 +91,8 @@ module YGR019 (
 		bit        SRD_N_OLD;
 		bit        DACK0_OLD;
 		bit        DACK1_OLD;
-		bit [ 1:0] ABUS_WAIT_CNT;
+		bit        ABUS_DATA_PORT;
+		bit [ 2:0] ABUS_WAIT_CNT;
 		bit        FIFO_INC_AMOUNT;
 		bit        FIFO_DEC_AMOUNT;
 		bit        FIFO_DREQ_PEND;
@@ -139,10 +135,6 @@ module YGR019 (
 			CDD_CNT <= 4'd0;
 			CDD_PEND <= 0;
 			CDDA_CHAN <= 0;
-					
-`ifdef DEBUG
-			HOOK <= 0;
-`endif
 		end else begin
 			if (!RES_N) begin
 				
@@ -151,8 +143,8 @@ module YGR019 (
 					AWR_N_OLD <= AWRL_N & AWRU_N;
 					ARD_N_OLD <= ARD_N;
 				end
-				if (CE_F) begin
-					if (ABUS_WAIT_CNT) ABUS_WAIT_CNT <= ABUS_WAIT_CNT - 2'd1;
+				if (SHCE_R) begin
+					if (ABUS_WAIT_CNT) ABUS_WAIT_CNT <= ABUS_WAIT_CNT - 3'd1;
 				end
 
 `ifdef DEBUG
@@ -161,13 +153,7 @@ module YGR019 (
 				if (SCU_REG_SEL) begin
 					if ((!AWRL_N || !AWRU_N) && AWR_N_OLD && CE_R) begin
 						case ({AA[5:2],2'b00})
-							6'h00: begin
-								ABUS_WAIT <= 1;
-								ABUS_WAIT_CNT <= 2'd2;
-`ifdef DEBUG
-								ABUS_WAIT_CNT_DBG <= '0;
-`endif
-							end
+							6'h00: ;
 							6'h08: begin 
 								for (int i=0; i<16; i++) if (!ADI[i]) HIRQ[i] <= 0;
 							end
@@ -179,26 +165,24 @@ module YGR019 (
 							default:;
 						endcase
 						
-`ifdef DEBUG
-						case ({AA[5:2],2'b00})
-							6'h08: begin 
-							end
-							6'h24: begin
-								if (CR[0] == 16'h1081 && CR[1] == 16'hAE58) HOOK <= 1;
-							end
-							default:;
-						endcase
-`endif
-					end else if (!ARD_N && ARD_N_OLD && CE_F) begin
 						case ({AA[5:2],2'b00})
 							6'h00: begin
 								ABUS_WAIT <= 1;
-								ABUS_WAIT_CNT <= 2'd2;
+								ABUS_DATA_PORT <= 1;
+								ABUS_WAIT_CNT <= 3'd3;
 `ifdef DEBUG
 								ABUS_WAIT_CNT_DBG <= '0;
-								ABUS_READ_CNT_DBG <= ABUS_READ_CNT_DBG + 1'd1;
 `endif
 							end
+							default:begin
+								ABUS_WAIT <= 0;
+								ABUS_DATA_PORT <= 0;
+								ABUS_WAIT_CNT <= 3'd3;
+							end
+						endcase
+					end else if (!ARD_N && ARD_N_OLD && CE_F) begin
+						case ({AA[5:2],2'b00})
+							6'h00: ;
 							6'h08: SCU_REG_DO <= HIRQ;
 							6'h0C: SCU_REG_DO <= HMASK;
 							6'h18: SCU_REG_DO <= RR[0];
@@ -210,11 +194,28 @@ module YGR019 (
 							end
 							default: SCU_REG_DO <= '0;
 						endcase
+						
+						case ({AA[5:2],2'b00})
+							6'h00: begin
+								ABUS_WAIT <= 1;
+								ABUS_DATA_PORT <= 1;
+								ABUS_WAIT_CNT <= 3'd5;
+`ifdef DEBUG
+								ABUS_WAIT_CNT_DBG <= '0;
+								ABUS_READ_CNT_DBG <= ABUS_READ_CNT_DBG + 1'd1;
+`endif
+							end
+							default: begin
+								ABUS_WAIT <= 1;
+								ABUS_DATA_PORT <= 0;
+								ABUS_WAIT_CNT <= 3'd4;
+							end
+						endcase
 					end
 				end
 				
 				if (CE_F) begin
-					if (ABUS_WAIT && !ABUS_WAIT_CNT && !TRCTL[0] && (!FIFO_EMPTY || TRCTL[3])) begin
+					if (ABUS_WAIT && !ABUS_WAIT_CNT && ABUS_DATA_PORT && !TRCTL[0] && (!FIFO_EMPTY || TRCTL[3])) begin
 						SCU_REG_DO <= FIFO_BUF[FIFO_RD_POS]; 
 						FIFO_RD_POS <= FIFO_RD_POS + 3'd1;
 						FIFO_DEC_AMOUNT <= 1;
@@ -226,7 +227,7 @@ module YGR019 (
 						ABUS_WAIT_CNT_DBG <= 8'hFF;
 `endif
 					end
-					if (ABUS_WAIT && !ABUS_WAIT_CNT && TRCTL[0] && !FIFO_FULL) begin
+					if (ABUS_WAIT && !ABUS_WAIT_CNT && ABUS_DATA_PORT && TRCTL[0] && !FIFO_FULL) begin
 						FIFO_BUF[FIFO_WR_POS] <= ADI;
 						FIFO_WR_POS <= FIFO_WR_POS + 3'd1;
 						FIFO_INC_AMOUNT <= 1;
@@ -237,6 +238,10 @@ module YGR019 (
 `ifdef DEBUG
 						ABUS_WAIT_CNT_DBG <= 8'hFF;
 `endif
+					end
+					
+					if (ABUS_WAIT && !ABUS_WAIT_CNT && !ABUS_DATA_PORT) begin
+						ABUS_WAIT <= 0;
 					end
 				end
 				
@@ -277,9 +282,6 @@ module YGR019 (
 		//						5'h1C: REG1C <= SDI;
 								5'h1E: begin 
 									for (int i=0; i<16; i++) if (SDI[i]) HIRQ[i] <= 1;
-`ifdef DEBUG
-									if (CR[0] == 16'h5100 && RR[3] == 16'h00C8 && SDI[0]) HOOK2 <= HOOK;
-`endif
 								end
 								default:;
 							endcase
@@ -319,12 +321,9 @@ module YGR019 (
 				
 				//DREQ1
 				if (SHCE_R) begin
-//					if (FIFO_CNT_DBG < 8'h80) FIFO_CNT_DBG <= FIFO_CNT_DBG + 8'd1;
-
 					if (FIFO_DREQ_PEND) begin
 						FIFO_DREQ_PEND <= 0;
 						FIFO_DREQ <= 1;
-//						FIFO_CNT_DBG <= '0;
 					end
 
 					DACK1_OLD <= DACK1;
@@ -335,7 +334,6 @@ module YGR019 (
 							FIFO_INC_AMOUNT <= 1;
 							if (FIFO_AMOUNT > 7'd2 && FIFO_DREQ) begin
 								FIFO_DREQ <= 0;
-	//							FIFO_CNT_DBG <= 8'hFF;
 							end
 						end else begin
 							HOST_DATA <= FIFO_BUF[FIFO_RD_POS]; 
@@ -343,12 +341,10 @@ module YGR019 (
 							FIFO_DEC_AMOUNT <= 1;
 							if (FIFO_AMOUNT < 7'd5 && FIFO_DREQ) begin
 								FIFO_DREQ <= 0;
-	//							FIFO_CNT_DBG <= 8'hFF;
 							end
 						end
 					end
 				end
-				HOST_DATA <= FIFO_BUF[FIFO_RD_POS]; 
 				
 				if (FIFO_INC_AMOUNT && FIFO_DEC_AMOUNT) begin
 					FIFO_INC_AMOUNT <= 0;
@@ -406,12 +402,9 @@ module YGR019 (
 `endif
 				
 				if (SHCE_R) begin
-//					if (DBG_CNT < 8'h80) DBG_CNT <= DBG_CNT + 8'd1;
-					
 					if (CDD_PEND) begin
 						CDD_DREQ[0] <= REG1A[7];
 						CDD_PEND <= 0;
-//						if (REG1A[7]) DBG_CNT <= '0;
 					end else if (CDD_DREQ[0]) begin
 						CDD_DREQ[0] <= 0;
 					end
@@ -419,7 +412,6 @@ module YGR019 (
 					
 					DACK0_OLD <= DACK0;
 					if (DACK0 && !DACK0_OLD) begin
-//						DBG_CNT <= 8'hFF;
 					end
 				end
 			end
@@ -427,7 +419,7 @@ module YGR019 (
 	end
 
 	assign ADO = SCU_REG_DO;
-	assign AWAIT_N = ~(ABUS_WAIT & ABUS_WAIT_EN);
+	assign AWAIT_N = ~(ABUS_WAIT & SCU_REG_SEL);
 	assign ARQT_N = 1;//TODO
 	
 	assign SDO = !DACK0 ? CDD_DATA : 
