@@ -151,7 +151,7 @@ module YGR019 (
 				if (ABUS_WAIT_CNT_DBG < 8'hF0 && CE_R) ABUS_WAIT_CNT_DBG <= ABUS_WAIT_CNT_DBG + 8'd1;
 `endif
 				if (SCU_REG_SEL) begin
-					if ((!AWRL_N || !AWRU_N) && AWR_N_OLD && CE_R) begin
+					if ((!AWRL_N || !AWRU_N) && AWR_N_OLD && CE_F) begin
 						case ({AA[5:2],2'b00})
 							6'h00: ;
 							6'h08: begin 
@@ -336,7 +336,6 @@ module YGR019 (
 								FIFO_DREQ <= 0;
 							end
 						end else begin
-							HOST_DATA <= FIFO_BUF[FIFO_RD_POS]; 
 							FIFO_RD_POS <= FIFO_RD_POS + 3'd1;
 							FIFO_DEC_AMOUNT <= 1;
 							if (FIFO_AMOUNT < 7'd5 && FIFO_DREQ) begin
@@ -345,6 +344,7 @@ module YGR019 (
 						end
 					end
 				end
+				HOST_DATA <= FIFO_BUF[FIFO_RD_POS]; 
 				
 				if (FIFO_INC_AMOUNT && FIFO_DEC_AMOUNT) begin
 					FIFO_INC_AMOUNT <= 0;
