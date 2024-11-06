@@ -1572,10 +1572,7 @@ package VDP2_PKG;
 	{
 		bit         PN; 
 		bit         CH; 
-		bit         VS; 
-//		bit         LS; 
-		bit         CPUA; 
-		bit         CPUD; 
+		bit         VS;  
 		bit [ 1: 0] Nx;
 	} NVRAMAccess_t;
 	
@@ -1641,10 +1638,6 @@ package VDP2_PKG;
 		bit [ 1: 0] NxA1VS;
 		bit [ 1: 0] NxB0VS;
 		bit [ 1: 0] NxB1VS;
-		bit         NxA0CPU;
-		bit         NxA1CPU;
-		bit         NxB0CPU;
-		bit         NxB1CPU;
 		NxPNEN_t    NxPN_FETCH;
 		bit [ 1: 0] RxA0PN;
 		bit [ 1: 0] RxA1PN;
@@ -1660,6 +1653,8 @@ package VDP2_PKG;
 		bit [ 1: 0] RxB1CT;
 		bit [ 1: 0] RxCRCT;
 		bit [ 1: 0] RxCTTP;
+		bit         AxNA;
+		bit         BxNA;
 		bit         LS;
 		bit   [2:0] LS_POS;
 		bit         LW;
@@ -2293,10 +2288,10 @@ package VDP2_PKG;
 	{
 		bit         PR;	//Priority flag
 		bit         CC;	//Color calculation flag
-		bit         TPON;	//Transparent code enabled
 		bit [ 6: 0] PALN;	//Palette number
+		bit         TP;	//Transparent 
 	} CellParam_t;
-	parameter CellParam_t CDP_NULL = {1'b0,1'b0,1'b0,7'h00};
+	parameter CellParam_t CDP_NULL = {1'b0,1'b0,7'h00,1'b0};
 	
 	typedef struct packed
 	{
@@ -2310,7 +2305,7 @@ package VDP2_PKG;
 	
 	typedef DotData_t DotsBuffer_t [16];
 	
-	function DotData_t MakeDotData(input bit [31:0] DCC, input CellParam_t CDP, input bit [2:0] CHCN);
+	function DotData_t MakeDotData(input bit [31:0] DCC, input CellParam_t CDP, input bit [2:0] CHCN, input bit TPON);
 		bit [23: 0] DC;
 		bit [ 2: 0] NTP;
 		bit         P;
@@ -2326,11 +2321,11 @@ package VDP2_PKG;
 
 		NTP = {|DCC[10:8],|DCC[7:4],|DCC[3:0]};
 		case (CHCN)
-			3'b000:  begin TP = ~(|NTP[0:0] | CDP.TPON); P = 1; end	//Palette 4bits/dot, 16 colors
-			3'b001:  begin TP = ~(|NTP[1:0] | CDP.TPON); P = 1; end	//Palette 8bits/dot, 256 colors
-			3'b010:  begin TP = ~(|NTP[2:0] | CDP.TPON); P = 1; end	//Palette 16bits/dot, 2048 colors
-			3'b011:  begin TP = ~(DCC[15]   | CDP.TPON); P = 0; end	//RGB 16bits/dot, 32768 colors
-			default: begin TP = ~(DCC[31]   | CDP.TPON); P = 0; end	//RGB 32bits/dot, 16M colors
+			3'b000:  begin TP = CDP.TP | ~(|NTP[0:0] | TPON); P = 1; end	//Palette 4bits/dot, 16 colors
+			3'b001:  begin TP = CDP.TP | ~(|NTP[1:0] | TPON); P = 1; end	//Palette 8bits/dot, 256 colors
+			3'b010:  begin TP = CDP.TP | ~(|NTP[2:0] | TPON); P = 1; end	//Palette 16bits/dot, 2048 colors
+			3'b011:  begin TP = CDP.TP | ~(DCC[15]   | TPON); P = 0; end	//RGB 16bits/dot, 32768 colors
+			default: begin TP = CDP.TP | ~(DCC[31]   | TPON); P = 0; end	//RGB 32bits/dot, 16M colors
 		endcase
 		
 		return {CDP.PR, CDP.CC, P, TP, DC};
