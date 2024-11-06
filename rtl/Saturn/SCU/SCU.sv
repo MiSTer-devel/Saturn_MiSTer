@@ -253,6 +253,7 @@ module SCU
 		BBUS_DMA_WADDR2,
 		BBUS_DMA_WADDR3,
 		BBUS_DMA_WRITE,
+		BBUS_DMA_PAGE0,BBUS_DMA_PAGE1,BBUS_DMA_PAGE2,
 		BBUS_DMA_END
 	} BBUSState_t;
 	BBUSState_t BBUS_ST;
@@ -264,11 +265,13 @@ module SCU
 	typedef enum bit [3:0] {
 		CBUS_IDLE,  
 		CBUS_REQUEST, 
+		CBUS_INIT0,CBUS_INIT1,CBUS_INIT2,CBUS_INIT3,
 		CBUS_START,
 		CBUS_IND_READ,
 		CBUS_READ, 
 		CBUS_READ_END,
 		CBUS_WRITE,
+		CBUS_REFRESH,
 		CBUS_RELEASE,
 		CBUS_END
 	} CBUSState_t;
@@ -1324,6 +1327,8 @@ module SCU
 							BDO <= {1'b0,1'b0,2'b11,DMA_WA[20:9]};
 							BADDT_N <= 1;
 							BBUS_ST <= BBUS_DMA_WADDR0;
+						end else if (DMA_WA[8:1] == 8'd255) begin
+							BBUS_ST <= BBUS_DMA_PAGE0;
 						end else if (DMA_BUF_SIZE && (DMA_BUF_SIZE[2:1] || (DMA_WTN_LESS2 && DMA_WTN[0]))) begin
 							case (DMA_WA[0])
 								1'b0: BDO <= {DMA_BUF[DMA_BUF_RPOS+0],DMA_BUF[DMA_BUF_RPOS+1]};
@@ -1339,6 +1344,20 @@ module SCU
 						end
 						BBUS_WRITE_UNALIGNED <= 0;
 					end
+				end
+					
+				BBUS_DMA_PAGE0: if (CE_R) begin
+					BBUS_ST <= BBUS_DMA_PAGE1;
+				end
+				
+				BBUS_DMA_PAGE1: if (CE_R) begin
+					BBUS_ST <= BBUS_DMA_PAGE2;
+				end
+				
+				BBUS_DMA_PAGE2: if (CE_R) begin
+					BDO <= {1'b0,1'b0,2'b11,DMA_WA[20:9]};
+					BADDT_N <= 1;
+					BBUS_ST <= BBUS_DMA_WADDR0;
 				end
 					
 				BBUS_DMA_END: if (CE_R) begin
@@ -1374,6 +1393,23 @@ module SCU
 				end
 				
 				CBUS_REQUEST: if (CE_R) begin
+//					CBUS_DMA_START <= 1;
+					CBUS_ST <= FAST ? CBUS_INIT3 : CBUS_INIT0;
+				end
+				
+				CBUS_INIT0: if (CE_R) begin
+					CBUS_ST <= CBUS_INIT1;
+				end
+				
+				CBUS_INIT1: if (CE_R) begin
+					CBUS_ST <= CBUS_INIT2;
+				end
+				
+				CBUS_INIT2: if (CE_R) begin
+					CBUS_ST <= CBUS_INIT3;
+				end
+				
+				CBUS_INIT3: if (CE_R) begin
 					CBUS_DMA_START <= 1;
 					CBUS_ST <= CBUS_START;
 				end
@@ -1470,9 +1506,13 @@ module SCU
 							CBUS_RD <= 1;
 						end
 						else if ((DSTA.DACSA || DSTA.DACSB || DSTA.DACSD) && ECWAIT_N) begin
-							CBUS_DMA_START <= 0;
-							CBUS_CS <= 0;
-							CBUS_ST <= CBUS_RELEASE;
+							if (FAST) begin
+								CBUS_DMA_START <= 0;
+								CBUS_CS <= 0;
+								CBUS_ST <= CBUS_RELEASE;
+							end else begin
+								CBUS_ST <= CBUS_REFRESH;
+							end
 						end
 					end
 				end
@@ -1502,10 +1542,24 @@ module SCU
 							end
 						end
 						else if ((!DMA_DSP && !DMA_WTN) || (DMA_DSP && DMA_LAST)) begin
-							CBUS_DMA_START <= 0;
-							CBUS_CS <= 0;
-							CBUS_ST <= CBUS_RELEASE;
+							if (FAST) begin
+								CBUS_DMA_START <= 0;
+								CBUS_CS <= 0;
+								CBUS_ST <= CBUS_RELEASE;
+							end else begin
+								CBUS_ST <= CBUS_REFRESH;
+							end
 						end
+					end
+				end
+				
+				CBUS_REFRESH: if (CE_R) begin
+					CBUS_RFS <= CBUS_RFS + 3'd1;
+					if (CBUS_RFS == 3'd3) begin
+						CBUS_RFS <= '0;
+						CBUS_DMA_START <= 0;
+						CBUS_CS <= 0;
+						CBUS_ST <= CBUS_RELEASE;
 					end
 				end
 				
@@ -2676,6 +2730,7 @@ module SCU
 					8'hB4: REG_DO <= ASR1 & ASR1_RMASK;
 					
 					8'hC4: REG_DO <= RSEL & RSEL_RMASK;
+					8'hC8: REG_DO <= 32'h00000004;
 					
 					default: REG_DO <= '0;
 				endcase
