@@ -31,7 +31,8 @@ module SH7604_MULT (
 	
 	wire [63:0] SRES =   $signed(MA) *   $signed(MB);
 	wire [63:0] URES = $unsigned(MA) * $unsigned(MB);
-	wire [63:0] ACC  = $signed({MACH,MACL}) + $signed(SRES);
+	wire [63:0] ACC64  = $signed({MACH,MACL}) + $signed(SRES);
+	wire [32:0] ACC32  = $signed({MACL[31],MACL}) + $signed(SRES[32:0]);
 	
 	always @(posedge CLK or negedge RST_N) begin
 		bit [ 1: 0] MM_CYC;
@@ -48,7 +49,7 @@ module SH7604_MULT (
 			MACH <= '0;
 			MA <= '0;
 			MB <= '0;
-			MM_DONE <= 0;
+			MM_DONE <= 1;
 			MM_CYC <= '0;
 			MUL_EXEC <= 0;
 			DMUL_EXEC <= 0;
@@ -120,7 +121,7 @@ module SH7604_MULT (
 			
 			if (!MM_DONE && CE_R) begin
 				if (MM_CYC) MM_CYC <= MM_CYC - 2'd1;
-				else MM_DONE <= 1;
+				if (MM_CYC == 2'd1) MM_DONE <= 1;
 			end
 			
 			if (MUL_EXEC) begin
@@ -137,13 +138,14 @@ module SH7604_MULT (
 			
 			if (MACW_EXEC) begin
 				if (!SAT) begin
-					{MACH,MACL} <= ACC;
+					{MACH,MACL} <= ACC64;
 				end else begin
-					if (ACC[63:32]) begin
-						MACL <= {ACC[63],{31{~ACC[63]}}};
+					if (ACC32[32] != ACC32[31]) begin
+						MACL <= {ACC32[32],{31{~ACC32[32]}}};
 						MACH <= 32'h00000001;
 					end else begin
-						MACL <= ACC[31:0];
+						MACL <= ACC32[31:0];
+//						MACH <= 32'h00000000;//??
 					end
 				end
 				MACW_EXEC <= 0;
@@ -151,9 +153,9 @@ module SH7604_MULT (
 			
 			if (MACL_EXEC) begin
 				if (!SAT) begin
-					{MACH,MACL} <= ACC;
+					{MACH,MACL} <= ACC64;
 				end else begin
-					{MACH,MACL} <= {{16{ACC[63]}},ACC[47:0]};
+					{MACH,MACL} <= {{16{ACC64[63]}},ACC64[47:0]};
 				end
 				MACL_EXEC <= 0;
 			end
