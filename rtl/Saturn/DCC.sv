@@ -1,5 +1,4 @@
 module DCC 
-#(parameter bit FAST=0)
 (
 	input             CLK,
 	input             RST_N,
@@ -38,12 +37,15 @@ module DCC
 	output            DCE_N,
 	output            DOE_N,
 	output      [1:0] DWE_N,
+	input             DWAIT_N,//not present in original
 	
 	output            ROMCE_N,
 	output            SRAMCE_N,
 	output            SMPCCE_N,
 	output            MOE_N,
-	output            MWR_N
+	output            MWR_N,
+	
+	input             FAST
 );
 
 	const bit [3:0] DRAM_CYC = 4'd7;
@@ -84,24 +86,42 @@ module DCC
 	assign DWE_N = WE_N;
 	bit          MEM_WAIT;
 	always @(posedge CLK or negedge RST_N) begin
+		bit  [ 3: 0] CYC_NUM;
 		bit          RD_N_OLD;
 		bit          WE_N_OLD;
 		bit  [ 3: 0] WAIT_CNT;
+		bit  [ 7: 0] FAULT_CNT;
 		
 		if (!RST_N) begin
 			MEM_WAIT <= 0;
 			WAIT_CNT <= '0;
 		end else begin
+			CYC_NUM = (!DCE_N ? DRAM_CYC : ROM_SRAM_SMPC_CYC) - 4'd2;
+			
 			RD_N_OLD <= RD_N;
 			WE_N_OLD <= &WE_N;
 			if ((!RD_N && RD_N_OLD && !CS0_N) || (!(&WE_N) && WE_N_OLD && !CS0_N)) begin
 				MEM_WAIT <= 1;
-				WAIT_CNT <= (!DCE_N ? (FAST ? DRAM_CYC - 4'd2 : DRAM_CYC) : ROM_SRAM_SMPC_CYC) - 4'd2;
+				if (FAST) begin
+					MEM_WAIT <= 0;
+					WAIT_CNT <= '0;
+				end else if (!FAULT_CNT) begin
+					WAIT_CNT <= CYC_NUM;
+				end else if (FAULT_CNT >= 8'd4) begin
+					WAIT_CNT <= '0;
+					FAULT_CNT <= FAULT_CNT - 8'd4;
+				end else begin
+					WAIT_CNT <= CYC_NUM - FAULT_CNT[3:0];
+					FAULT_CNT <= '0;
+				end
+			end else if (WAIT_CNT && CE_R) begin
+				WAIT_CNT <= WAIT_CNT - 4'd1;
 			end else if (!WAIT_CNT && CE_F) begin
 				MEM_WAIT <= 0;
+				if (!RD_N && !DCE_N && !DWAIT_N) begin
+					FAULT_CNT <= FAULT_CNT + 8'd1;
+				end
 			end
-			
-			if (WAIT_CNT && CE_R) WAIT_CNT <= WAIT_CNT - 4'd1;
 		end
 	end
 	

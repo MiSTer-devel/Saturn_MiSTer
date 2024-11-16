@@ -42,7 +42,9 @@ module YGR019 (
 	input              CD_AUDIO,
 	
 	output     [15: 0] CD_SL,
-	output     [15: 0] CD_SR
+	output     [15: 0] CD_SR,
+	
+	input              FAST
 	
 `ifdef DEBUG
 	                   ,
@@ -137,7 +139,38 @@ module YGR019 (
 			CDDA_CHAN <= 0;
 		end else begin
 			if (!RES_N) begin
+				CR <= '{4{'0}};
+				RR <= '{4{'0}};
+				HIRQ <= '0;
+				HMASK <= '0;
+
+				CDIRQL <= '0;
+				CDMASKL <= '0;
+				REG1A <= '0;
+				//REG1C <= '0;
 				
+				CDIRQU <= '0;
+				CDMASKU <= '0;
+				
+				SH_REG_DO <= '0;
+				ABUS_WAIT <= 0;
+				ABUS_WAIT_CNT <= '0;
+				
+				TRCTL <= '0;
+				FIFO_BUF <= '{8{'0}};
+				FIFO_WR_POS <= '0;
+				FIFO_RD_POS <= '0;
+				FIFO_AMOUNT <= '0;
+				FIFO_EMPTY <= 1;
+				FIFO_FULL <= 0;
+				FIFO_DREQ_PEND <= 0;
+				FIFO_DREQ <= 0;
+				
+				CDD_DREQ <= '0;
+				CDD_SYNCED <= 0;
+				CDD_CNT <= 4'd0;
+				CDD_PEND <= 0;
+				CDDA_CHAN <= 0;
 			end else begin
 				if (CE_R) begin
 					AWR_N_OLD <= AWRL_N & AWRU_N;
@@ -169,7 +202,7 @@ module YGR019 (
 							6'h00: begin
 								ABUS_WAIT <= 1;
 								ABUS_DATA_PORT <= 1;
-								ABUS_WAIT_CNT <= 3'd3;
+								ABUS_WAIT_CNT <= FAST ? 3'd0 : 3'd3;
 `ifdef DEBUG
 								ABUS_WAIT_CNT_DBG <= '0;
 `endif
@@ -177,7 +210,7 @@ module YGR019 (
 							default:begin
 								ABUS_WAIT <= 0;
 								ABUS_DATA_PORT <= 0;
-								ABUS_WAIT_CNT <= 3'd3;
+								ABUS_WAIT_CNT <= FAST ? 3'd0 : 3'd3;
 							end
 						endcase
 					end else if (!ARD_N && ARD_N_OLD && CE_F) begin
@@ -199,7 +232,7 @@ module YGR019 (
 							6'h00: begin
 								ABUS_WAIT <= 1;
 								ABUS_DATA_PORT <= 1;
-								ABUS_WAIT_CNT <= 3'd5;
+								ABUS_WAIT_CNT <= FAST ? 3'd2 : 3'd5;
 `ifdef DEBUG
 								ABUS_WAIT_CNT_DBG <= '0;
 								ABUS_READ_CNT_DBG <= ABUS_READ_CNT_DBG + 1'd1;
@@ -208,7 +241,7 @@ module YGR019 (
 							default: begin
 								ABUS_WAIT <= 1;
 								ABUS_DATA_PORT <= 0;
-								ABUS_WAIT_CNT <= 3'd4;
+								ABUS_WAIT_CNT <= FAST ? 3'd1 : 3'd4;
 							end
 						endcase
 					end

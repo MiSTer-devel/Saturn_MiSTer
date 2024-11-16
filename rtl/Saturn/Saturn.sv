@@ -130,6 +130,8 @@ module Saturn
 	output     [15:0] SOUND_L,
 	output     [15:0] SOUND_R,
 	
+	input             FAST,
+	
 	input       [7:0] SCRN_EN,
 	input       [2:0] SND_EN,
 	input      [31:0] SLOT_EN,
@@ -366,7 +368,9 @@ module Saturn
 		.SCKO(),
 		.SCKI(1'b1),
 		
-		.MD(6'b001000)
+		.MD(6'b001000),
+		
+		.FAST(FAST)
 `ifdef DEBUG
 		,
 		.DBG_REGN('0),
@@ -432,7 +436,9 @@ module Saturn
 		.SCKO(),
 		.SCKI(1'b1),
 		
-		.MD(6'b101000)
+		.MD(6'b101000),
+		
+		.FAST(FAST)
 `ifdef DEBUG
 		,
 		.DBG_REGN('0),
@@ -549,7 +555,7 @@ module Saturn
 	);
 	
 	
-	DCC #(.FAST(0/*RAMH_SLOW*/)) DCC
+	DCC DCC
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -588,12 +594,15 @@ module Saturn
 		.DCE_N(DRAMCE_N),
 		.DOE_N(),
 		.DWE_N(),
+		.DWAIT_N(MEM_WAIT_N),
 		
 		.ROMCE_N(ROMCE_N),
 		.SRAMCE_N(SRAMCE_N),
 		.SMPCCE_N(SMPCCE_N),
 		.MOE_N(),
-		.MWR_N(MWR_N)
+		.MWR_N(MWR_N),
+		
+		.FAST(FAST)
 	);
 	
 	assign MEM_A     = CA[24:0];
@@ -1008,7 +1017,9 @@ module Saturn
 		.CD_AUDIO(CD_AUDIO),
 		
 		.CD_SL(CD_SL),
-		.CD_SR(CD_SR)
+		.CD_SR(CD_SR),
+		
+		.FAST(FAST)
 	);
 	
 	assign SWAIT_N = CD_RAM_RDY;

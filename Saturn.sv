@@ -236,7 +236,7 @@ module emu
 	// 0         1         2         3          4         5         6   
 	// 01234567890123456789012345678901 23456789012345678901234567890123
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXX      XXXXXXXXXXXXX                
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXX                
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -269,54 +269,60 @@ module emu
 		"P2OR,SNAC,OFF,ON;",
 		"-;",
 		
+`ifndef MISTER_DUAL_SDRAM
+		"P3,Hardware;",
+		"P3-;",
+		"P3OS,Timing,Original,Fast;",
+`endif
+		
 `ifndef DEBUG
-		"P3,Debug;",
-		"P3-;",
-		"P3o4,VDP2 NBG0,Enable,Disable;",
-		"P3o5,VDP2 NBG1,Enable,Disable;",
-		"P3o6,VDP2 NBG2,Enable,Disable;",
-		"P3o7,VDP2 NBG3,Enable,Disable;",
-		"P3o8,VDP2 RBG0,Enable,Disable;",
-		"P3o9,VDP2 Sprite,Enable,Disable;",
-		"P3oA,VDP2 Shadow,Enable,Disable;",
-		"P3-;",
-		"P3oB,SCSP Direct sound,Enable,Disable;",
-		"P3oC,SCSP DSP sound,Enable,Disable;",
-		"P3oD,CD audio,Enable,Disable;",
+		"P4,Debug;",
+		"P4-;",
+		"P4o4,VDP2 NBG0,Enable,Disable;",
+		"P4o5,VDP2 NBG1,Enable,Disable;",
+		"P4o6,VDP2 NBG2,Enable,Disable;",
+		"P4o7,VDP2 NBG3,Enable,Disable;",
+		"P4o8,VDP2 RBG0,Enable,Disable;",
+		"P4o9,VDP2 Sprite,Enable,Disable;",
+		"P4oA,VDP2 Shadow,Enable,Disable;",
+		"P4-;",
+		"P4oB,SCSP Direct sound,Enable,Disable;",
+		"P4oC,SCSP DSP sound,Enable,Disable;",
+		"P4oD,CD audio,Enable,Disable;",
 `else
-		"P3,Debug;",
-		"P3o4,SCSP slot 0,Enable,Disable;",
-		"P3o5,SCSP slot 1,Enable,Disable;",
-		"P3o6,SCSP slot 2,Enable,Disable;",
-		"P3o7,SCSP slot 3,Enable,Disable;",
-		"P3o8,SCSP slot 4,Enable,Disable;",
-		"P3o9,SCSP slot 5,Enable,Disable;",
-		"P3oA,SCSP slot 6,Enable,Disable;",
-		"P3oB,SCSP slot 7,Enable,Disable;",
-		"P3oC,SCSP slot 8,Enable,Disable;",
-		"P3oD,SCSP slot 9,Enable,Disable;",
-		"P3oE,SCSP slot 10,Enable,Disable;",
-		"P3oF,SCSP slot 11,Enable,Disable;",
-		"P3oG,SCSP slot 12,Enable,Disable;",
-		"P3oH,SCSP slot 13,Enable,Disable;",
-		"P3oI,SCSP slot 14,Enable,Disable;",
-		"P3oJ,SCSP slot 15,Enable,Disable;",
-		"P3oK,SCSP slot 16,Enable,Disable;",
-		"P3oL,SCSP slot 17,Enable,Disable;",
-		"P3oM,SCSP slot 18,Enable,Disable;",
-		"P3oN,SCSP slot 19,Enable,Disable;",
-		"P3oO,SCSP slot 20,Enable,Disable;",
-		"P3oP,SCSP slot 21,Enable,Disable;",
-		"P3oQ,SCSP slot 22,Enable,Disable;",
-		"P3oR,SCSP slot 23,Enable,Disable;",
-		"P3oS,SCSP slot 24,Enable,Disable;",
-		"P3oT,SCSP slot 25,Enable,Disable;",
-		"P3oU,SCSP slot 26,Enable,Disable;",
-		"P3oV,SCSP slot 27,Enable,Disable;",
-		"P3OS,SCSP slot 28,Enable,Disable;",
-		"P3OT,SCSP slot 29,Enable,Disable;",
-		"P3OU,SCSP slot 30,Enable,Disable;",
-		"P3OV,SCSP slot 31,Enable,Disable;",
+		"P4,Debug;",
+		"P4o4,SCSP slot 0,Enable,Disable;",
+		"P4o5,SCSP slot 1,Enable,Disable;",
+		"P4o6,SCSP slot 2,Enable,Disable;",
+		"P4o7,SCSP slot 3,Enable,Disable;",
+		"P4o8,SCSP slot 4,Enable,Disable;",
+		"P4o9,SCSP slot 5,Enable,Disable;",
+		"P4oA,SCSP slot 6,Enable,Disable;",
+		"P4oB,SCSP slot 7,Enable,Disable;",
+		"P4oC,SCSP slot 8,Enable,Disable;",
+		"P4oD,SCSP slot 9,Enable,Disable;",
+		"P4oE,SCSP slot 10,Enable,Disable;",
+		"P4oF,SCSP slot 11,Enable,Disable;",
+		"P4oG,SCSP slot 12,Enable,Disable;",
+		"P4oH,SCSP slot 13,Enable,Disable;",
+		"P4oI,SCSP slot 14,Enable,Disable;",
+		"P4oJ,SCSP slot 15,Enable,Disable;",
+		"P4oK,SCSP slot 16,Enable,Disable;",
+		"P4oL,SCSP slot 17,Enable,Disable;",
+		"P4oM,SCSP slot 18,Enable,Disable;",
+		"P4oN,SCSP slot 19,Enable,Disable;",
+		"P4oO,SCSP slot 20,Enable,Disable;",
+		"P4oP,SCSP slot 21,Enable,Disable;",
+		"P4oQ,SCSP slot 22,Enable,Disable;",
+		"P4oR,SCSP slot 23,Enable,Disable;",
+		"P4oS,SCSP slot 24,Enable,Disable;",
+		"P4oT,SCSP slot 25,Enable,Disable;",
+		"P4oU,SCSP slot 26,Enable,Disable;",
+		"P4oV,SCSP slot 27,Enable,Disable;",
+		"P4OS,SCSP slot 28,Enable,Disable;",
+		"P4OT,SCSP slot 29,Enable,Disable;",
+		"P4OU,SCSP slot 30,Enable,Disable;",
+		"P4OV,SCSP slot 31,Enable,Disable;",
 `endif
 
 		"-;",
@@ -541,6 +547,12 @@ module emu
 	end
 	
 	wire rst_sys = reset | download | rst_ram;
+	
+`ifndef MISTER_DUAL_SDRAM
+	wire fast_timing = status[28];
+`else
+	wire fast_timing = 0;
+`endif
 	
 	//region select
 	reg [7:0] cd_area_symbol;
@@ -867,6 +879,8 @@ module emu
 		
 		.SOUND_L(AUDIO_L),
 		.SOUND_R(AUDIO_R),
+		
+		.FAST(fast_timing),
 		
 		.SCRN_EN(SCRN_EN & SCRN_EN2),
 		.SND_EN(SND_EN & SND_EN2),
