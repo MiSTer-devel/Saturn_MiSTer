@@ -22,6 +22,7 @@ module SH7604_CACHE (
 	output      [3:0] IBUS_BA,
 	output            IBUS_WE,
 	output            IBUS_REQ,
+	output            IBUS_PREREQ,
 	output            IBUS_BURST,
 	output            IBUS_LOCK,
 	input             IBUS_WAIT
@@ -497,7 +498,7 @@ module SH7604_CACHE (
 					CACHE_UPDATE <= 1;
 				end
 			end
-			IBUS_END = 0;//(IBREQ && !IBUS_WAIT);
+			IBUS_END = 0;//(IBREQ && IBUS_WRITE && !IBUS_WAIT);
 			
 			if (CBUS_REQ) begin
 				if (CBUS_WR) begin
@@ -613,7 +614,8 @@ module SH7604_CACHE (
 	assign IBUS_BA = IBBA;
 	assign IBUS_WE = IBWE;
 	assign IBUS_REQ = IBREQ;
-	assign IBUS_BURST = IBBURST;
+	assign IBUS_PREREQ = CBUS_REQ && ((CBUS_WR && (CACHE_AREA || NOCACHE_AREA)) || (!CBUS_WR && ((CACHE_AREA && (!CCR.CE || CBUS_TAS)) || NOCACHE_AREA)) || (!CBUS_WR && CACHE_AREA && CCR.CE && !HIT)) && !IBREQ;
+	assign IBUS_BURST = IBBURST; 
 	assign IBUS_LOCK = IBLOCK;
 
 endmodule

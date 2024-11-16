@@ -64,7 +64,9 @@ module SH7604
 	
 	output            WDTOVF_N,
 	
-	input       [5:0] MD
+	input       [5:0] MD,
+	
+	input             FAST
 	
 `ifdef DEBUG
 	                  ,
@@ -91,6 +93,7 @@ module SH7604
 	bit  [3:0] IBUS_BA;
 	bit        IBUS_WE;
 	bit        IBUS_REQ;
+	bit        IBUS_PREREQ;
 	bit        IBUS_WAIT;
 	bit        IBUS_BURST;
 	bit        IBUS_LOCK;
@@ -231,7 +234,7 @@ module SH7604
 		.BUS_BA(CBUS_BA),
 		.BUS_REQ(CBUS_REQ),
 		.BUS_TAS(CBUS_TAS),
-		.BUS_WAIT(CACHE_BUSY | MULT_BUSY),
+		.BUS_WAIT(CACHE_BUSY | (MULT_BUSY & ~FAST)),
 		
 		.MAC_SEL(MAC_SEL),
 		.MAC_OP(MAC_OP),
@@ -311,6 +314,7 @@ module SH7604
 		.IBUS_WE(IBUS_WE),
 		.IBUS_BA(IBUS_BA),
 		.IBUS_REQ(IBUS_REQ),
+		.IBUS_PREREQ(IBUS_PREREQ),
 		.IBUS_BURST(IBUS_BURST),
 		.IBUS_LOCK(IBUS_LOCK),
 		.IBUS_WAIT(IBUS_WAIT)
@@ -523,6 +527,7 @@ module SH7604
 		.CBUS_BA(IBUS_BA),
 		.CBUS_WE(IBUS_WE),
 		.CBUS_REQ(IBUS_REQ),
+		.CBUS_PREREQ(IBUS_PREREQ),
 		.CBUS_BURST(IBUS_BURST),
 		.CBUS_LOCK(IBUS_LOCK),
 		.CBUS_BUSY(BSC_IBUS_BUSY),
@@ -546,7 +551,9 @@ module SH7604
 		.IRQ(),
 		
 		.CACK(BSC_ACK),
-		.BUS_RLS(BUS_RLS)
+		.BUS_RLS(BUS_RLS),
+		
+		.FAST(FAST)
 	);
 	
 	assign {A,DO}                                 = !BUS_RLS ? {IA,IDO}                                     : {EA,EDO};
