@@ -172,6 +172,7 @@ module VDP2 (
 	bit  [ 8: 0] H_CNT, V_CNT;
 	bit  [ 8: 0] SCRNX, SCRNY;
 	bit          SCRNX0;
+	bit  [ 3: 0] MOSAIC_HCNT,MOSAIC_VCNT;
 	bit          DISP;
 	bit  [ 1: 0] LSMD;
 	VRAMAccessPipeline_t VA_PIPE;
@@ -815,10 +816,10 @@ module VDP2 (
 		NxOFFX[1] = NX[1] + NSX[1];
 		NxOFFX[2] = NX[2] + NSX[2];
 		NxOFFX[3] = NX[3] + NSX[3];
-		NxOFFY[0] = NY[0] + NSY[0] + NVCSY[0];
-		NxOFFY[1] = NY[1] + NSY[1] + NVCSY[1];
-		NxOFFY[2] = NY[2] + NSY[2];
-		NxOFFY[3] = NY[3] + NSY[3];
+		NxOFFY[0] = NMOSY[0] + NVCSY[0];
+		NxOFFY[1] = NMOSY[1] + NVCSY[1];
+		NxOFFY[2] = NMOSY[2];
+		NxOFFY[3] = NMOSY[3];
 	end
 `ifdef DEBUG
 	assign NxOFFX0_DBG = NxOFFX[0];
@@ -1526,6 +1527,7 @@ module VDP2 (
 	ScrollData_t NY[4];
 	ScrollData_t NSY[4];
 	ScrollData_t NVCSY[2];
+	ScrollData_t NMOSY[4];
 	CoordInc_t   LZMX[2];
 	always @(posedge CLK or negedge RST_N) begin
 		ScrollData_t CX[4];
@@ -1543,6 +1545,7 @@ module VDP2 (
 			NY <= '{4{'0}};
 			NSY <= '{4{'0}};
 			LZMX <= '{2{'0}};
+			MOSAIC_VCNT <= '0;
 			// synopsys translate_on
 		end
 		else begin
@@ -1567,8 +1570,8 @@ module VDP2 (
 					CX[3] <= '0;
 				end
 				if (H_CNT == NBG_FETCH_START - 1 || CELLX == 3'h7) begin
-					NVCSY[0] <= VS[0] & {19{NSxREG[0].VCSC}};
-					NVCSY[1] <= VS[1] & {19{NSxREG[1].VCSC}};
+					NVCSY[0] <= VS[0] & {19{NSxREG[0].VCSC&~NSxREG[0].MZE}};
+					NVCSY[1] <= VS[1] & {19{NSxREG[1].VCSC&~NSxREG[1].MZE}};
 				end
 				
 				if (VA_PIPE[2].LS) begin
@@ -1605,6 +1608,13 @@ module VDP2 (
 						3'b010: begin
 							if (!NSxREG[0].LZMX)             begin LZMX[0] <= NSxREG[0].ZMX; end
 							else if (LS_RD[0])               begin LZMX[0] <= LS_WD[18:8]; end
+							
+							if (!MOSAIC_VCNT || !NSxREG[0].MZE || IS_LAST_LINE) begin
+								NMOSY[0] <= NY[0] + NSY[0];
+							end
+							if (!MOSAIC_VCNT || !NSxREG[2].MZE || IS_LAST_LINE) begin
+								NMOSY[2] <= NY[2] + NSY[2];
+							end
 						end
 						
 						3'b100: begin
@@ -1632,6 +1642,18 @@ module VDP2 (
 						3'b110: begin
 							if (!NSxREG[1].LZMX)             begin LZMX[1] <= NSxREG[1].ZMX; end
 							else if (LS_RD[1])               begin LZMX[1] <= LS_WD[18:8]; end
+							
+							if (!MOSAIC_VCNT || !NSxREG[1].MZE || IS_LAST_LINE) begin
+								NMOSY[1] <= NY[1] + NSY[1];
+							end
+							if (!MOSAIC_VCNT || !NSxREG[3].MZE || IS_LAST_LINE) begin
+								NMOSY[3] <= NY[3] + NSY[3];
+							end
+							
+							MOSAIC_VCNT <= MOSAIC_VCNT + 4'd1;
+							if (MOSAIC_VCNT == REGS.MZCTL.MZSZV || IS_LAST_LINE) begin
+								MOSAIC_VCNT <= '0;
+							end
 						end
 					endcase
 				end
@@ -2791,12 +2813,16 @@ module VDP2 (
 	assign RxCDP[1] = RBG_CDP[1];
 	
 	ScrollData_t NCX[4];
+	bit          NxDOT_FETCH[4];
+	bit          R0DOT_FETCH;
 	always @(posedge CLK or negedge RST_N) begin
 		ScrollData_t X[4];
 		
 		if (!RST_N) begin
 			// synopsys translate_off
 			NCX <= '{4{SCRLD_NULL}};
+			NxDOT_FETCH <= '{4{0}};
+			R0DOT_FETCH <= 0;
 			// synopsys translate_on
 		end
 		else begin
@@ -2810,6 +2836,17 @@ module VDP2 (
 					NCX[1] <= X[1];
 					NCX[2] <= X[2];
 					NCX[3] <= X[3];
+					
+					NxDOT_FETCH[0] <= (!MOSAIC_HCNT || !NSxREG[0].MZE);
+					NxDOT_FETCH[1] <= (!MOSAIC_HCNT || !NSxREG[1].MZE);
+					NxDOT_FETCH[2] <= (!MOSAIC_HCNT || !NSxREG[2].MZE);
+					NxDOT_FETCH[3] <= (!MOSAIC_HCNT || !NSxREG[3].MZE);
+					R0DOT_FETCH    <= (!MOSAIC_HCNT || !RSxREG[0].MZE);
+					
+					MOSAIC_HCNT <= MOSAIC_HCNT + 4'd1;
+					if (MOSAIC_HCNT == REGS.MZCTL.MZSZH) begin
+						MOSAIC_HCNT <= '0;
+					end
 				end
 			end
 			if (DOT_CE_R) begin
@@ -2826,6 +2863,7 @@ module VDP2 (
 					NCX[1] <= NSX[1] & {11'h007,8'hFF};
 					NCX[2] <= NSX[2] & {11'h007,8'hFF};
 					NCX[3] <= NSX[3] & {11'h007,8'hFF};
+					MOSAIC_HCNT <= '0;
 				end
 			end
 		end
@@ -2847,61 +2885,71 @@ module VDP2 (
 			// synopsys translate_on
 		end
 		else if (DOT_CE_R || (DOT_CE_F & HRES[1])) begin
-			R0DOTDC <= RxDC[0];
-			R0DOTCDP <= RxCDP[0];
-			
-			if (RSxREG[1].ON) begin
-				N0DOTDC <= RxDC[1];
-				N0DOTCDP <= RxCDP[1];
-			end else if (NSxREG[0].CHCN == 3'b000 && NSxREG[0].ZMHF) begin
-				case (NCX[0].INT[3])
-					1'b0: begin N0DOTDC <= {28'h0000000,NDC0[{NCX[0].INT[4],NCX[0].INT[2:0]}][ 3: 0]}; N0DOTCDP <= NCDP0[NCX[0].INT[4]]; end
-					1'b1: begin N0DOTDC <= {28'h0000000,NDC0[{NCX[0].INT[4],NCX[0].INT[2:0]}][ 7: 4]}; N0DOTCDP <= NCDP4[NCX[0].INT[4]]; end
-				endcase
-			end else if (NSxREG[0].CHCN == 3'b000 && NSxREG[0].ZMQT) begin
-				case (NCX[0].INT[4:3])
-					2'b00: begin N0DOTDC <= {28'h0000000,NDC0[{NCX[0].INT[5],NCX[0].INT[2:0]}][ 3: 0]}; N0DOTCDP <= NCDP0[NCX[0].INT[5]]; end
-					2'b01: begin N0DOTDC <= {28'h0000000,NDC0[{NCX[0].INT[5],NCX[0].INT[2:0]}][ 7: 4]}; N0DOTCDP <= NCDP4[NCX[0].INT[5]]; end
-					2'b10: begin N0DOTDC <= {28'h0000000,NDC2[{NCX[0].INT[5],NCX[0].INT[2:0]}][ 3: 0]}; N0DOTCDP <= NCDP2[NCX[0].INT[5]]; end
-					2'b11: begin N0DOTDC <= {28'h0000000,NDC2[{NCX[0].INT[5],NCX[0].INT[2:0]}][ 7: 4]}; N0DOTCDP <= NCDP6[NCX[0].INT[5]]; end
-				endcase
-			end else if (NSxREG[0].CHCN == 3'b001 && NSxREG[0].ZMHF) begin
-				case (NCX[0].INT[3])
-					1'b0: begin N0DOTDC <= {24'h000000,NDC0[{NCX[0].INT[4],NCX[0].INT[2:0]}][ 7: 0]}; N0DOTCDP <= NCDP0[NCX[0].INT[4]]; end
-					1'b1: begin N0DOTDC <= {24'h000000,NDC2[{NCX[0].INT[4],NCX[0].INT[2:0]}][ 7: 0]}; N0DOTCDP <= NCDP2[NCX[0].INT[4]]; end
-				endcase
-			end else begin
-				N0DOTDC <= {NDC3[NCX[0].INT[3:0]][ 7: 0],NDC1[NCX[0].INT[3:0]][ 7: 0],NDC2[NCX[0].INT[3:0]][ 7: 0],NDC0[NCX[0].INT[3:0]][ 7: 0]};
-				N0DOTCDP <= NCDP0[NCX[0].INT[3]];
+			if (R0DOT_FETCH) begin
+				R0DOTDC <= RxDC[0];
+				R0DOTCDP <= RxCDP[0];
 			end
 			
-			if (NSxREG[1].CHCN == 3'b000 && NSxREG[1].ZMHF) begin
-				case (NCX[1].INT[3])
-					1'b0: begin N1DOTDC <= {28'h0000000,NDC1[{NCX[1].INT[4],NCX[1].INT[2:0]}][ 3: 0]}; N1DOTCDP <= NCDP1[NCX[1].INT[4]]; end
-					1'b1: begin N1DOTDC <= {28'h0000000,NDC1[{NCX[1].INT[4],NCX[1].INT[2:0]}][ 7: 4]}; N1DOTCDP <= NCDP5[NCX[1].INT[4]]; end
-				endcase
-			end else if (NSxREG[1].CHCN == 3'b000 && NSxREG[1].ZMQT) begin
-				case (NCX[1].INT[4:3])
-					2'b00: begin N1DOTDC <= {28'h0000000,NDC1[{NCX[1].INT[5],NCX[1].INT[2:0]}][ 3: 0]}; N1DOTCDP <= NCDP1[NCX[1].INT[5]]; end
-					2'b01: begin N1DOTDC <= {28'h0000000,NDC1[{NCX[1].INT[5],NCX[1].INT[2:0]}][ 7: 4]}; N1DOTCDP <= NCDP5[NCX[1].INT[5]]; end
-					2'b10: begin N1DOTDC <= {28'h0000000,NDC3[{NCX[1].INT[5],NCX[1].INT[2:0]}][ 3: 0]}; N1DOTCDP <= NCDP3[NCX[1].INT[5]]; end
-					2'b11: begin N1DOTDC <= {28'h0000000,NDC3[{NCX[1].INT[5],NCX[1].INT[2:0]}][ 7: 4]}; N1DOTCDP <= NCDP7[NCX[1].INT[5]]; end
-				endcase
-			end else if (NSxREG[1].CHCN == 3'b001 && NSxREG[1].ZMHF) begin
-				case (NCX[1].INT[3])
-					1'b0: begin N1DOTDC <= {24'h000000,NDC1[{NCX[1].INT[4],NCX[1].INT[2:0]}][ 7: 0]}; N1DOTCDP <= NCDP1[NCX[1].INT[4]]; end
-					1'b1: begin N1DOTDC <= {24'h000000,NDC3[{NCX[1].INT[4],NCX[1].INT[2:0]}][ 7: 0]}; N1DOTCDP <= NCDP3[NCX[1].INT[4]]; end
-				endcase
-			end else begin
-				N1DOTDC <= {16'h0000,NDC3[NCX[1].INT[3:0]][ 7: 0],NDC1[NCX[1].INT[3:0]][ 7: 0]};
-				N1DOTCDP <= NCDP1[NCX[1].INT[3]];
+			if (NxDOT_FETCH[0]) begin
+				if (RSxREG[1].ON) begin
+					N0DOTDC <= RxDC[1];
+					N0DOTCDP <= RxCDP[1];
+				end else if (NSxREG[0].CHCN == 3'b000 && NSxREG[0].ZMHF) begin
+					case (NCX[0].INT[3])
+						1'b0: begin N0DOTDC <= {28'h0000000,NDC0[{NCX[0].INT[4],NCX[0].INT[2:0]}][ 3: 0]}; N0DOTCDP <= NCDP0[NCX[0].INT[4]]; end
+						1'b1: begin N0DOTDC <= {28'h0000000,NDC0[{NCX[0].INT[4],NCX[0].INT[2:0]}][ 7: 4]}; N0DOTCDP <= NCDP4[NCX[0].INT[4]]; end
+					endcase
+				end else if (NSxREG[0].CHCN == 3'b000 && NSxREG[0].ZMQT) begin
+					case (NCX[0].INT[4:3])
+						2'b00: begin N0DOTDC <= {28'h0000000,NDC0[{NCX[0].INT[5],NCX[0].INT[2:0]}][ 3: 0]}; N0DOTCDP <= NCDP0[NCX[0].INT[5]]; end
+						2'b01: begin N0DOTDC <= {28'h0000000,NDC0[{NCX[0].INT[5],NCX[0].INT[2:0]}][ 7: 4]}; N0DOTCDP <= NCDP4[NCX[0].INT[5]]; end
+						2'b10: begin N0DOTDC <= {28'h0000000,NDC2[{NCX[0].INT[5],NCX[0].INT[2:0]}][ 3: 0]}; N0DOTCDP <= NCDP2[NCX[0].INT[5]]; end
+						2'b11: begin N0DOTDC <= {28'h0000000,NDC2[{NCX[0].INT[5],NCX[0].INT[2:0]}][ 7: 4]}; N0DOTCDP <= NCDP6[NCX[0].INT[5]]; end
+					endcase
+				end else if (NSxREG[0].CHCN == 3'b001 && NSxREG[0].ZMHF) begin
+					case (NCX[0].INT[3])
+						1'b0: begin N0DOTDC <= {24'h000000,NDC0[{NCX[0].INT[4],NCX[0].INT[2:0]}][ 7: 0]}; N0DOTCDP <= NCDP0[NCX[0].INT[4]]; end
+						1'b1: begin N0DOTDC <= {24'h000000,NDC2[{NCX[0].INT[4],NCX[0].INT[2:0]}][ 7: 0]}; N0DOTCDP <= NCDP2[NCX[0].INT[4]]; end
+					endcase
+				end else begin
+					N0DOTDC <= {NDC3[NCX[0].INT[3:0]][ 7: 0],NDC1[NCX[0].INT[3:0]][ 7: 0],NDC2[NCX[0].INT[3:0]][ 7: 0],NDC0[NCX[0].INT[3:0]][ 7: 0]};
+					N0DOTCDP <= NCDP0[NCX[0].INT[3]];
+				end
+			end
+			
+			if (NxDOT_FETCH[1]) begin
+				if (NSxREG[1].CHCN == 3'b000 && NSxREG[1].ZMHF) begin
+					case (NCX[1].INT[3])
+						1'b0: begin N1DOTDC <= {28'h0000000,NDC1[{NCX[1].INT[4],NCX[1].INT[2:0]}][ 3: 0]}; N1DOTCDP <= NCDP1[NCX[1].INT[4]]; end
+						1'b1: begin N1DOTDC <= {28'h0000000,NDC1[{NCX[1].INT[4],NCX[1].INT[2:0]}][ 7: 4]}; N1DOTCDP <= NCDP5[NCX[1].INT[4]]; end
+					endcase
+				end else if (NSxREG[1].CHCN == 3'b000 && NSxREG[1].ZMQT) begin
+					case (NCX[1].INT[4:3])
+						2'b00: begin N1DOTDC <= {28'h0000000,NDC1[{NCX[1].INT[5],NCX[1].INT[2:0]}][ 3: 0]}; N1DOTCDP <= NCDP1[NCX[1].INT[5]]; end
+						2'b01: begin N1DOTDC <= {28'h0000000,NDC1[{NCX[1].INT[5],NCX[1].INT[2:0]}][ 7: 4]}; N1DOTCDP <= NCDP5[NCX[1].INT[5]]; end
+						2'b10: begin N1DOTDC <= {28'h0000000,NDC3[{NCX[1].INT[5],NCX[1].INT[2:0]}][ 3: 0]}; N1DOTCDP <= NCDP3[NCX[1].INT[5]]; end
+						2'b11: begin N1DOTDC <= {28'h0000000,NDC3[{NCX[1].INT[5],NCX[1].INT[2:0]}][ 7: 4]}; N1DOTCDP <= NCDP7[NCX[1].INT[5]]; end
+					endcase
+				end else if (NSxREG[1].CHCN == 3'b001 && NSxREG[1].ZMHF) begin
+					case (NCX[1].INT[3])
+						1'b0: begin N1DOTDC <= {24'h000000,NDC1[{NCX[1].INT[4],NCX[1].INT[2:0]}][ 7: 0]}; N1DOTCDP <= NCDP1[NCX[1].INT[4]]; end
+						1'b1: begin N1DOTDC <= {24'h000000,NDC3[{NCX[1].INT[4],NCX[1].INT[2:0]}][ 7: 0]}; N1DOTCDP <= NCDP3[NCX[1].INT[4]]; end
+					endcase
+				end else begin
+					N1DOTDC <= {16'h0000,NDC3[NCX[1].INT[3:0]][ 7: 0],NDC1[NCX[1].INT[3:0]][ 7: 0]};
+					N1DOTCDP <= NCDP1[NCX[1].INT[3]];
+				end
 			end
 				
-			N2DOTDC <= {24'h000000,NDC2[NCX[2].INT[3:0]][ 7: 0]};
-			N2DOTCDP <= NCDP2[NCX[2].INT[3]];
+			if (NxDOT_FETCH[2]) begin
+				N2DOTDC <= {24'h000000,NDC2[NCX[2].INT[3:0]][ 7: 0]};
+				N2DOTCDP <= NCDP2[NCX[2].INT[3]];
+			end
 			
-			N3DOTDC <= {24'h000000,NDC3[NCX[3].INT[3:0]][ 7: 0]};
-			N3DOTCDP <= NCDP3[NCX[3].INT[3]];
+			if (NxDOT_FETCH[3]) begin
+				N3DOTDC <= {24'h000000,NDC3[NCX[3].INT[3:0]][ 7: 0]};
+				N3DOTCDP <= NCDP3[NCX[3].INT[3]];
+			end
 		end
 	end
 	

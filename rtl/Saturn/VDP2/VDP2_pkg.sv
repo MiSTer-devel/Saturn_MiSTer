@@ -1166,6 +1166,7 @@ package VDP2_PKG;
 		bit         LZMX;
 		bit         VCSC;
 		bit [ 1: 0] LSS;
+		bit         MZE;
 		bit [18: 1] LWTA;
 		bit         TPON;
 		bit         ON;
@@ -1190,6 +1191,7 @@ package VDP2_PKG;
 		bit [ 2: 0] BMP;
 		bit         BMPR;
 		bit         BMCC;
+		bit         MZE;
 		bit         TPON;
 		bit         ON;
 		bit [ 2: 0] CAOS;
@@ -1349,6 +1351,11 @@ package VDP2_PKG;
 		S[2].LSS = '0;
 		S[3].LSS = '0;
 		
+		S[0].MZE = REGS.MZCTL.N0MZE;
+		S[1].MZE = REGS.MZCTL.N1MZE;
+		S[2].MZE = REGS.MZCTL.N2MZE;
+		S[3].MZE = REGS.MZCTL.N3MZE;
+		
 		S[0].LWTA = {REGS.LWTA0U.WxLWTA,REGS.LWTA0L.WxLWTA};
 		S[1].LWTA = {REGS.LWTA1U.WxLWTA,REGS.LWTA1L.WxLWTA};
 		S[2].LWTA = '0;
@@ -1429,10 +1436,13 @@ package VDP2_PKG;
 		S[1].BMP = REGS.BMPNA.N0BMP;
 		
 		S[0].BMPR = REGS.BMPNB.R0BMPR;
-		S[1].BMPR = REGS.BMPNA.N1BMPR;
+		S[1].BMPR = REGS.BMPNA.N0BMPR;
 		
 		S[0].BMCC = REGS.BMPNB.R0BMCC;
-		S[1].BMCC = REGS.BMPNA.N1BMCC;
+		S[1].BMCC = REGS.BMPNA.N0BMCC;
+		
+		S[0].MZE = REGS.MZCTL.R0MZE;
+		S[1].MZE = REGS.MZCTL.N0MZE;
 		
 		S[0].ON = REGS.BGON.R0ON;
 		S[1].ON = REGS.BGON.R1ON;
@@ -1447,7 +1457,7 @@ package VDP2_PKG;
 		S[1].PRIN = REGS.PRINA.N0PRIN;
 		
 		S[0].SPRM = REGS.SFPRMD.R0SPRM;
-		S[1].SPRM = REGS.SFPRMD.N1SPRM;
+		S[1].SPRM = REGS.SFPRMD.N0SPRM;
 		
 		S[0].COEN = REGS.CLOFEN.R0COEN;
 		S[1].COEN = REGS.CLOFEN.N0COEN;
@@ -1462,7 +1472,7 @@ package VDP2_PKG;
 		S[1].CCRT = REGS.CCRNA.N0CCRT;
 		
 		S[0].SCCM = REGS.SFCCMD.R0SCCM;
-		S[1].SCCM = REGS.SFCCMD.N1SCCM;
+		S[1].SCCM = REGS.SFCCMD.N0SCCM;
 		
 		return S;
 	endfunction
