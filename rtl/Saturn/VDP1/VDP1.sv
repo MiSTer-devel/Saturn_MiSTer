@@ -420,7 +420,7 @@ module VDP1 (
 		bit [12: 0] SYS_CLIP_X1,SYS_CLIP_X2,SYS_CLIP_Y1,SYS_CLIP_Y2;
 		bit [ 3: 0] CMD_COORD_LEFT_OVER,CMD_COORD_RIGHT_OVER,CMD_COORD_TOP_OVER,CMD_COORD_BOTTOM_OVER;
 		bit         CMD_NSPR_LEFT_OVER,CMD_NSPR_TOP_OVER;
-//		bit         CMD_SSPR_WIDTH_OVER,CMD_SSPR_HEIGHT_OVER;
+		bit         CMD_SSPR_WIDTH_OVER,CMD_SSPR_HEIGHT_OVER;
 		bit         CMD_SSPR_LEFT_OVER,CMD_SSPR_RIGHT_OVER,CMD_SSPR_TOP_OVER,CMD_SSPR_BOTTOM_OVER;
 		bit         LINE_LEFT_OVER,LINE_RIGHT_OVER,LINE_TOP_OVER,LINE_BOTTOM_OVER;
 		bit [ 7: 0] DBG_EXT_OLD;
@@ -538,8 +538,8 @@ module VDP1 (
 			CMD_SSPR_TOP_OVER <= $signed(CMD_SSPR_TOP) < $signed(SYS_CLIP_Y1) && $signed(CMD_SSPR_BOTTOM) < $signed(SYS_CLIP_Y1);
 			CMD_SSPR_BOTTOM_OVER <= $signed(CMD_SSPR_TOP) > $signed(SYS_CLIP_Y2) && $signed(CMD_SSPR_BOTTOM) > $signed(SYS_CLIP_Y2);
 												
-//			CMD_SSPR_WIDTH_OVER <= (CMD.CMDXB.COORD[10] && CMD.CMDCTRL.ZP);
-//			CMD_SSPR_HEIGHT_OVER <= (CMD.CMDYB.COORD[10] && CMD.CMDCTRL.ZP);
+			CMD_SSPR_WIDTH_OVER <= (!CMD.CMDXB[11:0] && CMD.CMDCTRL.ZP);
+			CMD_SSPR_HEIGHT_OVER <= (!CMD.CMDYB[11:0] && CMD.CMDCTRL.ZP);
 																							  
 			LINE_LEFT_OVER <= ($signed(LEFT_VERT.X) < $signed(SYS_CLIP_X1) && $signed(RIGHT_VERT.X) < $signed(SYS_CLIP_X1));
 			LINE_RIGHT_OVER <= ($signed(LEFT_VERT.X) > $signed(SYS_CLIP_X2) && $signed(RIGHT_VERT.X) > $signed(SYS_CLIP_X2));
@@ -620,7 +620,7 @@ module VDP1 (
 								end
 							
 								4'h1: begin	//scaled sprite
-									if (CMD_SSPR_LEFT_OVER || CMD_SSPR_RIGHT_OVER || CMD_SSPR_TOP_OVER || CMD_SSPR_BOTTOM_OVER) begin
+									if (CMD_SSPR_LEFT_OVER || CMD_SSPR_RIGHT_OVER || CMD_SSPR_TOP_OVER || CMD_SSPR_BOTTOM_OVER || CMD_SSPR_WIDTH_OVER || CMD_SSPR_HEIGHT_OVER) begin
 										CMD_ST <= CMDS_END;
 									end else if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
@@ -867,6 +867,12 @@ module VDP1 (
 							DIR[1] <= CMD.CMDYB[12];
 						end
 					endcase
+					
+//					CLIP_H <= 0;
+//					if (($signed(CMD_SSPR_LEFT[12:0]) < $signed(SYS_CLIP_X1)) ||
+//						 ($signed(CMD_SSPR_RIGHT[12:0]) > $signed(SYS_CLIP_X2)) begin
+						CLIP_H <= 1;
+//					end
 					CMD_ST <= CMDS_SSPR_CALCTY;
 				end
 				
@@ -1062,23 +1068,27 @@ module VDP1 (
 				CMDS_SSPR_CALCX: begin
 					NEW_LINE_SX = $signed({RIGHT_VERT.X[12],RIGHT_VERT.X}) - $signed({LEFT_VERT.X[12],LEFT_VERT.X});
 					NEW_LINE_SY = $signed({RIGHT_VERT.Y[12],RIGHT_VERT.Y}) - $signed({LEFT_VERT.Y[12],LEFT_VERT.Y});
-					/*if ($signed(LEFT_VERT.X + LOC_COORD.X) < 0 && !CMD.CMDPMOD.PCLP) begin
-						LINE_VERTA.X <= RIGHT_VERT.X;
-						LINE_VERTA.Y <= RIGHT_VERT.Y;
-						LINE_VERTB.X <= SYS_CLIP.X1 - LOC_COORD.X;
-						LINE_VERTB.Y <= LEFT_VERT.Y;
-						LINE_DIRX <= ~NEW_LINE_SX[11];
-						LINE_DIRY <= ~NEW_LINE_SY[11];
-						DIR[0] <= 1;
-					end else if ($signed(RIGHT_VERT.X + LOC_COORD.X) > $signed(SYS_CLIP.X2) && !CMD.CMDPMOD.PCLP) begin
-						LINE_VERTA.X <= LEFT_VERT.X;
-						LINE_VERTA.Y <= LEFT_VERT.Y;
-						LINE_VERTB.X <= SYS_CLIP.X2 - LOC_COORD.X;
-						LINE_VERTB.Y <= RIGHT_VERT.Y;
-						LINE_DIRX <= NEW_LINE_SX[11];
-						LINE_DIRY <= NEW_LINE_SY[11];
+					if ($signed(RIGHT_VERT.X) > $signed(LEFT_VERT.X) && $signed(RIGHT_VERT.X) > $signed(SYS_CLIP_X2) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
+						LINE_VERTA.X <= LEFT_VERT.X[10:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTB.X <= SYS_CLIP_X2[10:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
+						LINE_DIRX <= NEW_LINE_SX[13];
+						LINE_DIRY <= NEW_LINE_SY[13];
 						DIR[0] <= 0;
-					end else*/ begin
+//					end else if ($signed(LEFT_VERT.X) > $signed(RIGHT_VERT.X) && $signed(LEFT_VERT.X) > $signed(SYS_CLIP_X2) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
+					
+//					end else if ($signed(RIGHT_VERT.X) < $signed(LEFT_VERT.X) && $signed(LEFT_VERT.X) < $signed(SYS_CLIP_X1) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
+					
+					end else if ($signed(RIGHT_VERT.X) < $signed(LEFT_VERT.X) && $signed(RIGHT_VERT.X) < $signed(SYS_CLIP_X1) && !CMD.CMDPMOD.PCLP && CLIP_H) begin
+						LINE_VERTA.X <= LEFT_VERT.X[10:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTB.X <= SYS_CLIP_X1[10:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
+						LINE_DIRX <= NEW_LINE_SX[13];
+						LINE_DIRY <= NEW_LINE_SY[13];
+						DIR[0] <= 0;
+					end else begin
 						LINE_VERTA.X <= LEFT_VERT.X[10:0];
 						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
 						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
@@ -1088,15 +1098,9 @@ module VDP1 (
 						DIR[0] <= 0;
 					end
 					LINE_D <= '0;
-
 					EC_FIND <= 0;
 					
-					if ((LINE_LEFT_OVER || LINE_RIGHT_OVER || LINE_TOP_OVER || LINE_BOTTOM_OVER) && !CMD.CMDPMOD.PCLP) begin
-						CMD_ST <= CMDS_LINE_NEXT;
-					end else begin
-						SPR_READ <= 1;
-						CMD_ST <= CMDS_SSPR_CALCTX;
-					end
+					CMD_ST <= CMDS_SSPR_CALCTX;
 				end
 				
 				CMDS_SSPR_CALCTX: begin
@@ -1119,7 +1123,12 @@ module VDP1 (
 						HSS_EN <= 1;
 					end
 
-					CMD_ST <= CMDS_GRD_CALC_ROW;
+					if ((LINE_LEFT_OVER || LINE_RIGHT_OVER || LINE_TOP_OVER || LINE_BOTTOM_OVER) && !CMD.CMDPMOD.PCLP) begin
+						CMD_ST <= CMDS_LINE_NEXT;
+					end else begin
+						SPR_READ <= 1;
+						CMD_ST <= CMDS_GRD_CALC_ROW;
+					end
 				end
 				
 				CMDS_LINE_CALC: begin
@@ -1838,19 +1847,13 @@ module VDP1 (
 					OUT_X <= '0;
 					OUT_Y <= OUT_Y + 9'd1;
 				end
-				else if (OUT_X < 9'd352) begin
+				else if (OUT_X < 9'd352 + 8) begin
 					OUT_X <= OUT_X + 9'd1;
 				end
 			end
-//			if (HTIM_N && !HTIM_N_OLD && !VTIM_N) begin
-//				OUT_Y <= '1;
-//			end
-//			if (CE_F) begin
-//				FRAME_ERASE_HIT <= (OUT_X >= {EWLR.X1,3'b000}) && ({1'b0,OUT_X} < {EWRR.X3,3'b000}) && (OUT_Y >= EWLR.Y1) && (OUT_Y <= EWRR.Y3);
-//			end
 			
 			
-			if (!VTIM_N && VBLANK_ERASE && CE_R) begin
+			if (!VTIM_N && HTIM_N && VBLANK_ERASE && CE_R) begin
 				OUT_X <= OUT_X + 9'd1;
 				if ({1'b0,OUT_X} + 10'd1 == {EWRR.X3,3'b000}) begin
 					OUT_X <= {EWLR.X1,3'b000};
@@ -1871,7 +1874,7 @@ module VDP1 (
 	end
 	
 	assign FRAME_ERASE_EN = ERASE_HIT && FRAME_ERASE && VTIM_N;
-	assign VBLANK_ERASE_EN = ERASE_HIT && VBLANK_ERASE && ~VTIM_N;
+	assign VBLANK_ERASE_EN = ERASE_HIT && VBLANK_ERASE && ~VTIM_N && HTIM_N;
 	
 	assign FB_ERASE_A = {OUT_Y[7:0],OUT_X[8:0]};
 	assign FB_DISP_A = TVMR.TVM[1:0] == 2'b10 ? {OUT_RY.INT[7:0],OUT_RX.INT[8:0]} : 
@@ -1891,7 +1894,7 @@ module VDP1 (
 	//VRAM
 	typedef enum bit [3:0] {
 		VS_IDLE,  
-		VS_RAS0,VS_RAS1,
+		VS_RAS0,VS_RAS1,VS_RAS2,
 		VS_CPU_WRITE,
 		VS_CPU_READ,
 		VS_CMD_READ,
@@ -2189,11 +2192,14 @@ module VDP1 (
 				end
 				
 				VS_RAS0: if (CE_F) begin
-//					VRAM_PAGE_BREAK <= 0;
 					VRAM_ST <= VS_RAS1;
 				end
 				
 				VS_RAS1: if (CE_F) begin
+					VRAM_ST <= VS_RAS2;
+				end
+				
+				VS_RAS2: if (CE_F) begin
 					VRAM_ST <= VS_IDLE;
 				end
 				
@@ -2201,7 +2207,7 @@ module VDP1 (
 					VRAM_WE <= '0;
 //					VRAM_PAGE_BREAK <= 1;
 					DRAW_ACCESS_WAIT <= 5'd13;
-					if (!VRAM_FIFO_FULL && !BURST) CPU_ACCESS_WAIT <= 5'd11;
+					if (!VRAM_FIFO_FULL && !BURST) CPU_ACCESS_WAIT <= 5'd10;
 					VRAM_ST <= VS_IDLE;
 				end
 				
