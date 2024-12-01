@@ -564,7 +564,7 @@ module SCU_DSP (
 	assign PRG_RAM_ADDR = T0 || RUN ? PC : PRG_TRANS_ADDR;
 	assign PRG_RAM_D = T0 ? D0BUSI : DI;
 	assign PRG_RAM_WE = T0 ? DMAI.PRGW & DMA_EN & CE_R : !RUN & PRG_TRANS_WE & CE_R;
-	DSP_PRG_RAM #(8,32," ","prg.txt") PRG_RAM(CLK, PRG_RAM_ADDR, PRG_RAM_D, PRG_RAM_WE & CE_R, PRG_RAM_Q);
+	DSP_PRG_RAM #(8,32," ","prg.txt") PRG_RAM(CLK, PRG_RAM_ADDR, PRG_RAM_D, PRG_RAM_WE, PRG_RAM_Q);
 
 	
 endmodule
