@@ -12,5 +12,4 @@
 Current status is WIP/Beta
 
 Known issues:
-- Space Jam - freeze, graphic gliches in demo
 
