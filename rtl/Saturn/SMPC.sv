@@ -57,10 +57,10 @@ module SMPC (
 	bit  [ 7: 0] SEC;
 	bit  [ 7: 0] MIN;
 	bit  [ 7: 0] HOUR;
-	bit  [ 7: 0] DAYS;
-	bit  [ 3: 0] DAY;
-	bit  [ 3: 0] MONTH;
-	bit  [15: 0] YEAR;
+	bit  [ 7: 0] DAYS = 8'h01;
+	bit  [ 3: 0] DAY = 4'h2;
+	bit  [ 3: 0] MONTH = 4'h1;
+	bit  [15: 0] YEAR = 16'h2024;
 	
 //	bit  [ 7: 0] SMEM[4];
 
@@ -99,28 +99,19 @@ module SMPC (
 	PortState_t PORT_ST;
 	
 
-	always @(posedge CLK or negedge RST_N) begin
+	always @(posedge CLK) begin
 		bit [21: 0] CLK_CNT;
 		bit         SEC_CLK,MIN_CLK,HOUR_CLK,DAYS_CLK,MONTH_CLK,YEAR_CLK;
 		
-		if (!RST_N) begin
+		if (CE) begin
+`ifdef DEBUG
 			SEC <= 8'h00;
 			MIN <= 8'h00;
 			HOUR <= 8'h00;
-			DAYS <= 8'h01;
+			DAYS <= 8'h02;
 			{DAY,MONTH} <= 8'h01;
 			YEAR <= 16'h2024;
-		end else if (COMM_ST == CS_EXEC && COMREG == 8'h16) begin
-`ifndef DEBUG
-			SEC <= IREG[6];
-			MIN <= IREG[5];
-			HOUR <= IREG[4];
-			DAYS <= IREG[3];
-			{DAY,MONTH} <= IREG[2];
-			YEAR <= {IREG[0],IREG[1]};
-`endif
-		end else if (CE) begin
-`ifndef DEBUG
+`else
 			SEC_CLK <= 0;
 			MIN_CLK <= 0;
 			HOUR_CLK <= 0;
@@ -192,6 +183,15 @@ module SMPC (
 			end
 			if (YEAR_CLK) begin
 				YEAR <= YEAR + 16'd1;
+			end
+			
+			if (COMM_ST == CS_EXEC && COMREG == 8'h16) begin
+				SEC <= IREG[6];
+				MIN <= IREG[5];
+				HOUR <= IREG[4];
+				DAYS <= IREG[3];
+				{DAY,MONTH} <= IREG[2];
+				YEAR <= {IREG[0],IREG[1]};
 			end
 `endif
 		end
@@ -633,7 +633,7 @@ module SMPC (
 											CHECK_CONTINUE <= 1;
 										end
 										CONT_PREV <= 0;
-										MIRQ_N <= 0;
+										MIRQ_N <= 0; 
 										COMM_ST <= CS_END;
 									end
 									OREG_CNT <= OREG_CNT + 5'd1;
@@ -688,7 +688,7 @@ module SMPC (
 							OREG_RAM_WE <= 1;
 							SR[7:5] <= {1'b1,1'b1,1'b0};
 							//CHECK_CONTINUE <= 1;//TODO: multiple requests for large peripheral data
-							MIRQ_N <= 0;
+							MIRQ_N <= 0; 
 							COMM_ST <= CS_INTBACK_BREAK;
 						end
 					end
@@ -854,7 +854,7 @@ module SMPC (
 						OREG_DATA <= {MD_ID,4'b0000};
 						OREG_WRITE <= 1;
 						PORT_ST <= PS_NEXT;
-					end		
+					end	
 					
 					//Standart PAD
 					PS_DPAD_0: begin
