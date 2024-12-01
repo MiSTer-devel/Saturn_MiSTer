@@ -257,10 +257,10 @@ module emu
 		"P1-;",
 		"P1OA,Aspect Ratio,4:3,16:9;",
 		"P1OB,320x224 Aspect,Original,Corrected;",
-		"P1O13,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
-		"P1-;",
-		"P1OC,Border,No,Yes;",
-		"P1ODE,Composite Blend,Off,On,Adaptive;",
+//		"P1O13,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
+//		"P1-;",
+//		"P1OC,Border,No,Yes;",
+//		"P1ODE,Composite Blend,Off,On,Adaptive;",
 	
 		"P2,Input;",
 		"P2-;",
@@ -1509,20 +1509,19 @@ module emu
 		if(old_vbl & ~VBL_N) res <= {VRES,HRES};
 	end
 	
-	
-	wire [2:0] scale = status[3:1];
-	wire [2:0] sl = scale ? scale - 1'd1 : 3'd0;
-	
-	assign CLK_VIDEO = clk_sys;
-	assign VGA_SL = {~INTERLACE,~INTERLACE} & sl[1:0];
-	
-`ifndef DEBUG
-	wire scandoubler = ~INTERLACE & (|scale | forced_scandoubler);
-	wire hq2x = (scale == 1);
-`else
+//`ifndef DEBUG
+//	wire [2:0] scale = status[3:1];
+//	wire [2:0] sl = scale ? scale - 1'd1 : 3'd0;
+//	wire scandoubler = ~INTERLACE & (|scale | forced_scandoubler);
+//	wire hq2x = (scale == 1);
+//`else
+	wire [2:0] sl = '0;
 	wire scandoubler = 0;
 	wire hq2x = 0;
-`endif
+//`endif
+
+	assign CLK_VIDEO = clk_sys;
+	assign VGA_SL = {~INTERLACE,~INTERLACE} & sl[1:0];
 
 	video_mixer #(.LINE_LENGTH((352*2)+8), .HALF_DEPTH(0), .GAMMA(1)) video_mixer
 	(
