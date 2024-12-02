@@ -176,8 +176,8 @@ module emu
 
 	always_comb begin
 		if (status[10]) begin
-			VIDEO_ARX = 8'd16;
-			VIDEO_ARY = 8'd9;
+			VIDEO_ARX = 8'd0;
+			VIDEO_ARY = 8'd0;
 		end else begin
 			casez(res)
 				4'b00?0: begin // 320 x 224
@@ -255,8 +255,9 @@ module emu
 		
 		"P1,Audio & Video;",
 		"P1-;",
-		"P1OA,Aspect Ratio,4:3,16:9;",
+		"P1OA,Aspect Ratio,4:3,Streched;",
 		"P1OB,320x224 Aspect,Original,Corrected;",
+		"P1OT,Deinterlacing, Weave, Bob;",
 //		"P1O13,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 //		"P1-;",
 //		"P1OC,Border,No,Yes;",
@@ -1498,7 +1499,7 @@ module emu
 		end
 	end
 	
-	assign VGA_F1 = FIELD;
+	assign VGA_F1 = FIELD & ~status[29];
 	
 	//lock resolution for the whole frame.
 	reg [3:0] res = 4'b0000;
