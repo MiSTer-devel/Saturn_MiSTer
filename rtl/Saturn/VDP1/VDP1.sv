@@ -854,17 +854,17 @@ module VDP1 (
 						2'b01: begin 
 							COL_DIRY <= CMD.CMDYB[12];
 							COL_HEIGHT <= SSPR_HEIGHT_ABS[12:0] + 13'd1;
-							DIR[1] <= CMD.CMDYB[12];
+							DIR[1] <= 0;
 						end
 						2'b10: begin 
 							COL_DIRY <= CMD.CMDYB[12];
 							COL_HEIGHT <= SSPR_HEIGHT_ABS[12:0] + 13'd1;
-							DIR[1] <= CMD.CMDYB[12];
+							DIR[1] <= 0;
 						end
 						2'b11: begin 
 							COL_DIRY <= CMD.CMDYB[12];
 							COL_HEIGHT <= SSPR_HEIGHT_ABS[12:0] + 13'd1;
-							DIR[1] <= CMD.CMDYB[12];
+							DIR[1] <= 0;
 						end
 					endcase
 					
