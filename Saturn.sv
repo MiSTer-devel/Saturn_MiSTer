@@ -255,7 +255,7 @@ module emu
 		
 		"P1,Audio & Video;",
 		"P1-;",
-		"P1OA,Aspect Ratio,4:3,Streched;",
+		"P1OA,Aspect Ratio,4:3,Stretched;",
 		"P1OB,320x224 Aspect,Original,Corrected;",
 		"P1OT,Deinterlacing, Weave, Bob;",
 //		"P1O13,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
