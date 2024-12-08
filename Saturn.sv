@@ -245,7 +245,7 @@ module emu
 		"FS2,BIN,Load bios;",
 		"FS3,BIN,Load cartridge;",
 		"-;",
-		"OLN,Cartridge,None,ROM 2M,DRAM 1M,DRAM 4M;",
+		"OLN,Cartridge,None,ROM 2M,DRAM 1M,DRAM 4M,BACKUP;",
 		"o13,Region,Japan,Taiwan,USA,Brazil,Korea,Asia,Europe,Auto;",
 		"-;",
 		"D0RO,Load Backup RAM;",
@@ -428,6 +428,8 @@ module emu
 	wire save_download = ioctl_download & (ioctl_index[5:2] == 4'b0001);
 	wire cdd_download = ioctl_download & (ioctl_index[5:2] == 4'b0010);
 	wire cdboot_download = ioctl_download & (ioctl_index[5:2] == 4'b0011);
+	
+	wire [2:0] cart_type = status[23:21];
 	
 	
 	reg osd_btn = 0;
@@ -683,7 +685,7 @@ module emu
 	wire [15:0] CD_RAM_Q;
 	wire        CD_RAM_RDY;
 	
-	wire [21:1] CART_MEM_A;
+	wire [24:1] CART_MEM_A;
 	wire [15:0] CART_MEM_D;
 	wire [15:0] CART_MEM_Q;
 	wire [ 1:0] CART_MEM_WE;
@@ -855,7 +857,7 @@ module emu
 		.CD_RAM_Q(CD_RAM_Q),
 		.CD_RAM_RDY(CD_RAM_RDY),
 		
-		.CART_MODE(status[23:21]),
+		.CART_MODE(cart_type),
 		.CART_MEM_A(CART_MEM_A),
 		.CART_MEM_D(CART_MEM_D),
 		.CART_MEM_WE(CART_MEM_WE),
@@ -1100,8 +1102,8 @@ module emu
 		.bios_busy(bios_busy),
 		
 		//SRAM backup
-		.bsram_addr({sd_lba[6:0],tmpram_addr}),
-		.bsram_din ({tmpram_dout[7:0],tmpram_dout[15:8]}),
+		.bsram_addr(sd_lba[11:7] ? {1'b1,sd_lba[10:7]-4'h1,sd_lba[6:0],tmpram_addr} : {5'b00000,sd_lba[6:0],tmpram_addr}),
+		.bsram_din ({8'hFF,tmpram_dout[15:8]}),
 		.bsram_wr  ({2{tmpram_req & bk_loading}}),
 		.bsram_rd  ((tmpram_req & ~bk_loading)),
 		.bsram_dout(bsram_do),
@@ -1143,7 +1145,7 @@ module emu
 		.wr({4{~RAMH_CS_N}} & ~MEM_DQM_N),
 		.rd(~RAMH_CS_N & ~MEM_RD_N),
 		.dout(sdr2_do),
-		.rfs(RAMH_RFS),
+		.rfs(~RAMH_CS_N & RAMH_RFS),
 		.busy(sdr2_busy)
 	);
 `endif
@@ -1329,7 +1331,8 @@ module emu
 
 /////////////////////////  BRAM SAVE/LOAD  /////////////////////////////
 	wire downloading = save_download;
-	wire bk_change  = ~SRAM_CS_N & ~MEM_DQM_N[0];
+	wire bk_cart    = cart_type == 3'h4;
+	wire bk_change  = (~SRAM_CS_N & ~MEM_DQM_N[0]) | (CART_MEM_WE[0] & bk_cart);
 	wire bk_load    = status[24];
 	wire bk_save    = status[25];
 	wire autosave   = status[26];
@@ -1355,6 +1358,7 @@ module emu
 	reg  bk_loading = 0;
 	reg  bk_state   = 0;
 	//reg  bk_reload  = 0;
+	wire [11:0] last_block = {bk_cart,11'h07F};
 
 	always @(posedge clk_sys) begin
 		reg old_downloading = 0;
@@ -1405,7 +1409,7 @@ module emu
 							tmpram_tx_start <= 0;
 							state <= 0;
 							sd_lba <= sd_lba + 1'd1;
-							if (sd_lba[6:0] == 7'h7F) bk_state <= 0;
+							if (sd_lba[11:0] == last_block) bk_state <= 0;
 						end
 				endcase
 			end
@@ -1423,7 +1427,7 @@ module emu
 					2: if (!sd_ack && old_ack) begin
 							state <= 0;
 							sd_lba <= sd_lba + 1'd1;
-							if (sd_lba[6:0] == 7'h7F) bk_state <= 0;
+							if (sd_lba[11:0] == last_block) bk_state <= 0;
 						end
 				endcase
 			end

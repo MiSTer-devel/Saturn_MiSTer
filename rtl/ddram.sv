@@ -89,7 +89,7 @@ module ddram
 	input  [ 1: 0] bios_wr,
 	output         bios_busy,
 
-	input  [15: 1] bsram_addr,
+	input  [20: 1] bsram_addr,
 	output [15: 0] bsram_dout,
 	input  [15: 0] bsram_din,
 	input          bsram_rd,
@@ -145,7 +145,7 @@ reg  [ 15:  0] bios_write_data;
 reg  [  1:  0] bios_be;
 reg            bios_write_busy;
 
-reg  [ 15:  1] bsram_rcache_addr,bsram_write_addr;
+reg  [ 20:  1] bsram_rcache_addr,bsram_write_addr;
 reg            bsram_rcache_dirty;
 reg  [ 15:  0] bsram_write_data;
 reg  [  1:  0] bsram_be;
@@ -294,7 +294,7 @@ always @(posedge clk) begin
 			cart_rcache_dirty <= 0;
 		end
 		if (bsram_rd && !bsram_rd_old) begin
-			if (bsram_addr[15:4] != bsram_rcache_addr[15:4] || bsram_rcache_dirty) begin
+			if (bsram_addr[20:4] != bsram_rcache_addr[20:4] || bsram_rcache_dirty) begin
 				bsram_read_busy <= 1;
 			end
 			bsram_rcache_addr <= bsram_addr;
@@ -364,7 +364,7 @@ always @(posedge clk) begin
 			bios_write_busy <= 1;	
 		end
 		if (|bsram_wr && !bsram_wr_old) begin
-			if (bsram_addr[15:4] == bsram_rcache_addr[15:4]) begin
+			if (bsram_addr[20:4] == bsram_rcache_addr[20:4]) begin
 				bsram_rcache_dirty <= 1;
 			end
 			bsram_write_addr <= bsram_addr;
@@ -557,7 +557,7 @@ always @(posedge clk) begin
 				end
 				else if (bsram_write_busy) begin
 					bsram_write_busy <= 0;
-					ram_address <= {10'b0000010000,bsram_write_addr[15:3],2'b00};
+					ram_address <= bsram_write_addr[20] ? {6'b001100,bsram_write_addr[19:3],2'b00} : {10'b0000010000,bsram_write_addr[15:3],2'b00};
 					ram_din		<= {4{bsram_write_data}};
 					case (bsram_write_addr[2:1])
 						2'b00: ram_be <= {bsram_be,6'b000000};
@@ -571,7 +571,7 @@ always @(posedge clk) begin
 					state       <= 3'h1;
 				end
 				else if (bsram_read_busy) begin
-					ram_address <= {10'b0000010000,bsram_rcache_addr[15:4],3'b000};
+					ram_address <= bsram_rcache_addr[20] ? {6'b001100,bsram_rcache_addr[19:4],3'b000} : {10'b0000010000,bsram_rcache_addr[15:4],3'b000};
 					ram_be      <= 8'hFF;
 					ram_read    <= 1;
 					ram_burst   <= 2;

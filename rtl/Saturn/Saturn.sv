@@ -104,7 +104,7 @@ module Saturn
 	input             CD_RAM_RDY,
 	
 	input       [2:0] CART_MODE,
-	output     [21:1] CART_MEM_A,
+	output     [24:1] CART_MEM_A,
 	output     [15:0] CART_MEM_D,
 	output     [ 1:0] CART_MEM_WE,
 	output            CART_MEM_RD,
