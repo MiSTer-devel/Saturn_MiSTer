@@ -242,7 +242,7 @@ module emu
 	`include "build_id.v"
 	localparam CONF_STR = {
 		"Saturn;;",
-		"S0,CUECHD,Insert Disk;",
+		"S0,CUECHD,Insert Disc;",
 		"FS2,BIN,Load bios;",
 		"FS3,BIN,Load cartridge;",
 		"-;",
