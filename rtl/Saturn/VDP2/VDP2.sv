@@ -128,6 +128,8 @@ module VDP2 (
 	parameter HRES_352  = 9'd455;//
 	parameter HS_START_320  = 9'd350;
 	parameter HS_START_352  = 9'd380;
+	parameter HS_MID_320  = 9'd137;
+	parameter HS_MID_352  = 9'd153;
 	parameter HBL_START_320 = 9'd312;
 	parameter HBL_START_352 = 9'd344;
 //	parameter HBL_END_320 = 9'd415 - 9'd1;//9'd410;
@@ -210,16 +212,17 @@ module VDP2 (
 //	wire PRELAST_DOT = (H_CNT == HRES_320 - 2 && !HRES[0]) || (H_CNT == HRES_352 - 2 && HRES[0]);
 	wire [8:0] VBL_HPOS = !HRES[0] ? 9'h15B : 9'h177;
 	wire [8:0] HS_START = (!HRES[0] ? HS_START_320 : HS_START_352) - (!PAL ? 9'd0 : 9'd4);
+	wire [8:0] HS_MID = (!HRES[0] ? HS_MID_320 : HS_MID_352) - (!PAL ? 9'd0 : 9'd4);
 	wire [8:0] HS_END =  HS_START + 9'd32; 
 	wire [8:0] HBL_END = !HRES[1] ? 9'd3 : 9'd2;
 	wire [8:0] HDISP_END = !HRES[0] ? 9'd320 - 9'd1 : 9'd352 - 9'd1;
 	wire [8:0] VBL_START = VBL_START_224 + {VRES,4'h0};
-	wire [8:0] VS_START  = (!VRES[1] ? (!VRES[0] ? VS_START_224 : VS_START_240) : VS_START_256) + (REGS.TVMD.LSMD[1] && ODD ? 9'd1 : 9'd0);
+	wire [8:0] VS_START  = (!VRES[1] ? (!VRES[0] ? VS_START_224 : VS_START_240) : VS_START_256);
 	wire [8:0] VS_END    = !VRES[1] ? (!VRES[0] ? VS_END_224 : VS_END_240) : VS_END_256;
-	wire [8:0] VSYNC_HSTART = REGS.TVMD.LSMD[1] && ODD ? 9'd176 : 9'd352;
+	wire [8:0] VSYNC_HSTART = REGS.TVMD.LSMD[1] && ODD ? HS_MID : HS_START;
 	wire [8:0] VBORD_START  = !VRES[1] ? (!VRES[0] ? 9'd263-9'd12 : 9'd263-9'd4) : 9'd313-9'd0;
 	wire [8:0] VBORD_END  = !VRES[1] ? (!VRES[0] ? 9'd224+9'd12 : 9'd240+9'd4) : 9'd256+9'd0;
-	wire [8:0] BREAK_LINE  = !PAL ? (VRES_NTSC - 9'd3) : (VRES_PAL - 9'd3);
+	wire [8:0] BREAK_LINE  = (!PAL ? (VRES_NTSC - 9'd3) : (VRES_PAL - 9'd3)) - (REGS.TVMD.LSMD[1] && ODD ? 9'd1 : 9'd0);
 	wire [8:0] NEXT_TO_LAST_LINE  = 9'h1FE;
 	wire [8:0] LAST_LINE  = 9'h1FF;
 	wire IS_LAST_LINE = (V_CNT == LAST_LINE);
@@ -267,7 +270,7 @@ module VDP2 (
 				HBLANK <= 1;
 			end
 
-			if (H_CNT == VSYNC_HSTART) begin
+			if (H_CNT == VSYNC_HSTART - 1) begin
 				if (V_CNT == VS_START - 1) begin
 					VSYNC <= 1;
 				end else if (V_CNT == VS_END - 1) begin
@@ -300,6 +303,15 @@ module VDP2 (
 			VRES <= REGS.TVMD.VRESO[1:0] & {PAL,1'b1};
 			LSMD <= REGS.TVMD.LSMD;
 			/*if (VBLANK)*/ DISP <= REGS.TVMD.DISP;
+		end
+		else if (DOT_CE_F) begin
+			if (ODD && H_CNT == VSYNC_HSTART - 1) begin
+				if (V_CNT == VS_START - 1) begin
+					VSYNC <= 1;
+				end else if (V_CNT == VS_END - 1) begin
+					VSYNC <= 0;
+				end
+			end
 		end
 	end
 	wire DDI = &LSMD;//Double-density interlace
