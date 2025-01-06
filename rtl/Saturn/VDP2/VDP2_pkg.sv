@@ -1629,6 +1629,7 @@ package VDP2_PKG;
 	typedef bit [ 1: 0] RxCHS_t[2];
 	typedef bit [ 2: 0] RxCELLX_t[2];
 	typedef bit [ 1: 0] RxCTS_t[2];
+	typedef bit         RxCTEN_t[2];
 	
 	typedef struct
 	{
@@ -1704,6 +1705,7 @@ package VDP2_PKG;
 		RxCELLX_t   RxCELLX;
 		bit [ 1: 0] RxCT;
 		RxCTS_t     RxCTS;
+		RxCTEN_t    RxCT_EN;
 		bit [ 1: 0] RxCRCT;
 		bit [ 1: 0] RxCTTP;
 		bit [ 1: 0] RxOVR;
