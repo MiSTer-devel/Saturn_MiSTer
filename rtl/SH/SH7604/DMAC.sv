@@ -270,7 +270,7 @@ module SH7604_DMAC (
 							if (CHCR[DMA_CH].TB) begin
 								DMA_RD <= 1;
 								DMA_BURST <= &CHCR[DMA_CH].TS;
-								DMA_LOCK <= CHCR[DMA_CH].TB | &CHCR[DMA_CH].TS;
+								DMA_LOCK <= 1;
 								LW_CNT <= &CHCR[DMA_CH].TS ? 2'd3 : 2'd0;
 							end
 						end 
@@ -285,6 +285,9 @@ module SH7604_DMAC (
 					end
 					
 					TCR[DMA_CH] <= TCR_NEXT;
+					if (TCR_NEXT == 24'd1) begin
+						if (CHCR[DMA_CH].TB) DMA_LOCK <= 0;
+					end
 					if (!TCR_NEXT) begin
 						CHCR[DMA_CH].TE <= 1;
 						DMA_RD <= 0;
