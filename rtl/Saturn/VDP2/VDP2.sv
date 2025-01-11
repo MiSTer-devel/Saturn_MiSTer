@@ -2149,10 +2149,10 @@ module VDP2 (
 	wire [ 8: 0] WxSY[2] = '{REGS.WPSY0.WxSY,REGS.WPSY1.WxSY};
 	wire [ 8: 0] WxEY[2] = '{REGS.WPEY0.WxEY,REGS.WPEY1.WxEY};
 	
-	wire W0_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[0][9:1],WxSX[0][0]&HRES[1]} || WxSX[0][9:0] >= 10'h3FC) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[0][9:1],WxEX[0][0]&HRES[1]} && {WxEX[0][9:1],WxEX[0][0]&HRES[1]} <= 10'h380 &&
-	              (WSCRNY                 >= {WxSY[0][8:1],WxSY[0][0]&~DDI}    || WxSY[0][8:0] >=  9'h1FE) && WSCRNY                 <= {WxEY[0][8:1],WxEY[0][0]&~DDI}    && WxEY[0][8:0] < 9'h1FC;
-	wire W1_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]&HRES[1]} || WxSX[1][9:0] >= 10'h3FC) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]&HRES[1]} && {WxEX[1][9:1],WxEX[1][0]&HRES[1]} <= 10'h380 &&
-	              (WSCRNY                 >= {WxSY[1][8:1],WxSY[1][0]&~DDI}    || WxSY[1][8:0] >=  9'h1FE) && WSCRNY                 <= {WxEY[1][8:1],WxEY[1][0]&~DDI}    && WxEY[1][8:0] < 9'h1FC;
+	wire W0_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[0][9:1],WxSX[0][0]&HRES[1]} || WxSX[0][9:0] >= 10'h360) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[0][9:1],WxEX[0][0]&HRES[1]} && {WxEX[0][9:1],WxEX[0][0]&HRES[1]} < 10'h360 && {WxEX[0][9:1],WxEX[0][0]&HRES[1]} != 10'h2EC &&
+	             (((WSCRNY                >= {WxSY[0][8:1],WxSY[0][0]&~DDI}                              ) && WSCRNY                 <= {WxEY[0][8:1],WxEY[0][0]&~DDI}    && WxSY[0][8:0] != 9'h1FE) || (WxEY[0][8:0] >= 9'h0F0 && !DDI));
+	wire W1_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]&HRES[1]} || WxSX[1][9:0] >= 10'h360) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]&HRES[1]} && {WxEX[1][9:1],WxEX[1][0]&HRES[1]} < 10'h360 && {WxEX[1][9:1],WxEX[1][0]&HRES[1]} != 10'h2EC &&
+	             (((WSCRNY                >= {WxSY[1][8:1],WxSY[1][0]&~DDI}                              ) && WSCRNY                 <= {WxEY[1][8:1],WxEY[1][0]&~DDI}    && WxSY[1][8:0] != 9'h1FE) || (WxEY[1][8:0] >= 9'h0F0 && !DDI));
 					  
 	bit          W0_HIT_PIPE[17*2];
 	bit          W1_HIT_PIPE[17*2];
@@ -2231,6 +2231,7 @@ module VDP2 (
 		bit [ 6: 0] NPALN[8];
 		bit [31: 0] NCH[4];
 		bit [ 2: 0] NCHCN[4];
+		bit         NCHEN[4];
 		bit         NEN[4];
 		bit [ 2: 0] RCNT[2];
 		bit         RHF[2];
@@ -2350,7 +2351,8 @@ module VDP2 (
 					NCC[3] = !NSxREG[0].BMEN ? PN_PIPE[4][0].CC : NSxREG[0].BMCC;              NCC[7] = !NSxREG[0].BMEN ? PN_PIPE[4][7].CC : NSxREG[0].BMCC;
 					NCH[3] = NBG_CH[0];
 					NCHCN[3] = NSxREG[0].CHCN;
-					NEN[3] = BG_PIPE[2].NxCH_EN[0];
+					NCHEN[3] = BG_PIPE[2].NxCH_EN[0];
+					NEN[3] = BG_PIPE[3].NxCH[0];
 				end else if (BG_PIPE[3].NxCH[1] && NSxREG[1].CHCN[1]) begin
 					NCNT[3] = BG_PIPE[3].NxCH_CNT[1];
 					NPALN[3] = !NSxREG[1].BMEN ? PN_PIPE[4][1].PALN : {NSxREG[1].BMP,4'b0000}; NPALN[7] = !NSxREG[1].BMEN ? PN_PIPE[4][7].PALN : {NSxREG[1].BMP,4'b0000};
@@ -2359,7 +2361,8 @@ module VDP2 (
 					NCC[3] = !NSxREG[1].BMEN ? PN_PIPE[4][1].CC : NSxREG[1].BMCC;              NCC[7] = !NSxREG[1].BMEN ? PN_PIPE[4][7].CC : NSxREG[1].BMCC;
 					NCH[3] = NBG_CH[1];
 					NCHCN[3] = {1'b0,NSxREG[1].CHCN[1:0]};
-					NEN[3] = BG_PIPE[2].NxCH_EN[1];
+					NCHEN[3] = BG_PIPE[2].NxCH_EN[1];
+					NEN[3] = BG_PIPE[3].NxCH[1];
 				end else if (BG_PIPE[3].NxCH[1] && ((NSxREG[1].CHCN == 3'b000 && NSxREG[1].ZMQT) || 
 																(NSxREG[1].CHCN == 3'b001 && NSxREG[1].ZMHF))) begin
 					NCNT[3] = BG_PIPE[3].NxCH_CNT[1];
@@ -2369,7 +2372,8 @@ module VDP2 (
 					NCC[3] = !NSxREG[1].BMEN ? PN_PIPE[4][5].CC : NSxREG[1].BMCC;              NCC[7] = !NSxREG[1].BMEN ? PN_PIPE[4][7].CC : NSxREG[1].BMCC;
 					NCH[3] = NBG_CH[1];
 					NCHCN[3] = {2'b00,NSxREG[1].CHCN[0]};
-					NEN[3] = BG_PIPE[3].NxCH[1] & BG_PIPE[2].NxCH_EN[1];
+					NCHEN[3] = BG_PIPE[2].NxCH_EN[1];
+					NEN[3] = BG_PIPE[3].NxCH[1];
 				end else begin
 					NCNT[3] = BG_PIPE[3].NxCH_CNT[3];
 					NPALN[3] = !NSxREG[3].BMEN ? PN_PIPE[4][3].PALN : {NSxREG[3].BMP,4'b0000}; NPALN[7] = !NSxREG[3].BMEN ? PN_PIPE[4][7].PALN : {NSxREG[3].BMP,4'b0000};
@@ -2378,9 +2382,10 @@ module VDP2 (
 					NCC[3] = !NSxREG[3].BMEN ? PN_PIPE[4][3].CC : NSxREG[3].BMCC;              NCC[7] = !NSxREG[3].BMEN ? PN_PIPE[4][7].CC : NSxREG[3].BMCC;
 					NCH[3] = NBG_CH[3];
 					NCHCN[3] = {2'b00,NSxREG[3].CHCN[0]};
-					NEN[3] = BG_PIPE[3].NxCH[3] & BG_PIPE[2].NxCH_EN[3];
+					NCHEN[3] = BG_PIPE[2].NxCH_EN[3];
+					NEN[3] = BG_PIPE[3].NxCH[3];
 				end
-				if (NEN[3]) begin
+				if (NEN[3] && NCHEN[3]) begin
 					case (NCHCN[3])
 						3'b000: begin				//4bits/dot, 16 colors
 							if (!NCNT[3][2] && NCNT[3][0] == 2'b11 && NSxREG[1].ZMQT && NSxREG[1].ON) begin
@@ -2423,28 +2428,30 @@ module VDP2 (
 						default:;
 					endcase
 				end
-				case (NCHCN[3])
-					3'b000: begin				//4bits/dot, 16 colors
-						if (!NCNT[3][2] && NCNT[3][0] == 2'b11 && NSxREG[1].ZMQT && NSxREG[1].ON) begin
-						NBG_CDP[7] <= {NPR[7], NCC[7], NPALN[7], 1'b0};
-						end else if (!NCNT[3][2] && ((NCNT[3][1:0] == 2'b00 && !(NSxREG[1].ZMQT && NSxREG[1].ON)) || (NCNT[3][1:0] == 2'b10 && NSxREG[1].ZMQT && NSxREG[1].ON))) begin
-						NBG_CDP[3] <= {NPR[3], NCC[3], NPALN[3], 1'b0};
+				if (NEN[3]) begin
+					case (NCHCN[3])
+						3'b000: begin				//4bits/dot, 16 colors
+							if (!NCNT[3][2] && NCNT[3][0] == 2'b11 && NSxREG[1].ZMQT && NSxREG[1].ON) begin
+							NBG_CDP[7] <= {NPR[7], NCC[7], NPALN[7], 1'b0};
+							end else if (!NCNT[3][2] && ((NCNT[3][1:0] == 2'b00 && !(NSxREG[1].ZMQT && NSxREG[1].ON)) || (NCNT[3][1:0] == 2'b10 && NSxREG[1].ZMQT && NSxREG[1].ON))) begin
+							NBG_CDP[3] <= {NPR[3], NCC[3], NPALN[3], 1'b0};
+							end
 						end
-					end
-					3'b001: begin				//8bits/dot, 256 colors
-						if (!NCNT[3][2] && ((NCNT[3][1] == 1'b0 && !(NSxREG[1].CHCN == 3'b001 && NSxREG[1].ZMHF && NSxREG[1].ON)) || (NCNT[3][1] == 1'b1 && NSxREG[1].ZMHF && NSxREG[1].ON))) begin
-						NBG_CDP[3] <= {NPR[3], NCC[3], NPALN[3], 1'b0};
+						3'b001: begin				//8bits/dot, 256 colors
+							if (!NCNT[3][2] && ((NCNT[3][1] == 1'b0 && !(NSxREG[1].CHCN == 3'b001 && NSxREG[1].ZMHF && NSxREG[1].ON)) || (NCNT[3][1] == 1'b1 && NSxREG[1].ZMHF && NSxREG[1].ON))) begin
+							NBG_CDP[3] <= {NPR[3], NCC[3], NPALN[3], 1'b0};
+							end
 						end
-					end
-					3'b010,3'b011: begin				//16bits/dot, 2048 colors
-						
-					end
-					3'b100: begin				//32bits/dot, 16M colors
-						
-					end
-					default:;
-				endcase
-					
+						3'b010,3'b011: begin				//16bits/dot, 2048 colors
+							
+						end
+						3'b100: begin				//32bits/dot, 16M colors
+							
+						end
+						default:;
+					endcase
+				end
+				
 				NEN[2] = 0;
 				if (BG_PIPE[3].NxCH[0] && NSxREG[0].CHCN[2:1]) begin
 					NCNT[2] = BG_PIPE[3].NxCH_CNT[0];
@@ -2454,7 +2461,8 @@ module VDP2 (
 					NCC[2] = !NSxREG[0].BMEN ? PN_PIPE[4][0].CC : NSxREG[0].BMCC;              NCC[6] = !NSxREG[0].BMEN ? PN_PIPE[4][6].CC : NSxREG[0].BMCC;
 					NCH[2] = NBG_CH[0];
 					NCHCN[2] = NSxREG[0].CHCN;
-					NEN[2] = BG_PIPE[3].NxCH[0] & BG_PIPE[2].NxCH_EN[0];
+					NCHEN[2] = BG_PIPE[2].NxCH_EN[0];
+					NEN[2] = BG_PIPE[3].NxCH[0];
 				end else if (BG_PIPE[3].NxCH[0] && ((NSxREG[0].CHCN == 3'b000 && NSxREG[0].ZMQT) || 
 																(NSxREG[0].CHCN == 3'b001 && NSxREG[0].ZMHF))) begin
 					NCNT[2] = BG_PIPE[3].NxCH_CNT[0];
@@ -2464,7 +2472,8 @@ module VDP2 (
 					NCC[2] = !NSxREG[0].BMEN ? PN_PIPE[4][4].CC : NSxREG[0].BMCC;              NCC[6] = !NSxREG[0].BMEN ? PN_PIPE[4][6].CC : NSxREG[0].BMCC;
 					NCH[2] = NBG_CH[0];
 					NCHCN[2] = NSxREG[0].CHCN;
-					NEN[2] = BG_PIPE[3].NxCH[0] & BG_PIPE[2].NxCH_EN[0];
+					NCHEN[2] = BG_PIPE[2].NxCH_EN[0];
+					NEN[2] = BG_PIPE[3].NxCH[0];
 				end else begin
 					NCNT[2] = BG_PIPE[3].NxCH_CNT[2];
 					NPALN[2] = !NSxREG[2].BMEN ? PN_PIPE[4][2].PALN : {NSxREG[2].BMP,4'b0000}; NPALN[6] = !NSxREG[2].BMEN ? PN_PIPE[4][2].PALN : {NSxREG[2].BMP,4'b0000};
@@ -2473,9 +2482,10 @@ module VDP2 (
 					NCC[2] = !NSxREG[2].BMEN ? PN_PIPE[4][2].CC : NSxREG[2].BMCC;              NCC[6] = !NSxREG[2].BMEN ? PN_PIPE[4][2].CC : NSxREG[2].BMCC;
 					NCH[2] = NBG_CH[2];
 					NCHCN[2] = {2'b00,NSxREG[2].CHCN[0]};
-					NEN[2] = BG_PIPE[3].NxCH[2] & BG_PIPE[2].NxCH_EN[2];
+					NCHEN[2] = BG_PIPE[2].NxCH_EN[2];
+					NEN[2] = BG_PIPE[3].NxCH[2];
 				end
-				if (NEN[2]) begin
+				if (NEN[2] && NCHEN[2]) begin
 					case (NCHCN[2])
 						3'b000: begin				//4bits/dot, 16 colors
 							if (!NCNT[2][2] && NCNT[2][1:0] == 2'b11 && NSxREG[0].ZMQT && NSxREG[0].ON) begin
@@ -2518,27 +2528,29 @@ module VDP2 (
 						default:;
 					endcase
 				end
-				case (NCHCN[2])
-					3'b000: begin				//4bits/dot, 16 colors
-						if (!NCNT[2][2] && NCNT[2][1:0] == 2'b11 && NSxREG[0].ZMQT && NSxREG[0].ON) begin
-						NBG_CDP[6] <= {NPR[6], NCC[6], NPALN[6], 1'b0};
-						end else if (!NCNT[2][2] && ((NCNT[2][1:0] == 2'b00 && !(NSxREG[0].ZMQT && NSxREG[0].ON)) || (NCNT[2][1:0] == 2'b10 && NSxREG[0].ZMQT && NSxREG[0].ON))) begin
-						NBG_CDP[2] <= {NPR[2], NCC[2], NPALN[2], 1'b0};
+				if (NEN[2]) begin
+					case (NCHCN[2])
+						3'b000: begin				//4bits/dot, 16 colors
+							if (!NCNT[2][2] && NCNT[2][1:0] == 2'b11 && NSxREG[0].ZMQT && NSxREG[0].ON) begin
+							NBG_CDP[6] <= {NPR[6], NCC[6], NPALN[6], 1'b0};
+							end else if (!NCNT[2][2] && ((NCNT[2][1:0] == 2'b00 && !(NSxREG[0].ZMQT && NSxREG[0].ON)) || (NCNT[2][1:0] == 2'b10 && NSxREG[0].ZMQT && NSxREG[0].ON))) begin
+							NBG_CDP[2] <= {NPR[2], NCC[2], NPALN[2], 1'b0};
+							end
 						end
-					end
-					3'b001: begin				//8bits/dot, 256 colors
-						if (!NCNT[2][2] && ((NCNT[2][1] == 1'b0 && !(NSxREG[0].CHCN == 3'b001 && NSxREG[0].ZMHF && NSxREG[0].ON)) || (NCNT[2][1] == 1'b1 && NSxREG[0].ZMHF && NSxREG[0].ON))) begin
-						NBG_CDP[2] <= {NPR[2], NCC[2], NPALN[2], 1'b0};
+						3'b001: begin				//8bits/dot, 256 colors
+							if (!NCNT[2][2] && ((NCNT[2][1] == 1'b0 && !(NSxREG[0].CHCN == 3'b001 && NSxREG[0].ZMHF && NSxREG[0].ON)) || (NCNT[2][1] == 1'b1 && NSxREG[0].ZMHF && NSxREG[0].ON))) begin
+							NBG_CDP[2] <= {NPR[2], NCC[2], NPALN[2], 1'b0};
+							end
 						end
-					end
-					3'b010,3'b011: begin				//16bits/dot, 2048 colors (NBG0)
-						
-					end
-					3'b100: begin				//32bits/dot, 16M colors (NBG0)
-						 
-					end
-					default:;
-				endcase
+						3'b010,3'b011: begin				//16bits/dot, 2048 colors (NBG0)
+							
+						end
+						3'b100: begin				//32bits/dot, 16M colors (NBG0)
+							 
+						end
+						default:;
+					endcase
+				end
 				
 				NEN[1] = 0;
 				if (BG_PIPE[3].NxCH[0] && NSxREG[0].CHCN[2]) begin
@@ -2549,7 +2561,8 @@ module VDP2 (
 					NCC[1] = !NSxREG[0].BMEN ? PN_PIPE[4][0].CC : NSxREG[0].BMCC;              NCC[5] = !NSxREG[0].BMEN ? PN_PIPE[4][5].CC : NSxREG[0].BMCC;
 					NCH[1] = NBG_CH[0];
 					NCHCN[1] = NSxREG[0].CHCN;
-					NEN[1] = BG_PIPE[2].NxCH_EN[0];
+					NCHEN[1] = BG_PIPE[2].NxCH_EN[0];
+					NEN[1] = BG_PIPE[3].NxCH[0];
 				end else if (BG_PIPE[3].NxCH[1] && NSxREG[1].CHCN == 3'b000 && (NSxREG[1].ZMHF || NSxREG[1].ZMQT)) begin
 					NCNT[1] = BG_PIPE[3].NxCH_CNT[1];
 					NPALN[1] = !NSxREG[1].BMEN ? PN_PIPE[4][1].PALN : {NSxREG[1].BMP,4'b0000}; NPALN[5] = !NSxREG[1].BMEN ? PN_PIPE[4][5].PALN : {NSxREG[1].BMP,4'b0000};
@@ -2558,7 +2571,8 @@ module VDP2 (
 					NCC[1] = !NSxREG[1].BMEN ? PN_PIPE[4][1].CC : NSxREG[1].BMCC;              NCC[5] = !NSxREG[1].BMEN ? PN_PIPE[4][5].CC : NSxREG[1].BMCC;
 					NCH[1] = NBG_CH[1];
 					NCHCN[1] = NSxREG[1].CHCN;
-					NEN[1] = BG_PIPE[3].NxCH[1] & (!BG_PIPE[3].NxCH_CNT[1][1] | (NSxREG[1].ZMHF & ~NSxREG[1].ZMQT)) & BG_PIPE[2].NxCH_EN[1];
+					NCHEN[1] = BG_PIPE[2].NxCH_EN[1];
+					NEN[1] = BG_PIPE[3].NxCH[1] & (!BG_PIPE[3].NxCH_CNT[1][1] | (NSxREG[1].ZMHF & ~NSxREG[1].ZMQT));
 				end else if (BG_PIPE[3].NxCH[1] && NSxREG[1].CHCN == 3'b001 && NSxREG[1].ZMHF) begin
 					NCNT[1] = BG_PIPE[3].NxCH_CNT[1];
 					NPALN[1] = !NSxREG[1].BMEN ? PN_PIPE[4][1].PALN : {NSxREG[1].BMP,4'b0000}; NPALN[5] = !NSxREG[1].BMEN ? PN_PIPE[4][5].PALN : {NSxREG[1].BMP,4'b0000};
@@ -2567,7 +2581,8 @@ module VDP2 (
 					NCC[1] = !NSxREG[1].BMEN ? PN_PIPE[4][1].CC : NSxREG[1].BMCC;              NCC[5] = !NSxREG[1].BMEN ? PN_PIPE[4][5].CC : NSxREG[1].BMCC;
 					NCH[1] = NBG_CH[1];
 					NCHCN[1] = NSxREG[1].CHCN;
-					NEN[1] = BG_PIPE[3].NxCH[1] & BG_PIPE[2].NxCH_EN[1];
+					NCHEN[1] = BG_PIPE[2].NxCH_EN[1];
+					NEN[1] = BG_PIPE[3].NxCH[1];
 				end else begin
 					NCNT[1] = BG_PIPE[3].NxCH_CNT[1];
 					NPALN[1] = !NSxREG[1].BMEN ? PN_PIPE[4][1].PALN : {NSxREG[1].BMP,4'b0000}; NPALN[5] = !NSxREG[1].BMEN ? PN_PIPE[4][5].PALN : {NSxREG[1].BMP,4'b0000};
@@ -2576,9 +2591,10 @@ module VDP2 (
 					NCC[1] = !NSxREG[1].BMEN ? PN_PIPE[4][1].CC : NSxREG[1].BMCC;              NCC[5] = !NSxREG[1].BMEN ? PN_PIPE[4][5].CC : NSxREG[1].BMCC;
 					NCH[1] = NBG_CH[1];
 					NCHCN[1] = {1'b0,NSxREG[1].CHCN[1:0]};
-					NEN[1] = BG_PIPE[3].NxCH[1] & BG_PIPE[2].NxCH_EN[1];
+					NCHEN[1] = BG_PIPE[2].NxCH_EN[1];
+					NEN[1] = BG_PIPE[3].NxCH[1];
 				end
-				if (NEN[1]) begin
+				if (NEN[1] && NCHEN[1]) begin
 					case (NCHCN[1])
 						3'b000: begin				//4bits/dot, 16 colors
 							if (NCNT[1][0] && (NSxREG[1].ZMHF || NSxREG[1].ZMQT) && NSxREG[1].ON) begin
@@ -2621,29 +2637,31 @@ module VDP2 (
 						default:;
 					endcase
 				end
-				case (NCHCN[1])
-					3'b000: begin				//4bits/dot, 16 colors
-						if (NCNT[1][0] && (NSxREG[1].ZMHF || NSxREG[1].ZMQT) && NSxREG[1].ON) begin
-						NBG_CDP[5] <= {NPR[5], NCC[5], NPALN[5], 1'b0};
-						end else if (!NCNT[1][2:0]) begin
-						NBG_CDP[1] <= {NPR[1], NCC[1], NPALN[1], 1'b0};
+				if (NEN[1]) begin
+					case (NCHCN[1])
+						3'b000: begin				//4bits/dot, 16 colors
+							if (NCNT[1][0] && (NSxREG[1].ZMHF || NSxREG[1].ZMQT) && NSxREG[1].ON) begin
+							NBG_CDP[5] <= {NPR[5], NCC[5], NPALN[5], 1'b0};
+							end else if (!NCNT[1][2:0]) begin
+							NBG_CDP[1] <= {NPR[1], NCC[1], NPALN[1], 1'b0};
+							end
 						end
-					end
-					3'b001: begin				//8bits/dot, 256 colors
-						if (!NCNT[1][2] && !NCNT[1][1]) begin
-						NBG_CDP[1] <= {NPR[1], NCC[1], NPALN[1], 1'b0};
+						3'b001: begin				//8bits/dot, 256 colors
+							if (!NCNT[1][2] && !NCNT[1][1]) begin
+							NBG_CDP[1] <= {NPR[1], NCC[1], NPALN[1], 1'b0};
+							end
 						end
-					end
-					3'b010,3'b011: begin				//16bits/dot, 2048 colors
-						if (!NCNT[1][2]) begin
-						NBG_CDP[1] <= {NPR[1], NCC[1], NPALN[1], 1'b0};
+						3'b010,3'b011: begin				//16bits/dot, 2048 colors
+							if (!NCNT[1][2]) begin
+							NBG_CDP[1] <= {NPR[1], NCC[1], NPALN[1], 1'b0};
+							end
 						end
-					end
-					3'b100: begin				//32bits/dot, 16M colors
-						
-					end
-					default:;
-				endcase
+						3'b100: begin				//32bits/dot, 16M colors
+							
+						end
+						default:;
+					endcase
+				end
 				
 				NEN[0] = 0;
 				if (BG_PIPE[3].NxCH[0] && NSxREG[0].CHCN == 3'b000 && (NSxREG[0].ZMHF || NSxREG[0].ZMQT)) begin
@@ -2654,7 +2672,8 @@ module VDP2 (
 					NCC[0] = !NSxREG[0].BMEN ? PN_PIPE[4][0].CC : NSxREG[0].BMCC;              NCC[4] = !NSxREG[0].BMEN ? PN_PIPE[4][4].CC : NSxREG[0].BMCC;
 					NCH[0] = NBG_CH[0];
 					NCHCN[0] = NSxREG[0].CHCN;
-					NEN[0] = BG_PIPE[3].NxCH[0] & (!BG_PIPE[3].NxCH_CNT[0][1] | (NSxREG[0].ZMHF & ~NSxREG[0].ZMQT)) & BG_PIPE[2].NxCH_EN[0];
+					NCHEN[0] = BG_PIPE[2].NxCH_EN[0];
+					NEN[0] = BG_PIPE[3].NxCH[0] & (!BG_PIPE[3].NxCH_CNT[0][1] | (NSxREG[0].ZMHF & ~NSxREG[0].ZMQT));
 				end else if (BG_PIPE[3].NxCH[0] && NSxREG[0].CHCN == 3'b001 && NSxREG[0].ZMHF) begin
 					NCNT[0] = BG_PIPE[3].NxCH_CNT[0];
 					NPALN[0] = !NSxREG[0].BMEN ? PN_PIPE[4][0].PALN : {NSxREG[0].BMP,4'b0000}; NPALN[4] = !NSxREG[0].BMEN ? PN_PIPE[4][4].PALN : {NSxREG[0].BMP,4'b0000};
@@ -2663,7 +2682,8 @@ module VDP2 (
 					NCC[0] = !NSxREG[0].BMEN ? PN_PIPE[4][0].CC : NSxREG[0].BMCC;              NCC[4] = !NSxREG[0].BMEN ? PN_PIPE[4][4].CC : NSxREG[0].BMCC;
 					NCH[0] = BG_PIPE[2].NxCH_EN[0] ? NBG_CH[0] : '0;
 					NCHCN[0] = NSxREG[0].CHCN;
-					NEN[0] = BG_PIPE[3].NxCH[0] & !BG_PIPE[3].NxCH_CNT[0][1] & BG_PIPE[2].NxCH_EN[0];
+					NCHEN[0] = BG_PIPE[2].NxCH_EN[0];
+					NEN[0] = BG_PIPE[3].NxCH[0] & !BG_PIPE[3].NxCH_CNT[0][1];
 				end else begin
 					NCNT[0] = BG_PIPE[3].NxCH_CNT[0];
 					NPALN[0] = !NSxREG[0].BMEN ? PN_PIPE[4][0].PALN : {NSxREG[0].BMP,4'b0000}; NPALN[4] = !NSxREG[0].BMEN ? PN_PIPE[4][4].PALN : {NSxREG[0].BMP,4'b0000};
@@ -2672,9 +2692,10 @@ module VDP2 (
 					NCC[0] = !NSxREG[0].BMEN ? PN_PIPE[4][0].CC : NSxREG[0].BMCC;              NCC[4] = !NSxREG[0].BMEN ? PN_PIPE[4][4].CC : NSxREG[0].BMCC;
 					NCH[0] = BG_PIPE[2].NxCH_EN[0] ? NBG_CH[0] : '0;
 					NCHCN[0] = NSxREG[0].CHCN;
-					NEN[0] = BG_PIPE[3].NxCH[0] & BG_PIPE[2].NxCH_EN[0];
+					NCHEN[0] = BG_PIPE[2].NxCH_EN[0];
+					NEN[0] = BG_PIPE[3].NxCH[0];
 				end
-				if (NEN[0]) begin
+				if (NEN[0] && NCHEN[0]) begin
 					case (NCHCN[0])
 						3'b000: begin				//4bits/dot, 16 colors
 							if (NCNT[0][0] && (NSxREG[0].ZMHF || NSxREG[0].ZMQT) && NSxREG[0].ON) begin
@@ -2717,29 +2738,31 @@ module VDP2 (
 						default:;
 					endcase
 				end
-				case (NCHCN[0])
-					3'b000: begin				//4bits/dot, 16 colors
-						if (NCNT[0][0] && (NSxREG[0].ZMHF || NSxREG[0].ZMQT) && NSxREG[0].ON) begin
-						NBG_CDP[4] <= {NPR[4], NCC[4], NPALN[4], 1'b0};
-						end else if (!NCNT[0][2:0]) begin
-						NBG_CDP[0] <= {NPR[0], NCC[0], NPALN[0], 1'b0};
+				if (NEN[0]) begin
+					case (NCHCN[0])
+						3'b000: begin				//4bits/dot, 16 colors
+							if (NCNT[0][0] && (NSxREG[0].ZMHF || NSxREG[0].ZMQT) && NSxREG[0].ON) begin
+							NBG_CDP[4] <= {NPR[4], NCC[4], NPALN[4], 1'b0};
+							end else if (!NCNT[0][2:0]) begin
+							NBG_CDP[0] <= {NPR[0], NCC[0], NPALN[0], 1'b0};
+							end
 						end
-					end
-					3'b001: begin				//8bits/dot, 256 colors
-						if (!NCNT[0][2] && !NCNT[0][1]) begin
-						NBG_CDP[0] <= {NPR[0], NCC[0], NPALN[0], 1'b0};
+						3'b001: begin				//8bits/dot, 256 colors
+							if (!NCNT[0][2] && !NCNT[0][1]) begin
+							NBG_CDP[0] <= {NPR[0], NCC[0], NPALN[0], 1'b0};
+							end
 						end
-					end
-					3'b010,3'b011: begin				//16bits/dot, 2048 colors
-						if (!NCNT[0][2]) begin
-						NBG_CDP[0] <= {NPR[0], NCC[0], NPALN[0], 1'b0};
+						3'b010,3'b011: begin				//16bits/dot, 2048 colors
+							if (!NCNT[0][2]) begin
+							NBG_CDP[0] <= {NPR[0], NCC[0], NPALN[0], 1'b0};
+							end
 						end
-					end
-					3'b100: begin				//32bits/dot, 16M colors
-						NBG_CDP[0] <= {NPR[0], NCC[0], NPALN[0], 1'b0};
-					end
-					default:;
-				endcase
+						3'b100: begin				//32bits/dot, 16M colors
+							NBG_CDP[0] <= {NPR[0], NCC[0], NPALN[0], 1'b0};
+						end
+						default:;
+					endcase
+				end
 				
 				BG_PIPE[1] <= BG_PIPE[0];
 				BG_PIPE[2] <= BG_PIPE[1];
