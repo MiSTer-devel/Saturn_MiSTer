@@ -1853,7 +1853,7 @@ module VDP1 (
 			end
 			
 			
-			if (!VTIM_N && HTIM_N && VBLANK_ERASE && CE_R) begin
+			if (!VTIM_N && (HTIM_N || HTIM_PIPE[0]) && VBLANK_ERASE && CE_R) begin
 				OUT_X <= OUT_X + 9'd1;
 				if ({1'b0,OUT_X} + 10'd1 == {EWRR.X3,3'b000}) begin
 					OUT_X <= {EWLR.X1,3'b000};
@@ -1874,7 +1874,7 @@ module VDP1 (
 	end
 	
 	assign FRAME_ERASE_EN = ERASE_HIT && FRAME_ERASE && VTIM_N;
-	assign VBLANK_ERASE_EN = ERASE_HIT && VBLANK_ERASE && ~VTIM_N && HTIM_N;
+	assign VBLANK_ERASE_EN = ERASE_HIT && VBLANK_ERASE && ~VTIM_N && (HTIM_N || HTIM_PIPE[0]);
 	
 	assign FB_ERASE_A = {OUT_Y[7:0],OUT_X[8:0]};
 	assign FB_DISP_A = TVMR.TVM[1:0] == 2'b10 ? {OUT_RY.INT[7:0],OUT_RX.INT[8:0]} : 
