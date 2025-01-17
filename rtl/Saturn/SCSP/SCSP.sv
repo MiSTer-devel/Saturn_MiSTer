@@ -55,10 +55,6 @@ module SCSP (
                       ,
 	output reg         DBG_68K_ERR,
 	output reg         DBG_SCU_HOOK,
-	output reg [ 7: 0] DBG_SCU_700,
-	output reg [ 7: 0] DBG_SCU_710,
-	output reg [ 7: 0] DBG_SCU_720,
-	output reg [ 7: 0] DBG_SCU_740,
 	output             PCM_EN_DBG,
 	output     [23: 0] SCA_DBG,
 	output     [ 5: 0] OP4_EFF_RATE_DBG,
@@ -1552,14 +1548,7 @@ module SCSP (
 						MEM_CS <= ~SCU_WA[19];
 						MEM_DEV <= 3'd0;
 						MEM_ST <= MS_SCU_WAIT;
-`ifdef DEBUG
-						if ({SCU_WA[19:1],1'b0} == 20'h004E0 && SCU_WE == 2'b10) DBG_SCU_HOOK <= SCU_D[15];
-						if ({SCU_WA[19:1],1'b0} == 20'h00700 && SCU_WE[1]) DBG_SCU_700 <= SCU_D[15:8];
-						if ({SCU_WA[19:1],1'b0} == 20'h00710 && SCU_WE[1]) DBG_SCU_710 <= SCU_D[15:8];
-						if ({SCU_WA[19:1],1'b0} == 20'h00720 && SCU_WE[1]) DBG_SCU_720 <= SCU_D[15:8];
-						if ({SCU_WA[19:1],1'b0} == 20'h00740 && SCU_WE[1]) DBG_SCU_740 <= SCU_D[15:8];
-`endif
-					end else if (!SCPU_WA[20] && SCPU_WPEND) begin
+					end else if (!SCPU_WA[20] && SCPU_WPEND && !SCU_RPEND) begin
 						SCPU_WPEND <= 0;
 						MEM_A <= SCPU_WA[18:1];
 						MEM_D <= SCPU_D;
@@ -1568,7 +1557,7 @@ module SCSP (
 						MEM_CS <= ~SCPU_WA[19];
 						MEM_DEV <= 3'd0;
 						MEM_ST <= MS_SCPU_WAIT;
-					end else if (!SCPU_RA[20] && SCPU_RPEND) begin
+					end else if (!SCPU_RA[20] && SCPU_RPEND && !SCU_WPEND) begin
 						MEM_A <= SCPU_RA[18:1];
 						MEM_WE <= '0;
 						MEM_RD <= 1;
