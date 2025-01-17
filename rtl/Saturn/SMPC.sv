@@ -314,7 +314,7 @@ module SMPC (
 				
 				TIME_CNT <= TIME_CNT + 17'd1;
 				if (!IRQV_N && IRQV_N_OLD) begin
-					INTBACK_TIME <= TIME_CNT - 17'd4000;//1ms prior to vblank
+					INTBACK_TIME <= TIME_CNT - 17'd4120;//~1ms prior to vblank
 					TIME_CNT <= '0;
 				end
 				
@@ -338,7 +338,7 @@ module SMPC (
 						end 
 						else if (INTBACK_PERI && ((INTBACK_OPTIM_EN && INTBACK_OPTIM_COND) || !INTBACK_OPTIM_EN) && IRQV_N && !SRES_EXEC) begin
 							OREG_CNT <= '0;
-							WAIT_CNT <= INTBACK_OPTIM_EN ? 16'd70 : 16'd2000;
+							WAIT_CNT <= INTBACK_OPTIM_EN ? 16'd0 : 16'd2000;
 							NEXT_COMM_ST <= CS_INTBACK_PERI;
 							COMM_ST <= CS_WAIT;
 						end 
@@ -1012,7 +1012,7 @@ module SMPC (
 					end
 					
 					PS_ID5_4: begin
-						if (ID2 == 8'h15 || ID2 == 8'h16) begin
+						if (ID2 == 8'h02 || ID2 == 8'h15 || ID2 == 8'h16) begin
 							OREG_DATA <= 8'hF1;
 							OREG_WRITE <= 1;
 							PORT_ST <= PS_ANALOG_5;
