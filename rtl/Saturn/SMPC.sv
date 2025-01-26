@@ -6,6 +6,8 @@ module SMPC (
 	input              MRES_N,
 	input              TIME_SET,
 	
+	input      [64: 0] RTC,
+	
 	input      [ 3: 0] AC,
 	
 	input      [ 6: 1] A,
@@ -58,7 +60,7 @@ module SMPC (
 	bit  [ 7: 0] MIN;
 	bit  [ 7: 0] HOUR;
 	bit  [ 7: 0] DAYS = 8'h01;
-	bit  [ 3: 0] DAY = 4'h2;
+	bit  [ 3: 0] DAY = 4'h1;
 	bit  [ 3: 0] MONTH = 4'h1;
 	bit  [15: 0] YEAR = 16'h2024;
 	
@@ -100,18 +102,19 @@ module SMPC (
 	
 
 	always @(posedge CLK) begin
+`ifdef DEBUG
+		SEC <= 8'h00;
+		MIN <= 8'h00;
+		HOUR <= 8'h00;
+		DAYS <= 8'h02;
+		{DAY,MONTH} <= 8'h01;
+		YEAR <= 16'h2024;
+`else
 		bit [21: 0] CLK_CNT;
 		bit         SEC_CLK,MIN_CLK,HOUR_CLK,DAYS_CLK,MONTH_CLK,YEAR_CLK;
+		bit         RTC64_OLD = 0;
 		
 		if (CE) begin
-`ifdef DEBUG
-			SEC <= 8'h00;
-			MIN <= 8'h00;
-			HOUR <= 8'h00;
-			DAYS <= 8'h02;
-			{DAY,MONTH} <= 8'h01;
-			YEAR <= 16'h2024;
-`else
 			SEC_CLK <= 0;
 			MIN_CLK <= 0;
 			HOUR_CLK <= 0;
@@ -193,8 +196,18 @@ module SMPC (
 				{DAY,MONTH} <= IREG[2];
 				YEAR <= {IREG[0],IREG[1]};
 			end
-`endif
 		end
+		
+		if (RTC[64] != RTC64_OLD) begin
+			RTC64_OLD <= RTC[64];
+			SEC <= RTC[7:0];
+			MIN <= RTC[15:8];
+			HOUR <= RTC[23:16];
+			DAYS <= RTC[31:24];
+			MONTH <= RTC[35:32] + (RTC[36] == 0 ? 4'd0 : 4'd10);
+			YEAR <= {8'h20,RTC[47:40]};
+		end
+`endif
 	end
 	
 	
@@ -701,6 +714,7 @@ module SMPC (
 					end
 					
 					CS_END: begin
+						SF <= 0;
 						case (COMREG) 
 							8'h00: begin		//MSHON
 								
@@ -746,7 +760,7 @@ module SMPC (
 							end
 							
 							8'h10: begin		//INTBACK
-
+								if (INTBACK_EXEC) SF <= 1;
 							end
 							
 							8'h16: begin		//SETTIME
@@ -771,7 +785,6 @@ module SMPC (
 							
 							default:;
 						endcase
-						SF <= 0;
 						COMM_ST <= CS_IDLE;
 					end
 				endcase
