@@ -390,11 +390,11 @@ package VDP1_PKG;
 		return {MSB,S};
 	endfunction
 
-	function bit [12:0] Abs(input bit [13:0] C);
-		bit [13:0] abs; 
+	function bit [11:0] Abs13(input bit [12:0] C);
+		bit [12:0] abs; 
 		
 		abs = $signed(C) >= 0 ? $signed(C) : -$signed(C);
-		return abs[12:0];
+		return abs[11:0];
 	endfunction
 	
 endpackage
