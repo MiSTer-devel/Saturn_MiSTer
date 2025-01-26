@@ -2275,7 +2275,7 @@ package VDP2_PKG;
 		4'hF: begin MSB = 1'b0    ; NSD = &DATA[ 7:1] & ~DATA[0]; TPEN = 1;        PR = {1'b0    ,1'b0    ,1'b0    }; CC = {1'b0    ,DATA[ 7],DATA[ 6]}; DC = {3'b000  ,DATA[ 7:0]}; end
 		endcase
 		
-		TP = ~|DATA[14:0];
+		TP = ~((|DATA[14:8] & ~SPCTL.SPTYPE[3]) | |DATA[7:0]);
 		
 		RGB888 = {DATA[14:10],3'b000,DATA[9:5],3'b000,DATA[4:0],3'b000};
 		RGB_TP = TP & TPEN & SPCTL.SPWINEN;
@@ -2352,11 +2352,12 @@ package VDP2_PKG;
 		bit         COEN;
 		bit         COSL;
 		bit         SDEN;
+		bit         BOKEN;
 		bit         LCEN;
 		bit         P;
 		bit [23: 0] DC;
 	} ScreenDot_t;
-	parameter ScreenDot_t SD_NULL = {3'b000,1'b0,1'b0,5'b00000,1'b0,1'b0,1'b0,1'b0,1'b0,24'h000000};
+	parameter ScreenDot_t SD_NULL = {3'b000,1'b0,1'b0,5'b00000,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,24'h000000};
 	
 
 	//Color calculation
@@ -2406,12 +2407,12 @@ package VDP2_PKG;
 	endfunction
 	
 	function DotColor_t ExtColorCalc(input DotColor_t DCSEC, input bit CCENSEC, input DotColor_t DCTHD, input bit PTHD, input bit CCENTHD, input DotColor_t DCFTH, 
-	                                 input bit LCEN, input bit [1:0] CRMD, input bit EXCCEN);
+	                                 input bit LCEN, input bit BOKEN, input bit [1:0] CRMD, input bit EXCCEN);
 		bit RTSEC,RTTHD;
 		DotColor_t TEMP;
 
-		RTSEC = CCENSEC & ~(|CRMD && PTHD) & EXCCEN;
-		RTTHD = CCENTHD & LCEN & EXCCEN;
+		RTSEC = (CCENSEC & ~(|CRMD && PTHD) & EXCCEN) | (BOKEN & ~|CRMD);
+		RTTHD = (CCENTHD & LCEN & EXCCEN) | (BOKEN & ~|CRMD);
 		
 		TEMP.R = ColorCalcExtRatio(DCSEC.R, DCTHD.R, DCFTH.R, RTSEC, RTTHD);
 		TEMP.G = ColorCalcExtRatio(DCSEC.G, DCTHD.G, DCFTH.G, RTSEC, RTTHD);
