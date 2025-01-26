@@ -49,10 +49,13 @@ module SCSP (
 	output     [15: 0] SOUND_L,
 	output     [15: 0] SOUND_R,
 	
-	input      [ 2: 0] SND_EN,
-	input      [31: 0] SLOT_EN
+	input      [ 7: 0] STV_SW,
+	
+	input      [ 2: 0] SND_EN
+	
 `ifdef DEBUG
                       ,
+	input      [31: 0] SLOT_EN,
 	output reg         DBG_68K_ERR,
 	output reg         DBG_SCU_HOOK,
 	output             PCM_EN_DBG,
@@ -150,6 +153,7 @@ module SCSP (
 	} MemState_t;
 	MemState_t MEM_ST;
 	MemState_t REG_ST;
+	MemState_t IO_ST;
 	
 	bit  [18: 1] MEM_A;
 	bit  [15: 0] MEM_D;
@@ -952,6 +956,7 @@ module SCSP (
 			end
 			
 			S = OP7.SLOT;
+`ifdef DEBUG
 			if ((!SLOT_EN[ 0] && S == 5'd0 ) || (!SLOT_EN[ 1] && S == 5'd1 ) || (!SLOT_EN[ 2] && S == 5'd2 ) || (!SLOT_EN[ 3] && S == 5'd 3) ||
 						 (!SLOT_EN[ 4] && S == 5'd4 ) || (!SLOT_EN[ 5] && S == 5'd5 ) || (!SLOT_EN[ 6] && S == 5'd6 ) || (!SLOT_EN[ 7] && S == 5'd7 ) ||
 						 (!SLOT_EN[ 8] && S == 5'd8 ) || (!SLOT_EN[ 9] && S == 5'd9 ) || (!SLOT_EN[10] && S == 5'd10) || (!SLOT_EN[11] && S == 5'd11) ||
@@ -962,6 +967,7 @@ module SCSP (
 						 (!SLOT_EN[28] && S == 5'd28) || (!SLOT_EN[29] && S == 5'd29) || (!SLOT_EN[30] && S == 5'd30) || (!SLOT_EN[31] && S == 5'd31))
 				TEMP = '0;
 			else 
+`endif
 				TEMP = LevelCalc(OP7.SD,OP7_SCR8.DISDL);
 			PAN_L = PanLCalc(TEMP,OP7_SCR8.DIPAN);
 			PAN_R = PanRCalc(TEMP,OP7_SCR8.DIPAN);
@@ -1398,9 +1404,9 @@ module SCSP (
 	bit         SCU_WPEND;
 	bit         SCU_WRDY;
 	
-	bit [20: 1] SCPU_RA;
+	bit [23: 1] SCPU_RA;
 	bit         SCPU_RPEND;
-	bit [20: 1] SCPU_WA;
+	bit [23: 1] SCPU_WA;
 	bit [ 1: 0] SCPU_WE;
 	bit [15: 0] SCPU_D;
 	bit         SCPU_WPEND;
@@ -1426,6 +1432,7 @@ module SCSP (
 			REG_D <= '0;
 			REG_WE <= '0;
 			REG_RD <= 0;
+			IO_ST <= MS_IDLE;
 			A <= '0;
 			WE_N <= 1;
 			DQM <= '1;
@@ -1481,11 +1488,11 @@ module SCSP (
 			end
 			
 			//SCPU read
-			if (SCA[23:21] == 3'b000 && !SCAS_N && SCRW_N && SCDTACK_N && SCFC != 3'b111 /*&& MEM_DEV_LATCH != 3'd5*/ && !SCPU_RPEND) begin
-				SCPU_RA <= SCA[20:1];
+			if (!SCAS_N && SCRW_N && SCDTACK_N && SCFC != 3'b111 /*&& MEM_DEV_LATCH != 3'd5*/ && !SCPU_RPEND) begin
+				SCPU_RA <= SCA[23:1];
 				SCPU_RPEND <= 1;
 			end
-			if (REG_ST == MS_SCPU_WAIT && CYCLE1_CE) begin
+			if ((REG_ST == MS_SCPU_WAIT || IO_ST == MS_SCPU_WAIT) && CYCLE1_CE) begin
 				SCPU_RPEND <= 0;
 			end
 			else if (SCPU_RPEND && MEM_DEV_LATCH == 3'd5 /*&& MEM_ST == MS_SCPU_WAIT*/ && CYCLE1_CE) begin
@@ -1493,8 +1500,8 @@ module SCSP (
 			end
 			
 			//SCPU write
-			if (SCA[23:21] == 3'b000 && !SCAS_N && !SCRW_N && (!SCLDS_N || !SCUDS_N) && SCDTACK_N && SCFC != 3'b111 /*&& MEM_DEV_LATCH != 3'd5*/ && !SCPU_WPEND) begin
-				SCPU_WA <= SCA[20:1];
+			if (!SCAS_N && !SCRW_N && (!SCLDS_N || !SCUDS_N) && SCDTACK_N && SCFC != 3'b111 /*&& MEM_DEV_LATCH != 3'd5*/ && !SCPU_WPEND) begin
+				SCPU_WA <= SCA[23:1];
 				SCPU_D <= SCDI;
 				SCPU_WE <= {~SCUDS_N,~SCLDS_N};
 				SCPU_WPEND <= 1;
@@ -1548,7 +1555,7 @@ module SCSP (
 						MEM_CS <= ~SCU_WA[19];
 						MEM_DEV <= 3'd0;
 						MEM_ST <= MS_SCU_WAIT;
-					end else if (!SCPU_WA[20] && SCPU_WPEND && !SCU_RPEND) begin
+					end else if (SCPU_WA[23:20] == 4'h0 && SCPU_WPEND && !SCU_RPEND) begin
 						SCPU_WPEND <= 0;
 						MEM_A <= SCPU_WA[18:1];
 						MEM_D <= SCPU_D;
@@ -1557,7 +1564,7 @@ module SCSP (
 						MEM_CS <= ~SCPU_WA[19];
 						MEM_DEV <= 3'd0;
 						MEM_ST <= MS_SCPU_WAIT;
-					end else if (!SCPU_RA[20] && SCPU_RPEND && !SCU_WPEND) begin
+					end else if (SCPU_RA[23:20] == 4'h0 && SCPU_RPEND && !SCU_WPEND) begin
 						MEM_A <= SCPU_RA[18:1];
 						MEM_WE <= '0;
 						MEM_RD <= 1;
@@ -1658,14 +1665,14 @@ module SCSP (
 						REG_WE <= SCU_WE;
 						REG_RD <= 0;
 						REG_ST <= MS_SCU_WAIT;
-					end else if (SCPU_WA[20] && SCPU_WPEND) begin
+					end else if (SCPU_WA[23:20] == 4'h1 && SCPU_WPEND) begin
 						SCPU_WPEND <= 0;
 						REG_A <= SCPU_WA[11:1];
 						REG_D <= SCPU_D;
 						REG_WE <= SCPU_WE;
 						REG_RD <= 0;
 						REG_ST <= MS_SCPU_WAIT;
-					end else if (SCPU_RA[20] && SCPU_RPEND) begin
+					end else if (SCPU_RA[23:20] == 4'h1 && SCPU_RPEND) begin
 						SCDTACK_N <= 0;
 						REG_A <= SCPU_RA[11:1];
 						REG_WE <= '0;
@@ -1702,6 +1709,38 @@ module SCSP (
 						REG_WE <= '0;
 						REG_RD <= 0;
 						REG_ST <= MS_IDLE;
+					end
+				end
+				
+				default:;
+			endcase
+			
+			//STV SW 0x600000
+			case (IO_ST)
+				MS_IDLE: if (REG_START) begin
+					if (SCPU_WA[23:21] && SCPU_WPEND) begin
+						SCPU_WPEND <= 0;
+						IO_ST <= MS_SCPU_WAIT;
+					end else if (SCPU_RA[23:21] && SCPU_RPEND) begin
+						SCDTACK_N <= 0;
+						IO_ST <= MS_SCPU_WAIT;
+					end
+				end
+				
+//				MS_SCU_WAIT: begin
+//					if (CYCLE1_CE) begin
+//						SCU_WPEND <= 0;
+//						DO <= REG_Q;
+//						REG_WE <= '0;
+//						REG_RD <= 0;
+//						IO_ST <= MS_IDLE;
+//					end
+//				end
+				
+				MS_SCPU_WAIT: begin
+					if (CYCLE1_CE) begin
+						SCDO <= {8'h00,STV_SW};
+						IO_ST <= MS_IDLE;
 					end
 				end
 				

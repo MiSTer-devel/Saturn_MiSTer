@@ -20,6 +20,7 @@ module Saturn
 	output            RAML_CS_N,
 	output            RAMH_CS_N,
 	output            RAMH_RFS,
+	output            STVIO_CS_N,
 	output      [3:0] MEM_DQM_N,
 	output            MEM_RD_N,
 	input             MEM_WAIT_N,
@@ -75,6 +76,7 @@ module Saturn
 	
 	input             SMPC_CE,
 	input             TIME_SET,
+	input      [64:0] RTC,
 	input       [3:0] SMPC_AREA,
 	output            SMPC_DOTSEL,
 	
@@ -104,12 +106,14 @@ module Saturn
 	input             CD_RAM_RDY,
 	
 	input       [2:0] CART_MODE,
-	output     [24:1] CART_MEM_A,
+	output     [25:1] CART_MEM_A,
 	output     [15:0] CART_MEM_D,
 	output     [ 1:0] CART_MEM_WE,
 	output            CART_MEM_RD,
 	input      [15:0] CART_MEM_Q,
 	input             CART_MEM_RDY,
+	
+	input      [ 7: 0] STV_SW,
 	
 	output      [7:0] R,
 	output      [7:0] G,
@@ -457,6 +461,7 @@ module Saturn
 	
 	assign CA       = MSHA[24:0];
 	assign CDO      = !MSHCS3_N || !DRAMCE_N || !ROMCE_N || !SRAMCE_N ? MEM_DI :
+                     !STVIO_CS_N                                     ? MEM_DI :
                      !SMPCCE_N                                       ? {4{SMPC_DO}} :
 							SCU_DO;
 	assign CDI      = MSHDO;
@@ -614,6 +619,7 @@ module Saturn
 	assign RAML_CS_N = DRAMCE_N;
 	assign RAMH_CS_N = MSHCS3_N;
 	assign RAMH_RFS = MSRFS | ECRFS;
+	assign STVIO_CS_N = ~(CA >= 25'h0400000 && CA <= 25'h040007F && ~CCS0_N && CART_MODE == 3'h5);
 	
 	bit MRES_N;
 	always @(posedge CLK or negedge RST_N) begin
@@ -632,6 +638,8 @@ module Saturn
 		
 		.MRES_N(MRES_N),
 		.TIME_SET(TIME_SET),
+		
+		.RTC(RTC),
 		
 		.AC(SMPC_AREA),	
 		
@@ -790,6 +798,20 @@ module Saturn
 	);
 	
 	
+	bit STV_SCSP_RES_N,STV_SCPU_RES_N;
+	always @(posedge CLK) begin
+//		bit SMPC_PDR2O3_OLD,SMPC_PDR2O4_OLD;
+	
+		if (SYS_CE_R) begin
+//			SMPC_PDR2O3_OLD <= SMPC_PDR2O[3];
+//			SMPC_PDR2O4_OLD <= SMPC_PDR2O[4];
+//			STV_SCPU_RES_N <= 1;
+//			if (SMPC_PDR2O4_OLD != SMPC_PDR2O[4]) STV_SCPU_RES_N <= 0;
+			STV_SCSP_RES_N <= ~(SMPC_PDR2O[3] | ~SMPC_DDR2[3]);
+			STV_SCPU_RES_N <= ~(SMPC_PDR2O[4] | ~SMPC_DDR2[4]);
+		end
+	end
+	
 	bit         SCCE_R;
 	bit         SCCE_F;
 	bit  [23:1] SCA;
@@ -803,13 +825,15 @@ module Saturn
 	bit   [2:0] SCFC;
 	bit         SCAVEC_N;
 	bit   [2:0] SCIPL_N;
+	
+	wire SCSP_RES_N = CART_MODE == 3'h5 ? STV_SCSP_RES_N : SYSRES_N;
 	SCSP SCSP
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
 		.CE(SCSP_CE),
 		
-		.RES_N(SYSRES_N),
+		.RES_N(SCSP_RES_N),
 		
 		.CE_R(SYS_CE_R),
 		.CE_F(SYS_CE_F),
@@ -851,15 +875,22 @@ module Saturn
 		.SOUND_L(SOUND_L),
 		.SOUND_R(SOUND_R),
 		
-		.SND_EN(SND_EN),
+		.STV_SW(STV_SW),
+		
+		.SND_EN(SND_EN)
+		
+`ifdef DEBUG
+		,
 		.SLOT_EN(SLOT_EN)
+`endif
 	);
 	
-	bit M68K_RESETOn;
+	wire SCPU_RES_N = CART_MODE == 3'h5 ? STV_SCPU_RES_N : SNDRES_N;
+	bit M68K_RESO_N;
 	fx68k M68K
 	(
 		.clk(CLK),
-		.extReset(~SNDRES_N | ~M68K_RESETOn),
+		.extReset(~SCPU_RES_N | ~M68K_RESO_N),
 		.pwrUp(~RST_N),
 		.enPhi1(SCCE_R),
 		.enPhi2(SCCE_F),
@@ -890,7 +921,7 @@ module Saturn
 		.BERRn(1),
 		.HALTn(1),
 		
-		.oRESETn(M68K_RESETOn)
+		.oRESETn(M68K_RESO_N)
 	);
 
 	
