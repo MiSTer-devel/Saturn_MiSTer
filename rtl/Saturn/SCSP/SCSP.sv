@@ -1488,19 +1488,19 @@ module SCSP (
 			end
 			
 			//SCPU read
-			if (!SCAS_N && SCRW_N && SCDTACK_N && SCFC != 3'b111 /*&& MEM_DEV_LATCH != 3'd5*/ && !SCPU_RPEND) begin
+			if (!SCAS_N && SCRW_N && SCDTACK_N && SCFC != 3'b111 && !SCPU_RPEND) begin
 				SCPU_RA <= SCA[23:1];
 				SCPU_RPEND <= 1;
 			end
 			if ((REG_ST == MS_SCPU_WAIT || IO_ST == MS_SCPU_WAIT) && CYCLE1_CE) begin
 				SCPU_RPEND <= 0;
 			end
-			else if (SCPU_RPEND && MEM_DEV_LATCH == 3'd5 /*&& MEM_ST == MS_SCPU_WAIT*/ && CYCLE1_CE) begin
+			else if (SCPU_RPEND && MEM_DEV_LATCH == 3'd5 && CYCLE1_CE) begin
 				SCPU_RPEND <= 0;
 			end
 			
 			//SCPU write
-			if (!SCAS_N && !SCRW_N && (!SCLDS_N || !SCUDS_N) && SCDTACK_N && SCFC != 3'b111 /*&& MEM_DEV_LATCH != 3'd5*/ && !SCPU_WPEND) begin
+			if (!SCAS_N && !SCRW_N && (!SCLDS_N || !SCUDS_N) && SCDTACK_N && SCFC != 3'b111 && !SCPU_WPEND) begin
 				SCPU_WA <= SCA[23:1];
 				SCPU_D <= SCDI;
 				SCPU_WE <= {~SCUDS_N,~SCLDS_N};
@@ -1538,14 +1538,14 @@ module SCSP (
 						MEM_CS <= 1;
 						MEM_DEV <= 3'd3;
 						MEM_ST <= MS_DMA_WAIT;
-					end else if (!SCU_RA[20] && SCU_MEM_RPEND && MEM_DEV_LATCH != 3'd4) begin
+					end else if (!SCU_RA[20] && SCU_RPEND && MEM_DEV_LATCH != 3'd4) begin
 						MEM_A <= SCU_RA[18:1];
 						MEM_WE <= 2'b00;
 						MEM_RD <= 1;
 						MEM_CS <= ~SCU_RA[19];
 						MEM_DEV <= 3'd4;
 						MEM_ST <= MS_SCU_WAIT;
-					end else if (!SCU_WA[20] && SCU_MEM_WPEND) begin
+					end else if (!SCU_WA[20] && SCU_WPEND) begin
 						SCU_WPEND <= 0;
 						SCU_MEM_WPEND <= 0;
 						MEM_A <= SCU_WA[18:1];
@@ -1555,7 +1555,7 @@ module SCSP (
 						MEM_CS <= ~SCU_WA[19];
 						MEM_DEV <= 3'd0;
 						MEM_ST <= MS_SCU_WAIT;
-					end else if (SCPU_WA[23:20] == 4'h0 && SCPU_WPEND && !SCU_RPEND) begin
+					end else if (SCPU_WA[23:20] == 4'h0 && SCPU_WPEND) begin
 						SCPU_WPEND <= 0;
 						MEM_A <= SCPU_WA[18:1];
 						MEM_D <= SCPU_D;
@@ -1564,7 +1564,7 @@ module SCSP (
 						MEM_CS <= ~SCPU_WA[19];
 						MEM_DEV <= 3'd0;
 						MEM_ST <= MS_SCPU_WAIT;
-					end else if (SCPU_RA[23:20] == 4'h0 && SCPU_RPEND && !SCU_WPEND) begin
+					end else if (SCPU_RA[23:20] == 4'h0 && SCPU_RPEND) begin
 						MEM_A <= SCPU_RA[18:1];
 						MEM_WE <= '0;
 						MEM_RD <= 1;
@@ -1653,7 +1653,6 @@ module SCSP (
 						REG_RD <= DMA_DIR;
 						REG_ST <= MS_DMA_WAIT;
 					end else if (SCU_RA[20] && SCU_REG_RPEND) begin
-//						SCU_REG_RPEND <= 0;
 						REG_A <= SCU_RA[11:1];
 						REG_WE <= 2'b00;
 						REG_RD <= 1;
