@@ -39,6 +39,7 @@ module SH7604_DIVU (
 	bit    [5:0] STEP;
 	bit   [64:0] R;
 	bit   [31:0] Q;
+	bit          R_SIGN,D_SIGN;
 	bit          OVF;
 	always @(posedge CLK or negedge RST_N) begin
 		bit   [64:0] VAL;
@@ -58,21 +59,21 @@ module SH7604_DIVU (
 				VAL <= {DVDNTH[31],DVDNTH,DVDNTL};
 				NEG <= DVDNTH[31];
 			end
-			else if (STEP == 6'd2) begin
+			if (STEP == 6'd2) begin
 				VAL <= {DVSR[31],DVSR,32'h00000000};
 				NEG <= DVSR[31];
 			end
-//			else if (STEP >= 6'd3 && STEP <= 6'd35) begin
+//			if (STEP >= 6'd3 && STEP <= 6'd35) begin
 //				SA <= R;
 //				SB <= D;
 //			end
-			else if (STEP == 6'd36) begin
+			if (STEP == 6'd36) begin
 				VAL <= R;
-				NEG <= DVDNTH[31];
+				NEG <= R_SIGN;
 			end
-			else if (STEP == 6'd37) begin
+			if (STEP == 6'd37) begin
 				VAL <= {{33{Q[31]}},Q};
-				NEG <= DVDNTH[31]^DVSR[31];
+				NEG <= R_SIGN^D_SIGN;
 			end
 		end
 		else if (EN && CE_R) begin
@@ -90,15 +91,17 @@ module SH7604_DIVU (
 			if (STEP == 6'd0) begin
 				Q <= '0;
 			end
-			else if (STEP == 6'd1) begin
+			if (STEP == 6'd1) begin
 				R <= NRES;
+				R_SIGN <= NEG;
 			end
-			else if (STEP == 6'd2) begin
+			if (STEP == 6'd2) begin
 				D <= NRES;
+				D_SIGN <= NEG;
 				
 				if (!DVSR) OVF0 <= 1;
 			end
-			else if (STEP >= 6'd3 && STEP <= 6'd35) begin
+			if (STEP >= 6'd3 && STEP <= 6'd35) begin
 				SUM = $signed(R) - $signed(D);
 				R <= !SUM[64] ? SUM : R;
 				Q <= {Q[30:0],~SUM[64]};
@@ -111,10 +114,10 @@ module SH7604_DIVU (
 					STEP <= 6'd38;
 				end
 			end
-			else if (STEP == 6'd36) begin
+			if (STEP == 6'd36) begin
 				R <= NRES;
 			end
-			else if (STEP == 6'd37) begin
+			if (STEP == 6'd37) begin
 				Q <= NRES[31:0];
 			end
 			if (STEP == 6'd38) begin
@@ -169,12 +172,17 @@ module SH7604_DIVU (
 				endcase
 			end
 			
+			if (STEP >= 6'd3 && STEP <= 6'd35) begin
+				{DVDNTH,DVDNTL} <= {DVDNTH[30:0],DVDNTL,1'b0};
+			end
+			if (STEP == 6'd37) begin
+				DVDNTH <= R[31:0];
+				DVDNTH2 <= R[31:0];
+			end
 			if (STEP == 6'd38) begin
 				DVCR.OVF = OVF;
-				DVDNTL <= !OVF || DVCR.OVFIE ? Q : {DVDNTH[31]^DVSR[31],{31{~(DVDNTH[31]^DVSR[31])}}};
-				DVDNTH <= R[31:0];
-				DVDNTL2 <= !OVF || DVCR.OVFIE ? Q : {DVDNTH[31]^DVSR[31],{31{~(DVDNTH[31]^DVSR[31])}}};
-				DVDNTH2 <= R[31:0];
+				DVDNTL <= !OVF || DVCR.OVFIE ? Q : {R_SIGN^D_SIGN,{31{~(R_SIGN^D_SIGN)}}};
+				DVDNTL2 <= !OVF || DVCR.OVFIE ? Q : {R_SIGN^D_SIGN,{31{~(R_SIGN^D_SIGN)}}};
 			end
 		end
 	end
