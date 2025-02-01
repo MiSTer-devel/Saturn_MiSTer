@@ -13,16 +13,17 @@ module STV (
 	input              RW_N,
 	
 	input      [15: 0] JOY1,
-	input      [15: 0] JOY2
+	input      [15: 0] JOY2,
+	input              COIN1
 );
 	
 	bit  [ 7: 0] IN[8];
 	bit  [ 7: 0] OUT[8];
 	bit  [ 7: 0] DIR;
 	
-	assign IN[0] = {1'b1,JOY1[15:12],JOY1[9],JOY1[8],JOY1[10]};
-	assign IN[1] = {1'b1,JOY2[15:12],JOY2[9],JOY2[8],JOY2[10]};
-	assign IN[2] = {1'b1,1'b1,JOY2[11],JOY1[11],JOY1[7],JOY1[3],1'b1,JOY1[11]};
+	assign IN[0] = {JOY1[14],JOY1[15],JOY1[12],JOY1[13],1'b1,JOY1[9],JOY1[8],JOY1[10]};
+	assign IN[1] = {JOY2[14],JOY2[15],JOY2[12],JOY2[13],1'b1,JOY2[9],JOY2[8],JOY2[10]};
+	assign IN[2] = {1'b1,1'b1,JOY2[11],JOY1[11],JOY1[7],JOY1[3],1'b1,COIN1};
 	assign IN[3] = 8'h00;
 	assign IN[4] = 8'hFF;
 	assign IN[5] = {1'b1,JOY2[4],JOY2[5],JOY2[6],1'b1,JOY1[4],JOY1[5],JOY1[6]};
