@@ -402,8 +402,10 @@ module VDP2 (
 	wire [ 8: 0] BS_FETCH_START = !HRES[0] ? 9'h18A : 9'h1A6;
 	wire [ 8: 0] REFRESH_START = !HRES[0] ? 9'h190 : 9'h1AC;
 	wire [ 8: 0] REFRESH_END = !HRES[0] ? 9'h194 : 9'h1B0;
-	wire [ 8: 0] NOACCESS_START = !HRES[0] ? 9'h18D : 9'h1A9;
-	wire [ 8: 0] NOACCESS_END = !HRES[0] ? 9'h18F : 9'h1AB;
+	wire [ 8: 0] NOACCESS_START = !HRES[0] ? 9'h0 : 9'h1A9;
+	wire [ 8: 0] NOACCESS_END = !HRES[0] ? 9'h1FF : 9'h1AB;
+	wire [ 8: 0] NOACCESS2_START = !HRES[0] ? 9'h0 : 9'h162;
+	wire [ 8: 0] NOACCESS2_END = !HRES[0] ? 9'h1FF : 9'h165;
 	wire [ 8: 0] NBG_SCREEN_START = !HRES[0] ? 9'h19D : 9'h1B9;
 	
 	bit  [ 2: 0] CELLX;
@@ -538,13 +540,13 @@ module VDP2 (
 				DOT_FETCH <= 0;
 			end
 			
-			if (H_CNT == REFRESH_START - 1) begin
+			if (H_CNT == REFRESH_START - 1 || H_CNT == NOACCESS2_START - 1) begin
 				REFRESH <= 1;
-			end else if (H_CNT == REFRESH_END) begin
+			end else if (H_CNT == REFRESH_END || H_CNT == NOACCESS2_END) begin
 				REFRESH <= 0;
 			end
 			
-			if (H_CNT == NOACCESS_START - 1 && HRES[0]) begin
+			if (H_CNT == NOACCESS_START - 1) begin
 				NOACCESS <= 1;
 			end else if (H_CNT == NOACCESS_END) begin
 				NOACCESS <= 0;
