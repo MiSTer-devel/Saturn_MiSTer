@@ -1,5 +1,5 @@
 module SCU
-#(parameter bit FAST=0)
+#(parameter bit RAMH_SLOW=0)
 (
 	input             CLK,
 	input             RST_N,
@@ -67,7 +67,9 @@ module SCU
 	input             BRDYS_N,
 	input             IRQS_N,
 	
-	input             MIREQ_N
+	input             MIREQ_N,
+	
+	input             FAST
 	
 `ifdef DEBUG
 	                  ,
@@ -1588,9 +1590,9 @@ module SCU
 						end else begin
 							CBUS_A <= CBUS_A + 27'd4;
 							CBUS_RD <= 1;
-							/*if (CBUS_A[10:2] == 9'h1FF && !DMA_DSP && !FAST) begin
+							/*if (CBUS_A[10:2] == 9'h1FF && !DMA_DSP && !RAMH_SLOW) begin
 								CBUS_RFS_PEND <= 1;
-							end else*/ if (CBUS_A[9:2] == 8'hFF && !DMA_DSP && !FAST) begin
+							end else*/ if (CBUS_A[9:2] == 8'hFF && !DMA_DSP && !RAMH_SLOW) begin
 								CBUS_RAS_PEND <= 1;
 							end
 						end
@@ -1615,7 +1617,7 @@ module SCU
 				
 				CBUS_READ_END: if (CE_R) begin
 					if (ECWAIT_N) begin
-						if (CBUS_A[3:2] != 2'b11 && !FAST) begin
+						if (CBUS_A[3:2] != 2'b11 && !RAMH_SLOW) begin
 							CBUS_A <= CBUS_A + 27'd4;
 							CBUS_RD <= 1;
 						end
@@ -1661,9 +1663,9 @@ module SCU
 							CBUS_WRITE_PROCESS <= 1;
 							CBUS_DATA_ACK = 1;
 							
-							/*if (CBUS_A[10:2] == 9'h1FF && !DMA_DSP && !FAST) begin
+							/*if (CBUS_A[10:2] == 9'h1FF && !DMA_DSP && !RAMH_SLOW) begin
 								CBUS_RFS_PEND <= 1;
-							end else*/ if (CBUS_A[9:2] == 8'hFF && !DMA_DSP && !FAST) begin
+							end else*/ if (CBUS_A[9:2] == 8'hFF && !DMA_DSP && !RAMH_SLOW) begin
 								CBUS_RAS_PEND <= 1;
 							end
 						end

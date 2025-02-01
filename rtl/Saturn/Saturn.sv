@@ -488,7 +488,7 @@ module Saturn
 							!BCSS_N ? SCSP_DO : 16'h0000;
 
 	bit DBG_ABUS_END;
-	SCU #(.FAST(RAMH_SLOW)) SCU
+	SCU #(RAMH_SLOW) SCU
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -556,7 +556,9 @@ module Saturn
 		.BRDYS_N(BRDYS_N),
 		.IRQS_N(IRQS_N),
 	
-		.MIREQ_N(MIRQ_N)
+		.MIREQ_N(MIRQ_N),
+		
+		.FAST(FAST)
 	);
 	
 	
