@@ -447,7 +447,6 @@ module VDP1 (
 		bit         LINE_VERTA_X_OVR,LINE_VERTA_Y_OVR;
 		bit         AA_DRAW;
 		bit         LINE_SWAP;
-		bit         TEXTY_INC;
 		bit [16: 3] SPR_OFFSY_NEXT;
 		bit         CLIP_H;
 		RGB_t       GRD_CALC_1,GRD_CALC_2;
@@ -1078,7 +1077,6 @@ module VDP1 (
 						SPR_OFFSY <= SPR_OFFSY_NEXT;
 					end
 					
-					TEXTY_INC <= TEXT_Y_READ_STEP;
 					if (COL_DRAW_STEP) begin
 						case (CMD.CMDCTRL.COMM) 
 							4'h0: CMD_ST <= CMDS_NSPR_CALCX;
@@ -1190,22 +1188,22 @@ module VDP1 (
 						if (ROW_WIDTH < {5'b00000,ORIG_WIDTH[8:1]}) begin
 							TEXT_ERROR_INC <= {4'b0000,ORIG_WIDTH};
 							TEXT_ERROR_ADJ <= (ROW_WIDTH << 1);
-							TEXT_ERROR <= {5'b00000,ORIG_WIDTH[8:1]} - (ROW_WIDTH << 1) - (!TEXT_DIRX ? 13'd0 : 13'd1);
+							TEXT_ERROR <= {5'b00000,ORIG_WIDTH[8:1]} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
 						end else begin
 							TEXT_ERROR_INC <= ({5'b00000,ORIG_WIDTH[8:1] - 8'd1} << 1);
 							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 12'd1) << 1);
-							TEXT_ERROR <= (-ROW_WIDTH) + (!TEXT_DIRX ? 13'd0 : 13'd1);
+							TEXT_ERROR <= (-ROW_WIDTH) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
 						end
 						HSS_EN <= 1;
 					end else begin
 						if (ROW_WIDTH < {4'b0000,ORIG_WIDTH}) begin
 							TEXT_ERROR_INC <= ({4'b0000,ORIG_WIDTH} << 1);
 							TEXT_ERROR_ADJ <= (ROW_WIDTH << 1);
-							TEXT_ERROR <= {4'b0000,ORIG_WIDTH} - (ROW_WIDTH << 1) - (!TEXT_DIRX ? 13'd0 : 13'd1);
+							TEXT_ERROR <= {4'b0000,ORIG_WIDTH} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
 						end else begin
 							TEXT_ERROR_INC <= ({4'b0000,ORIG_WIDTH - 9'd1} << 1);
 							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 12'd1) << 1);
-							TEXT_ERROR <= (-ROW_WIDTH) + (!TEXT_DIRX ? 13'd0 : 13'd1);
+							TEXT_ERROR <= (-ROW_WIDTH) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
 						end
 						HSS_EN <= 0;
 					end
@@ -1295,26 +1293,26 @@ module VDP1 (
 				end
 				
 				CMDS_LINE_CALCTX: begin
-					if (ROW_WIDTH < {4'b0000,ORIG_WIDTH} && CMD.CMDPMOD.HSS && !CMD.CMDCTRL.COMM[2]) begin
+					if (ROW_WIDTH <= {4'b0000,ORIG_WIDTH - 9'd1} && CMD.CMDPMOD.HSS && !CMD.CMDCTRL.COMM[2]) begin
 						if (ROW_WIDTH < {5'b00000,ORIG_WIDTH[8:1]}) begin
 							TEXT_ERROR_INC <= {4'b0000,ORIG_WIDTH};
 							TEXT_ERROR_ADJ <= (ROW_WIDTH << 1);
-							TEXT_ERROR <= {5'b00000,ORIG_WIDTH[8:1]} - (ROW_WIDTH << 1) - (!TEXT_DIRX ? 13'd0 : 13'd1);
+							TEXT_ERROR <= {5'b00000,ORIG_WIDTH[8:1]} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
 						end else begin
 							TEXT_ERROR_INC <= ({5'b00000,ORIG_WIDTH[8:1] - 8'd1} << 1);
 							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 13'd1) << 1);
-							TEXT_ERROR <= ROW_WIDTH - (ROW_WIDTH << 1) + (!TEXT_DIRX ? 13'd0 : 13'd1);
+							TEXT_ERROR <= ROW_WIDTH - (ROW_WIDTH << 1) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
 						end
 						HSS_EN <= 1;
 					end else begin
 						if (ROW_WIDTH < {4'b0000,ORIG_WIDTH}) begin
 							TEXT_ERROR_INC <= ({4'b0000,ORIG_WIDTH} << 1);
 							TEXT_ERROR_ADJ <= (ROW_WIDTH << 1);
-							TEXT_ERROR <= {4'b0000,ORIG_WIDTH} - (ROW_WIDTH << 1) - (!TEXT_DIRX ? 13'd0 : 13'd1);
+							TEXT_ERROR <= {4'b0000,ORIG_WIDTH} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
 						end else begin
 							TEXT_ERROR_INC <= ({4'b0000,ORIG_WIDTH - 9'd1} << 1);
 							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 13'd1) << 1);
-							TEXT_ERROR <= ROW_WIDTH - (ROW_WIDTH << 1) + (!TEXT_DIRX ? 13'd0 : 13'd1);
+							TEXT_ERROR <= ROW_WIDTH - (ROW_WIDTH << 1) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
 						end
 						HSS_EN <= 0;
 					end
