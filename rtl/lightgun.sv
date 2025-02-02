@@ -51,7 +51,7 @@ wire [8:0] j_x = {~JOY_X[7], JOY_X[6:0]};
 wire [8:0] j_y = {~JOY_Y[7], JOY_Y[6:0]};
 
 // HRES[1:0]. [1]:0-normal,1-hi-res; [0]:0-320p,1-352p
-wire [8:0] screen_width = (HRES[0] ? 352 : 320);
+wire [8:0] screen_width = HRES[0] ? 352 : 320;
 
 // JOY bits...
 // 

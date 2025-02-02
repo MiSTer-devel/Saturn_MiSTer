@@ -302,14 +302,14 @@ module emu
 		"P2-;",
 		"D6P2O[46],LGun P1 XY Ctrl,Joy 1,Mouse;",
 		"D6P2O[47],LGun P1 Buttons,Joy 1,Mouse;",
-		"D6P2O[49:48],LGun P1 Crosshair,Disabled,Small,Medium,Big,None;",
+		"D6P2O[49:48],LGun P1 Crosshair,Small,Medium,Big,None;",
 		"P2-;",
 		"P2-;",
 		"P2O[20:18],Pad 2,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse;",
 		"P2-;",
 		"D7P2O[57],LGun P2 XY Ctrl,Joy 2,Mouse;",
 		"D7P2O[58],LGun P2 Buttons,Joy 2,Mouse;",
-		"D7P2O[60:59],LGun P2 Crosshair,Disabled,Small,Medium,Big,None;",
+		"D7P2O[60:59],LGun P2 Crosshair,Small,Medium,Big,None;",
 		
 `ifndef MISTER_DUAL_SDRAM
 		"P3,Hardware;",
@@ -1046,7 +1046,7 @@ module emu
 		.RELOAD(1'b1),						// Enable Auto-Reload.
 
 		.HDE(HBL_N),						// Blanking signals are Active-Low. So should act as "DE" (Data Enable) signals when High!
-		.VDE(VBL_N),						// ie. No need to invert here?
+		.VDE(VBL_N),						// ie. No need to invert here.
 		.CE_PIX(DCLK),
 		
 		.FIELD(FIELD),
@@ -1106,7 +1106,7 @@ module emu
 		.RELOAD(1'b1),						// Enable Auto-Reload.
 
 		.HDE(HBL_N),						// Blanking signals are Active-Low. So should act as "DE" (Data Enable) signals when High!
-		.VDE(VBL_N),						// ie. No need to invert here?
+		.VDE(VBL_N),						// ie. No need to invert here.
 		.CE_PIX(DCLK),
 		
 		.FIELD(FIELD),
@@ -1742,8 +1742,8 @@ module emu
 	
 		.VGA_DE(vga_de),
 		.R(lg_p1_targ_draw ? {8{lg_p1_target[0]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : R),
-		.G(lg_p1_targ_draw ? {8{lg_p1_target[1]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : G),
-		.B(lg_p1_targ_draw ? {8{lg_p1_target[2]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : B),
+		.G(lg_p1_targ_draw ? {8{lg_p1_target[1]}} : lg_p2_targ_draw ? {8{lg_p2_target[1]}} : G),
+		.B(lg_p1_targ_draw ? {8{lg_p1_target[2]}} : lg_p2_targ_draw ? {8{lg_p2_target[2]}} : B),
 	
 		// Positive pulses.
 		.HSync(~HS_N),
@@ -1752,8 +1752,8 @@ module emu
 		.VBlank(~VBL_N)
 	);
 
-wire lg_p1_targ_draw = lg_p1_target && lg_p1_ena && (status[49:48]==2'd0);
-wire lg_p2_targ_draw = lg_p2_target && lg_p2_ena && (status[60:59]==2'd0);
+wire lg_p1_targ_draw = (|lg_p1_target) && lg_p1_ena && (gun_p1_cross_size < 2'd3);
+wire lg_p2_targ_draw = (|lg_p2_target) && lg_p2_ena && (gun_p2_cross_size < 2'd3);
 	
 	
 	//debug
