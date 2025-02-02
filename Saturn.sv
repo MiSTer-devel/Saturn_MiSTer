@@ -296,9 +296,10 @@ module emu
 	
 		"P2,Input;",
 		"P2-;",
-		"P2OFH,Pad 1,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse;",
-		"P2OIK,Pad 2,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse;",
-		"P2OR,SNAC,OFF,ON;",
+		"P2O[27],Pad 1 SNAC,OFF,ON;",
+		"P2-;",
+		"D5P2O[17:15],Pad 1,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse;",
+		"P2O[20:18],Pad 2,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse;",
 		"-;",
 		
 `ifndef MISTER_DUAL_SDRAM
