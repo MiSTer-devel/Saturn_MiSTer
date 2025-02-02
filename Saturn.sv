@@ -175,50 +175,6 @@ module emu
 	assign BUTTONS   = {1'b0,osd_btn};
 	assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 
-	always_comb begin
-		if (status[10]) begin
-			VIDEO_ARX = 8'd0;
-			VIDEO_ARY = 8'd0;
-		end else begin
-			casez(res)
-				4'b00?0: begin // 320 x 224
-					VIDEO_ARX = status[11] ? 8'd10: 8'd64;
-					VIDEO_ARY = status[11] ? 8'd7 : 8'd49;
-				end
-	
-				4'b00?1: begin // 352 x 224
-					VIDEO_ARX = status[11] ? 8'd22: 8'd64;
-					VIDEO_ARY = status[11] ? 8'd14: 8'd49;
-				end
-	
-				4'b01?0: begin // 320 x 240
-					VIDEO_ARX = status[11] ? 8'd4 : 8'd128;
-					VIDEO_ARY = status[11] ? 8'd3 : 8'd105;
-				end
-	
-				4'b01?1: begin // 352 x 240
-					VIDEO_ARX = status[11] ? 8'd22: 8'd128;
-					VIDEO_ARY = status[11] ? 8'd15: 8'd105;
-				end
-	
-				4'b10?0: begin // 320 x 256
-					VIDEO_ARX = status[11] ? 8'd5 : 8'd64;
-					VIDEO_ARY = status[11] ? 8'd4 : 8'd49;
-				end
-	
-				4'b10?1: begin // 352 x 256
-					VIDEO_ARX = status[11] ? 8'd11: 8'd128;
-					VIDEO_ARY = status[11] ? 8'd8 : 8'd105;
-				end
-	
-				default: begin // not supported
-					VIDEO_ARX = status[11] ? 8'd10: 8'd64;
-					VIDEO_ARY = status[11] ? 8'd7 : 8'd49;
-				end
-			endcase
-		end
-	end
-	
 	assign AUDIO_S = 1;
 	assign AUDIO_MIX = 0;
 	assign HDMI_FREEZE = 0;
@@ -228,6 +184,76 @@ module emu
 	assign LED_POWER = 0;
 	assign LED_USER  = bios_download;
 	assign VGA_SCALER= 0;
+	assign HDMI_BLACKOUT = 1;
+	
+	wire [1:0] ar = status[63:62];
+	wire [7:0] arx,ary;
+
+	
+	always_comb begin
+		if (status[10]) begin
+			arx = 8'd0;
+			ary = 8'd0;
+		end else begin
+			casez(res)
+				4'b00?0: begin // 320 x 224
+					arx = status[11] ? 8'd10: 8'd64;
+					ary = status[11] ? 8'd7 : 8'd49;
+				end
+	
+				4'b00?1: begin // 352 x 224
+					arx = status[11] ? 8'd22: 8'd64;
+					ary = status[11] ? 8'd14: 8'd49;
+				end
+	
+				4'b01?0: begin // 320 x 240
+					arx = status[11] ? 8'd4 : 8'd128;
+					ary = status[11] ? 8'd3 : 8'd105;
+				end
+	
+				4'b01?1: begin // 352 x 240
+					arx = status[11] ? 8'd22: 8'd128;
+					ary = status[11] ? 8'd15: 8'd105;
+				end
+	
+				4'b10?0: begin // 320 x 256
+					arx = status[11] ? 8'd5 : 8'd64;
+					ary = status[11] ? 8'd4 : 8'd49;
+				end
+	
+				4'b10?1: begin // 352 x 256
+					arx = status[11] ? 8'd11: 8'd128;
+					ary = status[11] ? 8'd8 : 8'd105;
+				end
+	
+				default: begin // not supported
+					arx = status[11] ? 8'd10: 8'd64;
+					ary = status[11] ? 8'd7 : 8'd49;
+				end
+			endcase
+		end
+	end
+	
+	wire       vcrop_en = status[61];
+	wire [3:0] vcopt    = status[54:51];
+	reg        en216p;
+	reg  [4:0] voff;
+	always @(posedge CLK_VIDEO) begin
+			en216p <= ((HDMI_WIDTH == 1920) && (HDMI_HEIGHT == 1080) && !forced_scandoubler && !scale);
+			voff <= (vcopt < 6) ? {vcopt,1'b0} : ({vcopt,1'b0} - 5'd24);
+	end
+
+	wire vga_de;
+	video_freak video_freak
+	(
+		.*,
+		.VGA_DE_IN(vga_de),
+		.ARX((!ar) ? arx : (ar - 1'd1)),
+		.ARY((!ar) ? ary : 12'd0),
+		.CROP_SIZE((en216p & vcrop_en) ? 10'd216 : 10'd0),
+		.CROP_OFF(voff),
+		.SCALE(status[56:55])
+	);
 
 
 	///////////////////////////////////////////////////
@@ -237,7 +263,7 @@ module emu
 	// 0         1         2         3          4         5         6   
 	// 01234567890123456789012345678901 23456789012345678901234567890123
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXX                
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXX    X  XXX    XXX
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -256,14 +282,17 @@ module emu
 		
 		"P1,Audio & Video;",
 		"P1-;",
-		"P1OA,Aspect Ratio,4:3,Stretched;",
-		"P1OB,320x224 Aspect,Original,Corrected;",
-		"P1OT,Deinterlacing, Weave, Bob;",
-		"P1O[1],Black Transitions,On,Off;",
+		"P1o[63:62],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
+		"P1O[11],320x224 Aspect,Original,Corrected;",
+		"P1O[29],Deinterlacing, Weave, Bob;",
 //		"P1O13,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 //		"P1-;",
 //		"P1OC,Border,No,Yes;",
 //		"P1ODE,Composite Blend,Off,On,Adaptive;",
+		"P1-;",
+		"P1o[61],Vertical Crop,Disabled,216p(5x);",
+		"P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
+		"P1o[56:55],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
 	
 		"P2,Input;",
 		"P2-;",
@@ -370,8 +399,6 @@ module emu
 	
 	wire [21:0] gamma_bus;
 	wire [15:0] sdram_sz;
-        
-	assign HDMI_BLACKOUT = ~status[1];
 	
 	hps_io #(.CONF_STR(CONF_STR), .WIDE(1)) hps_io
 	(
@@ -1550,12 +1577,12 @@ module emu
 	end
 	
 //`ifndef DEBUG
-//	wire [2:0] scale = status[3:1];
-//	wire [2:0] sl = scale ? scale - 1'd1 : 3'd0;
+	wire [2:0] scale = status[3:1];
+	wire [2:0] sl = scale ? scale - 1'd1 : 3'd0;
 //	wire scandoubler = ~INTERLACE & (|scale | forced_scandoubler);
 //	wire hq2x = (scale == 1);
 //`else
-	wire [2:0] sl = '0;
+//	wire [2:0] sl = '0;
 	wire scandoubler = 0;
 	wire hq2x = 0;
 //`endif
@@ -1572,6 +1599,7 @@ module emu
 		.hq2x(hq2x),	
 		.freeze_sync(),
 	
+		.VGA_DE(vga_de),
 		.R(R),
 		.G(G),
 		.B(B),
