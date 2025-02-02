@@ -28,9 +28,13 @@ module HPS2PAD (
    input      [24: 0] MOUSE,
    input      [15: 0] MOUSE_EXT,
 	
-	input              LGUN_TRIGGER,
-	input              LGUN_START,
-	input              LGUN_SENSOR
+   input              LGUN_P1_TRIG,
+   input              LGUN_P1_START,
+   input              LGUN_P1_SENSOR,
+   
+   input              LGUN_P2_TRIG,
+   input              LGUN_P2_START,
+   input              LGUN_P2_SENSOR
 );
 
   //joypad mouse
@@ -251,9 +255,35 @@ module HPS2PAD (
 				end
 			end
 			
+			// Stunner (LightGun) ID...
+			// 
+			// The "ID" value is calculated from two nibbles read from the Controller.
+			//
+			// The 1st nibble with the TH pin set High.
+			// The 2nd nibble with the TH pin set Low.
+			//
+			// 1ST nib (TH Hi): [3:0] = b1100
+			// 2ND nib (TH Lo): [3:0] = b1100
+			//
+			// For simpler controllers like the Light Gun, they simply tied some of the [3:0] pins High or Low,
+			// so the state of the TH pin will be completely ignored...
+			//
+			// Bits [3:2] on the Stunner are tied High (or left floating, with pull-ups on the Saturn.)
+			// Bits [1:0] on the Stunner are tied to Ground / Low.
+			//
+			// The SMPC then does a weird OR'ing of pairs of bits from each nibble, to get the final ID nibble value.
+			// (this was probably done as a way to keep backwards-compatibility with simpler MD/Genesis joypads. I don't know?) ElectronAsh.
+			//
+			// ID[3] = 1ST nib [3 OR 2]
+			// ID[2] = 1ST nib [1 OR 0]
+			// ID[1] = 2ND nib [3 OR 2]
+			// ID[0] = 2ND nib [1 OR 0]
+			//
+			// The resulting MD_ID nibble (in the SMPC) for the Stunner ends up as 0xA.
+			//
 			PAD_VIRT_LGUN: begin
-				// [6]=LGUN_LAT_N. [5]=Start_n. [4]=Trigger_n. [3:0]=ID Nibble?
-				PDR1I[6:0] = {!LGUN_SENSOR, !LGUN_START, !LGUN_TRIGGER ,4'b1100};
+				// PDRxI [6]=LGUN_LAT_N. [5]=Start_n. [4]=Trigger_n. [3:0]=ID Nibble?
+				PDR1I[6:0] = {!LGUN_P1_SENSOR, !LGUN_P1_START, !LGUN_P1_TRIG ,4'b1100};
 			end
 			
 			PAD_WHEEL,
@@ -285,35 +315,9 @@ module HPS2PAD (
 				end
 			end
 
-			// Stunner (LightGun) ID...
-			// 
-			// The "ID" value is calculated from two nibbles read from the Controller.
-			//
-			// The 1st nibble with the TH pin set High.
-			// The 2nd nibble with the TH pin set Low.
-			//
-			// 1ST nib (TH Hi): [3:0] = b1100
-			// 2ND nib (TH Lo): [3:0] = b1100
-			//
-			// For simpler controllers like the Light Gun, they simply tied some of the [3:0] pins High or Low,
-			// so the state of the TH pin will be completely ignored...
-			//
-			// Bits [3:2] on the Stunner are tied High (or left floating, with pull-ups on the Saturn.)
-			// Bits [1:0] on the Stunner are tied to Ground / Low.
-			//
-			// The SMPC then does a weird OR'ing of pairs of bits from each nibble, to get the final ID nibble value.
-			// (this was probably done as a way to keep backwards-compatibility with simpler MD/Genesis joypads. I don't know?) ElectronAsh.
-			//
-			// ID[3] = 1ST nib [3 OR 2]
-			// ID[2] = 1ST nib [1 OR 0]
-			// ID[1] = 2ND nib [3 OR 2]
-			// ID[0] = 2ND nib [1 OR 0]
-			//
-			// The resulting MD_ID nibble (in the SMPC) for the Stunner ends up as 0xA.
-			//
 			PAD_VIRT_LGUN: begin
-				// [6]=LGUN_LAT_N. [5]=Start_n. [4]=Trigger_n. [3:0]=ID Nibble (sort of, see above).
-				PDR2I[6:0] = {!LGUN_SENSOR, !LGUN_START, !LGUN_TRIGGER ,4'b1100};
+				// PDRxI [6]=LGUN_LAT_N. [5]=Start_n. [4]=Trigger_n. [3:0]=ID Nibble (sort of, see above).
+				PDR2I[6:0] = {!LGUN_P2_SENSOR, !LGUN_P2_START, !LGUN_P2_TRIG ,4'b1100};
 			end
 			
 			PAD_WHEEL,

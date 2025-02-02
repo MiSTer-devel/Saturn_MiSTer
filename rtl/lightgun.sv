@@ -28,7 +28,10 @@ module lightgun
 	
 	input  [7:0] SENSOR_DELAY,
 	
-	output [2:0] TARGET,
+	output reg   offscreen,
+	output reg   draw,
+	
+	//output [2:0] TARGET,
 	output       SENSOR,
 	output       BTN_A,
 	output       BTN_B,
@@ -36,7 +39,7 @@ module lightgun
 	output       BTN_START
 );
 
-assign TARGET = { 2'd0, ~offscreen & draw};
+//assign TARGET = { 2'd0, ~offscreen & draw};
 
 reg  [9:0] lg_x, x;
 reg  [8:0] lg_y, y;
@@ -66,7 +69,6 @@ wire [8:0] screen_width = (HRES[0] ? 352 : 320);
 // [11] = Z
 // [12] = L
 
-reg offscreen = 0, draw = 0;
 always @(posedge CLK) begin
 	reg old_pix, old_hde, old_vde, old_ms;
 	reg [9:0] hcnt;
@@ -112,7 +114,7 @@ always @(posedge CLK) begin
 	if(MOUSE_XY) begin
 		if(old_ms ^ MOUSE[24]) begin
 			if(new_x[10]) lg_x <= 0;
-			else if(new_x >= screen_width-1) lg_x <= screen_width-1;		// Saturn.
+			else if(new_x >= screen_width-1) lg_x <= screen_width-1;		// If Mouse X >= screen_width, limit (lg_x) to the screen width.
 			else lg_x <= new_x[8:0];
 
 			if(new_y[9]) lg_y <= 0;
@@ -121,8 +123,8 @@ always @(posedge CLK) begin
 		end
 	end
 	else begin
-		if (HRES[0]) lg_x <= j_x + (j_x >> 2);		// Use j_x + (j_x/4) ?
-		else lg_x <= j_x;									// Use j_x directly as lg_x.
+		if (HRES[0]) lg_x <= j_x + (j_x >> 2) + (j_x >> 3);	// Map 0-255 to 352-wide res. (actually 0-349, but close enough)
+		else lg_x <= j_x + (j_x >> 2);								// Map 0-255 to 320-side res. (actually 0-318, but close enough)
 
 		if(j_y < 8) lg_y <= 0;
 		else if((j_y - 9'd8) > vtotal) lg_y <= vtotal;
@@ -152,7 +154,8 @@ always @(posedge CLK) begin
 			yp <= lg_y + cross_sz;
 			
 			// Check if the target is off the edge of the screen. (Left, or Right, or Top, or Bottom).
-			offscreen <= !lg_x[8:1] || lg_x >= (screen_width-1'd1) || !lg_y[7:1] || lg_y >= (vtotal-1'd1);
+			// (have to do screen_width-2, because of the 352-wide res mapping.)
+			offscreen <= !lg_x[8:1] || lg_x >= (screen_width-2) || !lg_y[7:1] || lg_y >= (vtotal-1'd1);
 			
 			if(reload_pend && !reload) begin
 				reload_pend <= reload_pend - 3'd1;

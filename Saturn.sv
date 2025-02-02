@@ -257,13 +257,13 @@ module emu
 
 
 	///////////////////////////////////////////////////
-	
+	//
 	// Status Bit Map:
 	//             Upper                             Lower              
 	// 0         1         2         3          4         5         6   
 	// 01234567890123456789012345678901 23456789012345678901234567890123
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXX    X  XXX    XXX
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXXXXX X  XXXXXXXXXX
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -299,16 +299,24 @@ module emu
 		"P2O[27],Pad 1 SNAC,OFF,ON;",
 		"P2-;",
 		"D5P2O[17:15],Pad 1,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse;",
+		"P2-;",
+		"D6P2O[46],LGun P1 XY Ctrl,Joy 1,Mouse;",
+		"D6P2O[47],LGun P1 Buttons,Joy 1,Mouse;",
+		"D6P2O[49:48],LGun P1 Crosshair,Disabled,Small,Medium,Big,None;",
+		"P2-;",
+		"P2-;",
 		"P2O[20:18],Pad 2,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse;",
-		"-;",
+		"P2-;",
+		"D7P2O[57],LGun P2 XY Ctrl,Joy 2,Mouse;",
+		"D7P2O[58],LGun P2 Buttons,Joy 2,Mouse;",
+		"D7P2O[60:59],LGun P2 Crosshair,Disabled,Small,Medium,Big,None;",
 		
 `ifndef MISTER_DUAL_SDRAM
 		"P3,Hardware;",
 		"P3-;",
 		"P3OS,Timing,Original,Fast;",
 `endif
-		
-/*
+
 `ifndef DEBUG
 		"P4,Debug;",
 		"P4-;",
@@ -359,7 +367,7 @@ module emu
 		"P4O[30],SCSP slot 30,Enable,Disable;",
 		"P4O[31],SCSP slot 31,Enable,Disable;",
 `endif
-*/
+
 		"-;",
 		"R0,Reset;",
 		"J1,A,B,C,Start,R,X,Y,Z,L,Coin;",
@@ -425,7 +433,7 @@ module emu
 		.status(status),
 		.status_in({status[63:8],region_req,status[5:0]}),
 		.status_set(region_set),
-		.status_menumask( {snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena} ),
+		.status_menumask( {~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena} ),
 	
 		.ioctl_download(ioctl_download),
 		.ioctl_index(ioctl_index),
@@ -992,62 +1000,134 @@ module emu
 		.MOUSE(ps2_mouse),
 		.MOUSE_EXT(ps2_mouse_ext),
 		
-		.LGUN_TRIGGER(lg_a),			// Active-HIGH input.
-		.LGUN_START(lg_start),		// Active-HIGH input.
-		.LGUN_SENSOR(lg_sensor)		// Active-HIGH input.
+		.LGUN_P1_TRIG(lg_p1_a),
+		.LGUN_P1_START(lg_p1_start),
+		.LGUN_P1_SENSOR(lg_p1_sensor),
+		
+		.LGUN_P2_TRIG(lg_p2_a),
+		.LGUN_P2_START(lg_p2_start),
+		.LGUN_P2_SENSOR(lg_p2_sensor)		
 	);
 	
 
-	wire [2:0] lg_target;
-	wire       lg_sensor;
-	wire       lg_a;
-	wire       lg_b;
-	//wire       lg_c;
-	wire       lg_start;
+	wire lg_p1_ena = (status[17:15]==3'd1);
+	
+	wire       lg_p1_sensor;
+	wire       lg_p1_a;
+	wire       lg_p1_b;
+	wire       lg_p1_c;
+	wire       lg_p1_start;
 
-	wire        gun_type;
-	wire  [7:0] gun_sensor_delay = 8'd2;
+	wire       gun_p1_xy_mode    = status[46];
+	wire       gun_p1_btn_mode   = status[47];
+	wire [1:0] gun_p1_cross_size = status[49:48];
+	wire [7:0] gun_p1_sensor_delay = 8'd2;
 
-	wire [1:0] gun_mode = status[41:40];
-	wire       gun_btn_mode = status[42];
-
-	lightgun  lightgun_inst
+	wire lg_p1_offscreen;
+	wire lg_p1_draw;
+	wire [2:0] lg_p1_target = {2'd0, ~lg_p1_offscreen & lg_p1_draw};	// RED Crosshair.
+	
+	lightgun  lightgun_p1
 	(
 		.CLK(clk_sys),
 		.RESET(~rst_sys),
 
 		.MOUSE(ps2_mouse),
-		.MOUSE_XY(gun_mode==2'd3),	// In Mouse XY mode, the lightgun module will ignore the Joystick X/Y stuff below.
+		.MOUSE_XY(gun_p1_xy_mode),		// 0=Use joystick to control LGun XY.
+												// 1=Use Mouse to control LGun XY.
 
-		.JOY_X(gun_mode[0] ? joy0_x0    : joy1_x0),
-		.JOY_Y(gun_mode[0] ? joy0_y0    : joy1_y0),
-		.JOY(  gun_mode[0] ? joystick_0 : joystick_1),
+		.JOY_X(joy0_x0),					// Player 1 joystick.
+		.JOY_Y(joy0_y0),
+		.JOY(joystick_0),
 
-		.BTN_MODE(gun_btn_mode),	// 0=Use Mouse buttons for LG. 1=Use Joystick buttons for LG.
+		.BTN_MODE(gun_p1_btn_mode),	// 0=Use Joystick buttons for LG.
+												// 1=Use Mouse buttons for LG.
 		
-		//.RELOAD(gun_type),
-		.RELOAD(1'b1),		// Auto-Reload?
+		.RELOAD(1'b1),						// Enable Auto-Reload.
 
-		.HDE(HBL_N),		// Blanking signals are Active-Low. So should act as "DE" (Data Enable) signals when High!
-		.VDE(VBL_N),		// ie. No need to invert here?
+		.HDE(HBL_N),						// Blanking signals are Active-Low. So should act as "DE" (Data Enable) signals when High!
+		.VDE(VBL_N),						// ie. No need to invert here?
 		.CE_PIX(DCLK),
 		
 		.FIELD(FIELD),
 		.INTERLACE(INTERLACE),
-		.HRES(HRES), 				// input [1:0]   [1]:0-normal,1-hi-res; [0]:0-320p,1-352p
-		.VRES(VRES), 				// input [1:0]   0-224,1-240,2-256
+		.HRES(HRES), 						// input [1:0]   [1]:0-normal,1-hi-res; [0]:0-320p,1-352p
+		.VRES(VRES), 						// input [1:0]   0-224,1-240,2-256
 		.DCE_R(DCE_R),
 		
-		.SIZE( status[44:43] ),
-		.SENSOR_DELAY(gun_sensor_delay),	// Originally based on the MD lightgun module. Not sure if any Saturn LG games use polling, or even need this? EA
-
-		.TARGET(lg_target),		// output [2:0]  TARGET. (lg_target is used at the video_mixer inputs, to show the crosshair on-screen).
+		.SIZE(gun_p1_cross_size),
+		.SENSOR_DELAY(gun_p1_sensor_delay),	// Originally based on the MD lightgun module.
+														// Not sure if any Saturn LG games use polling, or even need this? EA
+		.offscreen(lg_p1_offscreen),
+		.draw(lg_p1_draw),
+		//.TARGET(lg_p1_target),	// output [2:0]  TARGET. (lg_p1_target is used at the video_mixer inputs, to overlay the crosshair on RGB)
 		
-		.SENSOR(lg_sensor),		// output  SENSOR  ("Light detected" signal, to VDP2).
-		.BTN_A(lg_a),				// output  BTN_A   (used as the Trigger "button" signal, to HPS2PAD).
-		//.BTN_B(lg_b),			// output  BTN_B   (used for Auto-Reload in this module - Don't use the BTN_B / lg_b output when using the RELOAD option!)
-		//.BTN_C(lg_c),
-		.BTN_START(lg_start)		// (used as the Start button signal, to HPS2PAD).
+		.SENSOR(lg_p1_sensor),		// output  SENSOR  ("Light detected" signal, to VDP2).
+		.BTN_A(lg_p1_a),				// output  BTN_A   (used as the Trigger "button" signal, to HPS2PAD).
+		.BTN_B(lg_p1_b),				// output  BTN_B   (used for Auto-Reload in this module - Don't use the BTN_B / lg_p1_b output when using the RELOAD option!)
+		.BTN_C(lg_p1_c),
+		.BTN_START(lg_p1_start)		// (used as the Start button signal, to HPS2PAD).
+	);
+
+
+	wire lg_p2_ena = (status[20:18]==3'd1);
+	
+	wire       lg_p2_sensor;
+	wire       lg_p2_a;
+	wire       lg_p2_b;
+	wire       lg_p2_c;
+	wire       lg_p2_start;
+
+	wire       gun_p2_xy_mode    = status[57];
+	wire       gun_p2_btn_mode   = status[58];
+	wire [1:0] gun_p2_cross_size = status[60:59];
+	wire [7:0] gun_p2_sensor_delay = 8'd2;
+	
+	wire lg_p2_offscreen;
+	wire lg_p2_draw;
+	wire [2:0] lg_p2_target = {1'b0, ~lg_p2_offscreen & lg_p2_draw, 1'b0};	// GREEN Crosshair.
+
+	lightgun  lightgun_p2
+	(
+		.CLK(clk_sys),
+		.RESET(~rst_sys),
+
+		.MOUSE(ps2_mouse),
+		.MOUSE_XY(gun_p2_xy_mode),		// 0=Use joystick to control LGun XY.
+												// 1=Use Mouse to control LGun XY.
+
+		.JOY_X(joy1_x0),					// Player 2 joystick.
+		.JOY_Y(joy1_y0),
+		.JOY(joystick_1),
+
+		.BTN_MODE(gun_p2_btn_mode),	// 0=Use Joystick buttons for LG.
+												// 1=Use Mouse buttons for LG.
+		
+		.RELOAD(1'b1),						// Enable Auto-Reload.
+
+		.HDE(HBL_N),						// Blanking signals are Active-Low. So should act as "DE" (Data Enable) signals when High!
+		.VDE(VBL_N),						// ie. No need to invert here?
+		.CE_PIX(DCLK),
+		
+		.FIELD(FIELD),
+		.INTERLACE(INTERLACE),
+		.HRES(HRES), 						// input [1:0]   [1]:0-normal,1-hi-res; [0]:0-320p,1-352p
+		.VRES(VRES), 						// input [1:0]   0-224,1-240,2-256
+		.DCE_R(DCE_R),
+		
+		.SIZE(gun_p2_cross_size),
+		.SENSOR_DELAY(gun_p2_sensor_delay),	// Originally based on the MD lightgun module.
+														// Not sure if any Saturn LG games use polling, or even need this? EA
+
+		.offscreen(lg_p2_offscreen),
+		.draw(lg_p2_draw),
+		//.TARGET(lg_p2_target),	// output [2:0]  TARGET. (lg_p2_target is used at the video_mixer inputs, to overlay the crosshair on RGB)
+		
+		.SENSOR(lg_p2_sensor),		// output  SENSOR  ("Light detected" signal, to VDP2).
+		.BTN_A(lg_p2_a),				// output  BTN_A   (used as the Trigger "button" signal, to HPS2PAD).
+		.BTN_B(lg_p2_b),				// output  BTN_B   (used for Auto-Reload in this module - Don't use the BTN_B / lg_p1_b output when using the RELOAD option!)
+		.BTN_C(lg_p2_c),
+		.BTN_START(lg_p2_start)		// (used as the Start button signal, to HPS2PAD).
 	);
 
 	
@@ -1660,9 +1740,10 @@ module emu
 		.hq2x(hq2x),	
 		.freeze_sync(),
 	
-		.R((lg_target && gun_mode && (~&status[44:43])) ? {8{lg_target[0]}} : R),
-		.G((lg_target && gun_mode && (~&status[44:43])) ? {8{lg_target[1]}} : G),
-		.B((lg_target && gun_mode && (~&status[44:43])) ? {8{lg_target[2]}} : B),
+		.VGA_DE(vga_de),
+		.R(lg_p1_targ_draw ? {8{lg_p1_target[0]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : R),
+		.G(lg_p1_targ_draw ? {8{lg_p1_target[1]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : G),
+		.B(lg_p1_targ_draw ? {8{lg_p1_target[2]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : B),
 	
 		// Positive pulses.
 		.HSync(~HS_N),
@@ -1671,7 +1752,10 @@ module emu
 		.VBlank(~VBL_N)
 	);
 
-
+wire lg_p1_targ_draw = lg_p1_target && lg_p1_ena && (status[49:48]==2'd0);
+wire lg_p2_targ_draw = lg_p2_target && lg_p2_ena && (status[60:59]==2'd0);
+	
+	
 	//debug
 	reg  [ 7: 0] SCRN_EN = 8'b11111111;
 	reg  [ 2: 0] SND_EN = 3'b111;
@@ -1734,11 +1818,13 @@ module emu
 	
 	reg  [7:0] SCRN_EN2 = 8'b11111111;
 	reg  [2:0] SND_EN2 = 3'b111;
+
 `ifdef DEBUG
 	assign SLOT_EN = {~status[31:28],~status[63:36]};
 `else
 	assign SCRN_EN2 = ~status[42:36];
 	assign SND_EN2 = ~status[45:43];
 `endif
+
 
 endmodule
