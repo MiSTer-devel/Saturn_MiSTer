@@ -26,8 +26,13 @@ module HPS2PAD (
    input      [ 2: 0] JOY2_TYPE,
 
    input      [24: 0] MOUSE,
-   input      [15: 0] MOUSE_EXT
+   input      [15: 0] MOUSE_EXT,
+	
+	input              LGUN_TRIGGER,
+	input              LGUN_START,
+	input              LGUN_SENSOR
 );
+
   //joypad mouse
 	parameter PAD_MOUSE_DEAD_ZONE = 7;
 
@@ -83,7 +88,7 @@ module HPS2PAD (
 	wire [7:0] p2_m_y       = mouse_y | p2_mjy_dz;
 
 	parameter PAD_DIGITAL     = 0;
-	parameter PAD_OFF         = 1;
+	parameter PAD_VIRT_LGUN   = 1;
 	parameter PAD_WHEEL       = 2;
 	parameter PAD_MISSION     = 3;
 	parameter PAD_3D          = 4;
@@ -246,6 +251,11 @@ module HPS2PAD (
 				end
 			end
 			
+			PAD_VIRT_LGUN: begin
+				// [6]=LGUN_LAT_N. [5]=Start_n. [4]=Trigger_n. [3:0]=ID Nibble?
+				PDR1I[6:0] = {!LGUN_SENSOR, !LGUN_START, !LGUN_TRIGGER ,4'b1100};
+			end
+			
 			PAD_WHEEL,
 			PAD_MOUSE,
 			PAD_MISSION,
@@ -273,6 +283,37 @@ module HPS2PAD (
 						2'b11: PDR2I[3:0] = {JOY2[3],3'b100};
 					endcase
 				end
+			end
+
+			// Stunner (LightGun) ID...
+			// 
+			// The "ID" value is calculated from two nibbles read from the Controller.
+			//
+			// The 1st nibble with the TH pin set High.
+			// The 2nd nibble with the TH pin set Low.
+			//
+			// 1ST nib (TH Hi): [3:0] = b1100
+			// 2ND nib (TH Lo): [3:0] = b1100
+			//
+			// For simpler controllers like the Light Gun, they simply tied some of the [3:0] pins High or Low,
+			// so the state of the TH pin will be completely ignored...
+			//
+			// Bits [3:2] on the Stunner are tied High (or left floating, with pull-ups on the Saturn.)
+			// Bits [1:0] on the Stunner are tied to Ground / Low.
+			//
+			// The SMPC then does a weird OR'ing of pairs of bits from each nibble, to get the final ID nibble value.
+			// (this was probably done as a way to keep backwards-compatibility with simpler MD/Genesis joypads. I don't know?) ElectronAsh.
+			//
+			// ID[3] = 1ST nib [3 OR 2]
+			// ID[2] = 1ST nib [1 OR 0]
+			// ID[1] = 2ND nib [3 OR 2]
+			// ID[0] = 2ND nib [1 OR 0]
+			//
+			// The resulting MD_ID nibble (in the SMPC) for the Stunner ends up as 0xA.
+			//
+			PAD_VIRT_LGUN: begin
+				// [6]=LGUN_LAT_N. [5]=Start_n. [4]=Trigger_n. [3:0]=ID Nibble (sort of, see above).
+				PDR2I[6:0] = {!LGUN_SENSOR, !LGUN_START, !LGUN_TRIGGER ,4'b1100};
 			end
 			
 			PAD_WHEEL,

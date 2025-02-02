@@ -272,12 +272,12 @@ module emu
 		"FS2,BIN,Load bios;",
 		"FS3,BIN,Load cartridge;",
 		"-;",
-		"OLN,Cartridge,None,ROM 2M,DRAM 1M,DRAM 4M,BACKUP,STV;",
-		"o13,Region,Japan,Taiwan,USA,Brazil,Korea,Asia,Europe,Auto;",
+		"O[23:21],Cartridge,None,ROM 2M,DRAM 1M,DRAM 4M,BACKUP,STV;",
+		"O[35:33],Region,Japan,Taiwan,USA,Brazil,Korea,Asia,Europe,Auto;",
 		"-;",
-		"D0RO,Load Backup RAM;",
-		"D0RP,Save Backup RAM;",
-		"D0OQ,Autosave,Off,On;", 
+		"D0R[24],Load Backup RAM;",
+		"D0R[25],Save Backup RAM;",
+		"D0O[26],Autosave,Off,On;", 
 		"-;",
 		
 		"P1,Audio & Video;",
@@ -285,10 +285,10 @@ module emu
 		"P1o[63:62],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 		"P1O[11],320x224 Aspect,Original,Corrected;",
 		"P1O[29],Deinterlacing, Weave, Bob;",
-//		"P1O13,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
+//		"P1O[3:1],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 //		"P1-;",
-//		"P1OC,Border,No,Yes;",
-//		"P1ODE,Composite Blend,Off,On,Adaptive;",
+//		"P1O[12],Border,No,Yes;",
+//		"P1O[14:13],Composite Blend,Off,On,Adaptive;",
 		"P1-;",
 		"P1o[61],Vertical Crop,Disabled,216p(5x);",
 		"P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
@@ -307,56 +307,58 @@ module emu
 		"P3OS,Timing,Original,Fast;",
 `endif
 		
+/*
 `ifndef DEBUG
 		"P4,Debug;",
 		"P4-;",
-		"P4o4,VDP2 NBG0,Enable,Disable;",
-		"P4o5,VDP2 NBG1,Enable,Disable;",
-		"P4o6,VDP2 NBG2,Enable,Disable;",
-		"P4o7,VDP2 NBG3,Enable,Disable;",
-		"P4o8,VDP2 RBG0,Enable,Disable;",
-		"P4o9,VDP2 Sprite,Enable,Disable;",
-		"P4oA,VDP2 Shadow,Enable,Disable;",
+		"P4o[36],VDP2 NBG0,Enable,Disable;",
+		"P4o[37],VDP2 NBG1,Enable,Disable;",
+		"P4o[38],VDP2 NBG2,Enable,Disable;",
+		"P4o[39],VDP2 NBG3,Enable,Disable;",
+		"P4o[40],VDP2 RBG0,Enable,Disable;",
+		"P4o[41],VDP2 Sprite,Enable,Disable;",
+		"P4o[42],VDP2 Shadow,Enable,Disable;",
 		"P4-;",
-		"P4oB,SCSP Direct sound,Enable,Disable;",
-		"P4oC,SCSP DSP sound,Enable,Disable;",
-		"P4oD,CD audio,Enable,Disable;",
+		"P4o[43],SCSP Direct sound,Enable,Disable;",
+		"P4o[44],SCSP DSP sound,Enable,Disable;",
+		"P4o[45],CD audio,Enable,Disable;",
 `else
 		"P4,Debug;",
-		"P4o4,SCSP slot 0,Enable,Disable;",
-		"P4o5,SCSP slot 1,Enable,Disable;",
-		"P4o6,SCSP slot 2,Enable,Disable;",
-		"P4o7,SCSP slot 3,Enable,Disable;",
-		"P4o8,SCSP slot 4,Enable,Disable;",
-		"P4o9,SCSP slot 5,Enable,Disable;",
-		"P4oA,SCSP slot 6,Enable,Disable;",
-		"P4oB,SCSP slot 7,Enable,Disable;",
-		"P4oC,SCSP slot 8,Enable,Disable;",
-		"P4oD,SCSP slot 9,Enable,Disable;",
-		"P4oE,SCSP slot 10,Enable,Disable;",
-		"P4oF,SCSP slot 11,Enable,Disable;",
-		"P4oG,SCSP slot 12,Enable,Disable;",
-		"P4oH,SCSP slot 13,Enable,Disable;",
-		"P4oI,SCSP slot 14,Enable,Disable;",
-		"P4oJ,SCSP slot 15,Enable,Disable;",
-		"P4oK,SCSP slot 16,Enable,Disable;",
-		"P4oL,SCSP slot 17,Enable,Disable;",
-		"P4oM,SCSP slot 18,Enable,Disable;",
-		"P4oN,SCSP slot 19,Enable,Disable;",
-		"P4oO,SCSP slot 20,Enable,Disable;",
-		"P4oP,SCSP slot 21,Enable,Disable;",
-		"P4oQ,SCSP slot 22,Enable,Disable;",
-		"P4oR,SCSP slot 23,Enable,Disable;",
-		"P4oS,SCSP slot 24,Enable,Disable;",
-		"P4oT,SCSP slot 25,Enable,Disable;",
-		"P4oU,SCSP slot 26,Enable,Disable;",
-		"P4oV,SCSP slot 27,Enable,Disable;",
-		"P4OS,SCSP slot 28,Enable,Disable;",
-		"P4OT,SCSP slot 29,Enable,Disable;",
-		"P4OU,SCSP slot 30,Enable,Disable;",
-		"P4OV,SCSP slot 31,Enable,Disable;",
+		"P4o[36],SCSP slot 0,Enable,Disable;",
+		"P4o[37],SCSP slot 1,Enable,Disable;",
+		"P4o[38],SCSP slot 2,Enable,Disable;",
+		"P4o[39],SCSP slot 3,Enable,Disable;",
+		"P4o[40],SCSP slot 4,Enable,Disable;",
+		"P4o[41],SCSP slot 5,Enable,Disable;",
+		"P4o[42],SCSP slot 6,Enable,Disable;",
+		"P4o[43],SCSP slot 7,Enable,Disable;",
+		"P4o[44],SCSP slot 8,Enable,Disable;",
+		"P4o[45],SCSP slot 9,Enable,Disable;",
+		"P4o[46],SCSP slot 10,Enable,Disable;",
+		"P4o[47],SCSP slot 11,Enable,Disable;",
+		"P4o[48],SCSP slot 12,Enable,Disable;",
+		"P4o[49],SCSP slot 13,Enable,Disable;",
+		"P4o[50],SCSP slot 14,Enable,Disable;",
+		"P4o[51],SCSP slot 15,Enable,Disable;",
+		"P4o[52],SCSP slot 16,Enable,Disable;",
+		"P4o[53],SCSP slot 17,Enable,Disable;",
+		"P4o[54],SCSP slot 18,Enable,Disable;",
+		"P4o[55],SCSP slot 19,Enable,Disable;",
+		"P4o[56],SCSP slot 20,Enable,Disable;",
+		"P4o[57],SCSP slot 21,Enable,Disable;",
+		"P4o[58],SCSP slot 22,Enable,Disable;",
+		"P4o[59],SCSP slot 23,Enable,Disable;",
+		"P4o[60],SCSP slot 24,Enable,Disable;",
+		"P4o[61],SCSP slot 25,Enable,Disable;",
+		"P4o[62],SCSP slot 26,Enable,Disable;",
+		"P4o[63],SCSP slot 27,Enable,Disable;",
+		
+		"P4O[28],SCSP slot 28,Enable,Disable;",
+		"P4O[29],SCSP slot 29,Enable,Disable;",
+		"P4O[30],SCSP slot 30,Enable,Disable;",
+		"P4O[31],SCSP slot 31,Enable,Disable;",
 `endif
-
+*/
 		"-;",
 		"R0,Reset;",
 		"J1,A,B,C,Start,R,X,Y,Z,L,Coin;",
@@ -422,7 +424,7 @@ module emu
 		.status(status),
 		.status_in({status[63:8],region_req,status[5:0]}),
 		.status_set(region_set),
-		.status_menumask({1'b1,1'b1,~status[8],1'b1,~bk_ena}),
+		.status_menumask( {snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena} ),
 	
 		.ioctl_download(ioctl_download),
 		.ioctl_index(ioctl_index),
@@ -987,8 +989,66 @@ module emu
 		.JOY2_TYPE(status[20:18]),
 
 		.MOUSE(ps2_mouse),
-		.MOUSE_EXT(ps2_mouse_ext)
+		.MOUSE_EXT(ps2_mouse_ext),
+		
+		.LGUN_TRIGGER(lg_a),			// Active-HIGH input.
+		.LGUN_START(lg_start),		// Active-HIGH input.
+		.LGUN_SENSOR(lg_sensor)		// Active-HIGH input.
 	);
+	
+
+	wire [2:0] lg_target;
+	wire       lg_sensor;
+	wire       lg_a;
+	wire       lg_b;
+	//wire       lg_c;
+	wire       lg_start;
+
+	wire        gun_type;
+	wire  [7:0] gun_sensor_delay = 8'd2;
+
+	wire [1:0] gun_mode = status[41:40];
+	wire       gun_btn_mode = status[42];
+
+	lightgun  lightgun_inst
+	(
+		.CLK(clk_sys),
+		.RESET(~rst_sys),
+
+		.MOUSE(ps2_mouse),
+		.MOUSE_XY(gun_mode==2'd3),	// In Mouse XY mode, the lightgun module will ignore the Joystick X/Y stuff below.
+
+		.JOY_X(gun_mode[0] ? joy0_x0    : joy1_x0),
+		.JOY_Y(gun_mode[0] ? joy0_y0    : joy1_y0),
+		.JOY(  gun_mode[0] ? joystick_0 : joystick_1),
+
+		.BTN_MODE(gun_btn_mode),	// 0=Use Mouse buttons for LG. 1=Use Joystick buttons for LG.
+		
+		//.RELOAD(gun_type),
+		.RELOAD(1'b1),		// Auto-Reload?
+
+		.HDE(HBL_N),		// Blanking signals are Active-Low. So should act as "DE" (Data Enable) signals when High!
+		.VDE(VBL_N),		// ie. No need to invert here?
+		.CE_PIX(DCLK),
+		
+		.FIELD(FIELD),
+		.INTERLACE(INTERLACE),
+		.HRES(HRES), 				// input [1:0]   [1]:0-normal,1-hi-res; [0]:0-320p,1-352p
+		.VRES(VRES), 				// input [1:0]   0-224,1-240,2-256
+		.DCE_R(DCE_R),
+		
+		.SIZE( status[44:43] ),
+		.SENSOR_DELAY(gun_sensor_delay),	// Originally based on the MD lightgun module. Not sure if any Saturn LG games use polling, or even need this? EA
+
+		.TARGET(lg_target),		// output [2:0]  TARGET. (lg_target is used at the video_mixer inputs, to show the crosshair on-screen).
+		
+		.SENSOR(lg_sensor),		// output  SENSOR  ("Light detected" signal, to VDP2).
+		.BTN_A(lg_a),				// output  BTN_A   (used as the Trigger "button" signal, to HPS2PAD).
+		//.BTN_B(lg_b),			// output  BTN_B   (used for Auto-Reload in this module - Don't use the BTN_B / lg_b output when using the RELOAD option!)
+		//.BTN_C(lg_c),
+		.BTN_START(lg_start)		// (used as the Start button signal, to HPS2PAD).
+	);
+
 	
 	wire [13:1] CD_BUF_ADDR;
 	wire [15:0] CD_BUF_DI;
@@ -1599,10 +1659,9 @@ module emu
 		.hq2x(hq2x),	
 		.freeze_sync(),
 	
-		.VGA_DE(vga_de),
-		.R(R),
-		.G(G),
-		.B(B),
+		.R((lg_target && gun_mode && (~&status[44:43])) ? {8{lg_target[0]}} : R),
+		.G((lg_target && gun_mode && (~&status[44:43])) ? {8{lg_target[1]}} : G),
+		.B((lg_target && gun_mode && (~&status[44:43])) ? {8{lg_target[2]}} : B),
 	
 		// Positive pulses.
 		.HSync(~HS_N),
