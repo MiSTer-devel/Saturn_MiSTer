@@ -1023,9 +1023,8 @@ module emu
 	wire [1:0] gun_p1_cross_size = status[49:48];
 	wire [7:0] gun_p1_sensor_delay = 8'd2;
 
-	wire lg_p1_offscreen;
-	wire lg_p1_draw;
-	wire [2:0] lg_p1_target = {2'd0, ~lg_p1_offscreen & lg_p1_draw};	// RED Crosshair.
+	wire CROSS_DRAW_P1;
+	wire [2:0] lg_p1_target = {2'b00, CROSS_DRAW_P1};	// RED Crosshair.
 	
 	lightgun  lightgun_p1
 	(
@@ -1058,9 +1057,7 @@ module emu
 		.SIZE(gun_p1_cross_size),
 		.SENSOR_DELAY(gun_p1_sensor_delay),	// Originally based on the MD lightgun module.
 														// Not sure if any Saturn LG games use polling, or even need this? EA
-		.offscreen(lg_p1_offscreen),
-		.draw(lg_p1_draw),
-		//.TARGET(lg_p1_target),	// output [2:0]  TARGET. (lg_p1_target is used at the video_mixer inputs, to overlay the crosshair on RGB)
+		.CROSS_DRAW(CROSS_DRAW_P1),
 		
 		.SENSOR(lg_p1_sensor),		// output  SENSOR  ("Light detected" signal, to VDP2).
 		.BTN_A(lg_p1_a),				// output  BTN_A   (used as the Trigger "button" signal, to HPS2PAD).
@@ -1083,9 +1080,8 @@ module emu
 	wire [1:0] gun_p2_cross_size = status[60:59];
 	wire [7:0] gun_p2_sensor_delay = 8'd2;
 	
-	wire lg_p2_offscreen;
-	wire lg_p2_draw;
-	wire [2:0] lg_p2_target = {1'b0, ~lg_p2_offscreen & lg_p2_draw, 1'b0};	// GREEN Crosshair.
+	wire CROSS_DRAW_P2;
+	wire [2:0] lg_p2_target = {1'b0, CROSS_DRAW_P2, 1'b0};	// GREEN Crosshair.
 
 	lightgun  lightgun_p2
 	(
@@ -1118,10 +1114,7 @@ module emu
 		.SIZE(gun_p2_cross_size),
 		.SENSOR_DELAY(gun_p2_sensor_delay),	// Originally based on the MD lightgun module.
 														// Not sure if any Saturn LG games use polling, or even need this? EA
-
-		.offscreen(lg_p2_offscreen),
-		.draw(lg_p2_draw),
-		//.TARGET(lg_p2_target),	// output [2:0]  TARGET. (lg_p2_target is used at the video_mixer inputs, to overlay the crosshair on RGB)
+		.CROSS_DRAW(CROSS_DRAW_P2),
 		
 		.SENSOR(lg_p2_sensor),		// output  SENSOR  ("Light detected" signal, to VDP2).
 		.BTN_A(lg_p2_a),				// output  BTN_A   (used as the Trigger "button" signal, to HPS2PAD).
@@ -1752,8 +1745,8 @@ module emu
 		.VBlank(~VBL_N)
 	);
 
-wire lg_p1_targ_draw = (|lg_p1_target) && lg_p1_ena && (gun_p1_cross_size < 2'd3);
-wire lg_p2_targ_draw = (|lg_p2_target) && lg_p2_ena && (gun_p2_cross_size < 2'd3);
+	wire lg_p1_targ_draw = (|lg_p1_target) && lg_p1_ena && (gun_p1_cross_size < 2'd3);
+	wire lg_p2_targ_draw = (|lg_p2_target) && lg_p2_ena && (gun_p2_cross_size < 2'd3);
 	
 	
 	//debug

@@ -28,10 +28,8 @@ module lightgun
 	
 	input  [7:0] SENSOR_DELAY,
 	
-	output reg   offscreen,
-	output reg   draw,
+	output       CROSS_DRAW,
 	
-	//output [2:0] TARGET,
 	output       SENSOR,
 	output       BTN_A,
 	output       BTN_B,
@@ -39,7 +37,10 @@ module lightgun
 	output       BTN_START
 );
 
-//assign TARGET = { 2'd0, ~offscreen & draw};
+assign CROSS_DRAW = ~offscreen & draw;
+
+reg offscreen = 0;
+reg draw = 0;
 
 reg  [9:0] lg_x, x;
 reg  [8:0] lg_y, y;
