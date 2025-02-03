@@ -21,8 +21,52 @@ module STV (
 	bit  [ 7: 0] OUT[8];
 	bit  [ 7: 0] DIR;
 	
+	
+	// 0x0001 PORT-A (P1)      JAMMA (56P)
+	// 0x0003 PORT-B (P2)      JAMMA (56P)
+	// 0x0005 PORT-C (SYSTEM)  JAMMA (56P)
+	// 0x0007 PORT-D (OUTPUT)  JAMMA (56P) + CN25 (JST NH 5P) RESERVED OUTPUT 4bit. (?)
+	// 0x0009 PORT-E (P3)      CN32 (JST NH 9P) EXTENSION I/O 8bit.
+	// 0x000b PORT-F (P4 / Extra 6B layout)    CN21 (JST NH 11P) EXTENSION I/O 8bit.
+	// 0x000d PORT-G           CN20 (JST HN 10P) EXTENSION INPUT 8bit. (?)
+	// 0x000f unused
+	// 0x0011 PORT_DIR
+	//
+	// (each bit of PORT_DIR configures the DIRection of each 8-bit IO port. 1=input, 0=output.)
+	//
+	//  eg. PORT_DIR[0]=1=PORTA pins are all INPUTs.
+	//  eg. PORT_DIR[1]=1=PORTB pins are all INPUTs.
+	//  eg. PORT_DIR[2]=1=PORTC pins are all INPUTs.
+	//  eg. PORT_DIR[3]=0=PORTD pins are all OUTPUTs.
+
+
+	// PORTs A, B, E, F. (Player 1, 2, 3, 4)...
+	// 
+	// b7 = Left
+	// b6 = Right
+	// b5 = Up
+	// b4 = Down
+	// b3 = Button 4 (P3/P4 use this for Start)
+	// b2 = Button 3
+	// b1 = Button 2
+	// b0 = Button 1
+	//	
 	assign IN[0] = {JOY1[14],JOY1[15],JOY1[12],JOY1[13],1'b1,JOY1[9],JOY1[8],JOY1[10]};
 	assign IN[1] = {JOY2[14],JOY2[15],JOY2[12],JOY2[13],1'b1,JOY2[9],JOY2[8],JOY2[10]};
+	
+	// PORTC (System) inputs...
+	// 
+	// b7 = Pause (if the game supports it)
+	// b6 = Multi-Cart Select.
+	// b5 = Start 2 ?
+	// b4 = Start 1 ?
+	// b3 = Service 1.
+	// b2 = Test ?
+	// b1 = Coin 2
+	// b0 = Coin 1
+	//
+	// Button inputs to core are Active-LOW !
+	// 
 	assign IN[2] = {1'b1,1'b1,JOY2[11],JOY1[11],JOY1[7],JOY1[3],1'b1,COIN1};
 	assign IN[3] = 8'h00;
 	assign IN[4] = 8'hFF;
