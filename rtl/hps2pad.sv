@@ -98,6 +98,7 @@ module HPS2PAD (
 	parameter PAD_3D          = 4;
 	parameter PAD_DUALMISSION = 5;
 	parameter PAD_MOUSE       = 6;
+	parameter PAD_OFF         = 7;
 	
 	bit [ 3: 0] OUT1,OUT2;
 	bit         TL1,TL2;
