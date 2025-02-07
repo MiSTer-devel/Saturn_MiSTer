@@ -52,7 +52,7 @@ wire [8:0] j_x = {~JOY_X[7], JOY_X[6:0]};
 wire [8:0] j_y = {~JOY_Y[7], JOY_Y[6:0]};
 
 // HRES[1:0]. [1]:0-normal,1-hi-res; [0]:0-320p,1-352p
-wire [8:0] screen_width = HRES[0] ? 352 : 320;
+wire [8:0] screen_width = HRES[0] ? 9'd352 : 9'd320;
 
 // JOY bits...
 // 
@@ -115,7 +115,7 @@ always @(posedge CLK) begin
 	if(MOUSE_XY) begin
 		if(old_ms ^ MOUSE[24]) begin
 			if(new_x[10]) lg_x <= 0;
-			else if(new_x >= screen_width-1) lg_x <= screen_width-1;		// If Mouse X >= screen_width, limit (lg_x) to the screen width.
+			else if(new_x >= screen_width-1) lg_x <= screen_width - 9'd1;		// If Mouse X >= screen_width, limit (lg_x) to the screen width.
 			else lg_x <= new_x[8:0];
 
 			if(new_y[9]) lg_y <= 0;
