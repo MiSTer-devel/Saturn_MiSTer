@@ -1748,7 +1748,6 @@ module VDP1 (
 `endif
 
 	//FB out
-		bit  [11: 0] HTIM_PIPE;
 	ScrnStart_t  RP_Xst;
 	ScrnStart_t  RP_Yst;
 	ScrnInc_t    RP_DXst;
@@ -1763,6 +1762,7 @@ module VDP1 (
 	bit  [ 8: 0] ERASE_X;
 	bit  [ 8: 0] ERASE_Y;
 	bit          ERASE_HIT;
+	bit  [15: 0] HTIM_PIPE;
 	always @(posedge CLK or negedge RST_N) begin
 		bit          HTIM_N_OLD;
 		bit          VTIM_N_OLD;
@@ -1778,7 +1778,7 @@ module VDP1 (
 			VTIM_N_OLD <= VTIM_N;
 			
 			if (DCE_R) begin
-				HTIM_PIPE <= {HTIM_PIPE[10:0],HTIM_N};
+				HTIM_PIPE <= {HTIM_PIPE[14:0],HTIM_N};
 			end
 			
 			if (DCE_R) begin
@@ -1842,7 +1842,7 @@ module VDP1 (
 				end
 			end
 			
-			if (!VTIM_N && (HTIM_N || HTIM_PIPE[0]) && VBLANK_ERASE && CE_R) begin
+			if ((HTIM_N || |HTIM_PIPE) && VBLANK_ERASE && CE_R) begin
 				OUT_X <= OUT_X + 9'd1;
 				if ({1'b0,OUT_X} + 10'd1 == {EWRR.X3,3'b000}) begin
 					OUT_X <= {EWLR.X1,3'b000};
@@ -1862,8 +1862,8 @@ module VDP1 (
 		end
 	end
 	
-	assign FRAME_ERASE_EN = ERASE_HIT && FRAME_ERASE && VTIM_N && !DBG_EXT[0];
-	assign VBLANK_ERASE_EN = ERASE_HIT && VBLANK_ERASE && ~VTIM_N && (HTIM_N || HTIM_PIPE[0]) && !DBG_EXT[1];
+	assign FRAME_ERASE_EN = ERASE_HIT && FRAME_ERASE && VTIM_N;
+	assign VBLANK_ERASE_EN = ERASE_HIT && VBLANK_ERASE && (HTIM_N || |HTIM_PIPE);
 	
 	assign FB_ERASE_A = {OUT_Y[7:0],OUT_X[8:0]};
 	assign FB_DISP_A = TVMR.TVM[1:0] == 2'b10 ? {OUT_RY.INT[7:0],OUT_RX.INT[8:0]} : 
@@ -2399,10 +2399,10 @@ module VDP1 (
 	
 	assign MODR = {4'h0,3'b000,PTMR.PTM[1],FBCR.EOS,FBCR.DIE,FBCR.DIL,FBCR.FCM,TVMR.VBE,TVMR.TVM};
 	
+	bit        VBOUT;
 	always @(posedge CLK or negedge RST_N) begin
 		bit        HTIM_N_OLD;
 		bit        VTIM_N_OLD;
-		bit        VBI_HBL_SKIP,VBO_HBL_SKIP;
 		bit        FRAME_CHANGE;
 		bit        MANUAL_ERASECHANGE_PEND;
 		bit        START_DRAW_PEND;
@@ -2506,29 +2506,23 @@ module VDP1 (
 				VTIM_N_OLD <= VTIM_N;
 				
 				if (VTIM_N && !VTIM_N_OLD) begin
-					VBO_HBL_SKIP <= 1;
+					VBOUT <= 1;
 				end
-				if (VTIM_N && HTIM_PIPE[11:10] == 2'b10/*HTIM_N && !HTIM_N_OLD*/ && VBO_HBL_SKIP) begin
-					VBO_HBL_SKIP <= 0;
+				if (VTIM_N && HTIM_PIPE[11:10] == 2'b10 && VBOUT) begin
+					VBOUT <= 0;
 					FRAME_CHANGE <= 1;
 				end
 				
 				if (!VTIM_N && VTIM_N_OLD) begin
-					VBI_HBL_SKIP <= 1;
-				end
-				if (!VTIM_N) begin
-					if (!HTIM_N && HTIM_N_OLD && VBI_HBL_SKIP) begin
-						VBI_HBL_SKIP <= 0;
-						if (TVMR.VBE && FBCR.FCT && FBCR.FCM) begin
-							VBLANK_ERASE <= 1;
-						end
-						if (VBERASE_PEND) begin
-							VBLANK_ERASE <= 1;
-						end
-						VBERASE_PEND <= 0;
+					if (TVMR.VBE && FBCR.FCT && FBCR.FCM) begin
+						VBLANK_ERASE <= 1;
 					end
+					if (VBERASE_PEND) begin
+						VBLANK_ERASE <= 1;
+					end
+					VBERASE_PEND <= 0;
 				end
-				if (VTIM_N) begin
+				if (VTIM_N && !VTIM_N_OLD) begin
 					VBLANK_ERASE <= 0;
 				end
 			end
