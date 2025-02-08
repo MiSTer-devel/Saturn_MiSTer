@@ -263,7 +263,7 @@ module emu
 	// 0         1         2         3          4         5         6   
 	// 01234567890123456789012345678901 23456789012345678901234567890123
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXXXXX X  XXXXXXXXXX
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -286,9 +286,9 @@ module emu
 		"P1O[11],320x224 Aspect,Original,Corrected;",
 		"P1O[29],Deinterlacing, Weave, Bob;",
 //		"P1O[3:1],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
-//		"P1-;",
+		"P1-;",
 //		"P1O[12],Border,No,Yes;",
-//		"P1O[14:13],Composite Blend,Off,On,Adaptive;",
+		"P1o[50],Composite Blend,Off,On;",
 		"P1-;",
 		"P1o[61],Vertical Crop,Disabled,216p(5x);",
 		"P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
@@ -1723,6 +1723,29 @@ module emu
 
 	assign CLK_VIDEO = clk_sys;
 	assign VGA_SL = {~INTERLACE,~INTERLACE} & sl[1:0];
+	
+	wire [7:0] cofi_r, cofi_g, cofi_b;
+	wire       cofi_hs, cofi_vs, cofi_hbl, cofi_vbl;
+
+	cofi coffee (
+		.clk(clk_sys),
+		.pix_ce(DCLK),          
+		.enable(status[50]),    
+		.hblank(~HBL_N),        
+		.vblank(~VBL_N),
+		.hs(~HS_N),
+		.vs(~VS_N),
+		.red(R),
+		.green(G),
+		.blue(B),
+		.hblank_out(cofi_hbl),
+		.vblank_out(cofi_vbl),
+		.hs_out(cofi_hs),
+		.vs_out(cofi_vs),
+		.red_out(cofi_r),
+		.green_out(cofi_g),
+		.blue_out(cofi_b)
+	);
 
 	video_mixer #(.LINE_LENGTH((352*2)+8), .HALF_DEPTH(0), .GAMMA(1)) video_mixer
 	(
@@ -1734,15 +1757,15 @@ module emu
 		.freeze_sync(),
 	
 		.VGA_DE(vga_de),
-		.R(lg_p1_targ_draw ? {8{lg_p1_target[0]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : R),
-		.G(lg_p1_targ_draw ? {8{lg_p1_target[1]}} : lg_p2_targ_draw ? {8{lg_p2_target[1]}} : G),
-		.B(lg_p1_targ_draw ? {8{lg_p1_target[2]}} : lg_p2_targ_draw ? {8{lg_p2_target[2]}} : B),
+		.R(lg_p1_targ_draw ? {8{lg_p1_target[0]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : cofi_r),
+		.G(lg_p1_targ_draw ? {8{lg_p1_target[1]}} : lg_p2_targ_draw ? {8{lg_p2_target[1]}} : cofi_g),
+		.B(lg_p1_targ_draw ? {8{lg_p1_target[2]}} : lg_p2_targ_draw ? {8{lg_p2_target[2]}} : cofi_b),
 	
 		// Positive pulses.
-		.HSync(~HS_N),
-		.VSync(~VS_N),
-		.HBlank(~HBL_N),
-		.VBlank(~VBL_N)
+		.HSync(cofi_hs), 
+		.VSync(cofi_vs),  
+		.HBlank(cofi_hbl),
+		.VBlank(cofi_vbl) 
 	);
 
 	wire lg_p1_targ_draw = (|lg_p1_target) && lg_p1_ena && (gun_p1_cross_size < 2'd3);
