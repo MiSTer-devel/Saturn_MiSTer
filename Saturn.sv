@@ -1225,7 +1225,7 @@ module emu
 		ioctl_wait <= bios_busy;
 	end
 	wire [26:1] IO_ADDR = cart_download ? {1'b1,ioctl_addr[25:1]} : {8'b00000000,ioctl_addr[18:1]};
-	wire [15:0] IO_DATA = cart_type == 3'h5 ? ioctl_data : {ioctl_data[7:0],ioctl_data[15:8]};
+	wire [15:0] IO_DATA = cart_type == 3'h5 && bios_download ? ioctl_data : {ioctl_data[7:0],ioctl_data[15:8]};
 	wire        IO_WR = (bios_download | cart_download) & ioctl_wr;
 	
 	wire [31:0] ddr_do[10];
@@ -1328,7 +1328,7 @@ module emu
 	assign CD_BUF_DI = cdbuf_do;
 	assign CD_BUF_RDY = ~cdbuf_busy;
 	
-	assign CART_MEM_Q = cart_do;
+	assign CART_MEM_Q = cart_type == 3'h5 && CART_MEM_A >= (26'h0200000>>1) ? {cart_do[7:0],cart_do[15:8]} : cart_do;
 	assign CART_MEM_RDY = ~cart_busy;
 	
 	assign CD_RAM_Q = cdram_do;
