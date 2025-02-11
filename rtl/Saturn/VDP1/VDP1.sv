@@ -162,7 +162,8 @@ module VDP1 (
 		CMDS_SSPR_CALCX,
 		CMDS_SSPR_CALCTX,
 		CMDS_SSPR_DRAW,
-		CMDS_POLYGON_CALCS,
+		CMDS_POLYGON_CALCE,
+		CMDS_POLYGON_CALCH,
 		CMDS_POLYGON_CALCTY,
 		CMDS_LINE_CALC,
 		CMDS_LINE_CALCTX,
@@ -955,7 +956,7 @@ module VDP1 (
 						CLIP_H <= ~CMD.CMDPMOD.PCLP;
 					end
 							
-					CMD_ST <= CMDS_POLYGON_CALCS;
+					CMD_ST <= CMDS_POLYGON_CALCE;
 				end
 				
 				CMDS_LINE_INIT: begin
@@ -968,17 +969,7 @@ module VDP1 (
 					CMD_ST <= CMDS_LINE_CALC;
 				end
 				
-				CMDS_POLYGON_CALCS: begin
-					if (POLY_LSX >= POLY_LSY && POLY_LSX >= POLY_RSX && POLY_LSX >= POLY_RSY) begin
-						COL_HEIGHT <= POLY_LSX;
-					end else if (POLY_LSY >= POLY_LSX && POLY_LSY >= POLY_RSX && POLY_LSY >= POLY_RSY) begin
-						COL_HEIGHT <= POLY_LSY;
-					end else if (POLY_RSX >= POLY_LSX && POLY_RSX >= POLY_LSY && POLY_RSX >= POLY_RSY) begin
-						COL_HEIGHT <= POLY_RSX;
-					end else begin
-						COL_HEIGHT <= POLY_RSY;
-					end
-					
+				CMDS_POLYGON_CALCE: begin
 					if (POLY_LSX >= POLY_LSY) begin
 						LEFT_HEIGHT <= POLY_LSX;
 					end else begin
@@ -988,6 +979,16 @@ module VDP1 (
 						RIGHT_HEIGHT <= POLY_RSX;
 					end else begin
 						RIGHT_HEIGHT <= POLY_RSY;
+					end
+					
+					CMD_ST <= CMDS_POLYGON_CALCH;
+				end
+				
+				CMDS_POLYGON_CALCH: begin
+					if (LEFT_HEIGHT >= RIGHT_HEIGHT) begin
+						COL_HEIGHT <= LEFT_HEIGHT;
+					end else begin
+						COL_HEIGHT <= RIGHT_HEIGHT;
 					end
 					
 					CMD_ST <= CMDS_POLYGON_CALCTY;
@@ -1617,7 +1618,7 @@ module VDP1 (
 							end
 							
 							
-							if ((LINE_DRAW_STEP && !IS_PAT_EC) || (TEXT_X_READ_STEP && EC_FIND && IS_PAT_EC)) begin
+							if (LINE_DRAW_STEP && !IS_PAT_EC) begin
 								if (CMD.CMDPMOD.CCB[0] || CMD.CMDPMOD.MON) begin
 									FB_READ_PEND <= 1;
 									FBD_ST <= FBDS_READ;
@@ -1844,7 +1845,7 @@ module VDP1 (
 			
 			if ((HTIM_N || |HTIM_PIPE) && VBLANK_ERASE && CE_R) begin
 				OUT_X <= OUT_X + 9'd1;
-				if ({1'b0,OUT_X} + 10'd1 == {EWRR.X3,3'b000}) begin
+				if ({1'b0,OUT_X} + 10'd1 == (!EWRR.X3[9] ? {EWRR.X3,3'b000} : 10'h200)) begin
 					OUT_X <= {EWLR.X1,3'b000};
 					OUT_Y <= OUT_Y + 9'd1;
 				end
