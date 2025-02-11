@@ -2304,7 +2304,7 @@ module VDP2 (
 							end
 						end else begin
 							PN_CNT[i] = 0;
-							if ((!BG_PIPE[2].NxPNS[i][1] && DOTCLK_DIV == 2'd1) || (BG_PIPE[2].NxPNS[i][1] && DOTCLK_DIV == 2'd3)) begin
+							if (DOTCLK_DIV == 2'd1) begin
 								PN_PIPE[0][i] <= !NSxREG[i].PNC.NxPNB ? PN_WD[i] : PNData(NSxREG[i].PNC, NSxREG[i].CHSZ, NSxREG[i].CHCN, PN_WD[i][31:16]);
 							end
 						end
