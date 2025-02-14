@@ -260,10 +260,10 @@ module emu
 	//
 	// Status Bit Map:
 	//             Upper                             Lower              
-	// 0         1         2         3          4         5         6   
-	// 01234567890123456789012345678901 23456789012345678901234567890123
+	// 0         1         2         3          4         5         6   	   7         8         9
+	// 01234567890123456789012345678901 23456789012345678901234567890123 45678901234567890123456789012345
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX X
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -290,6 +290,7 @@ module emu
 //		"P1O[12],Border,No,Yes;",
 		"P1o[50],Composite Blend,Off,On;",
 		"P1-;",
+		"P1o[64],Horizontal Crop,Off,On;",
 		"P1o[61],Vertical Crop,Disabled,216p(5x);",
 		"P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
 		"P1o[56:55],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
@@ -376,7 +377,7 @@ module emu
 		"V,v",`BUILD_DATE
 	};
 
-	wire [63:0] status;
+	wire [127:0] status;
 	wire  [1:0] buttons;
 	wire [13:0] joystick_0,joystick_1,joystick_2,joystick_3,joystick_4;
 	wire  [7:0] joy0_x0,joy0_y0,joy0_x1,joy0_y1,joy1_x0,joy1_y0,joy1_x1,joy1_y1;
@@ -1740,6 +1741,28 @@ module emu
 
 	assign CLK_VIDEO = clk_sys;
 	assign VGA_SL = {~INTERLACE,~INTERLACE} & sl[1:0];
+	
+	//horizontal crop
+	wire hcrop_en = status[64];
+
+	reg [9:0] h_count;
+	wire active_video = ~cofi_hbl;
+
+	always @(posedge clk_sys) begin
+		if (DCLK) begin
+			h_count <= active_video ? h_count + 10'd1 : 10'd0;
+		end
+	end
+
+	wire [9:0] active_width = (HRES[1] && HRES[0]) ? 10'd704 :
+	(HRES[1]) ? 10'd640 :
+	(HRES[0]) ? 10'd352 :
+	10'd320;
+
+	wire [9:0] crop_amount = hcrop_en ? ((active_width == 10'd704) ? 10'd4 : (INTERLACE ? 10'd4 : 10'd2)) : 10'd0;
+
+	wire hcrop_blank = (h_count < crop_amount) || (h_count >= (active_width - crop_amount));
+	wire hblank_cropped = cofi_hbl | (hcrop_en & hcrop_blank);
 	
 	wire [7:0] cofi_r, cofi_g, cofi_b;
 	wire       cofi_hs, cofi_vs, cofi_hbl, cofi_vbl;
