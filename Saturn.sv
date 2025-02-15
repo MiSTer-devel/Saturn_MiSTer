@@ -1804,7 +1804,7 @@ module emu
 		// Positive pulses.
 		.HSync(cofi_hs), 
 		.VSync(cofi_vs),  
-		.HBlank(cofi_hbl),
+		.HBlank(hblank_cropped),
 		.VBlank(cofi_vbl) 
 	);
 
