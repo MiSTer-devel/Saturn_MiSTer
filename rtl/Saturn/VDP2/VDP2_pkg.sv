@@ -2028,7 +2028,7 @@ package VDP2_PKG;
 	parameter RotTbl_t ROT_NULL = {SCNST_NULL, SCNST_NULL, SCNST_NULL,
 	                               SCNINC_NULL, SCNINC_NULL, SCNINC_NULL, SCNINC_NULL,
 											 MATR_NULL, MATR_NULL, MATR_NULL, MATR_NULL, MATR_NULL, MATR_NULL,
-											 SCNCRD_NULL, SCNCRD_NULL, SCNCRD_NULL,
+											 SCNCRD_NULL, SCNCRD_NULL, SCNCRD_NULL, 16'h0000,
 											 SCNCRD_NULL, SCNCRD_NULL, SCNCRD_NULL, 16'h0000,
 											 SHIFT_NULL, SHIFT_NULL, 
 											 SCALL_NULL, SCALL_NULL,
@@ -2168,11 +2168,12 @@ package VDP2_PKG;
 		return ({RPTA,1'b0} & ~19'h00040) + {RP_POS,1'b0};
 	endfunction
 	
-	function bit [19:1] RxCTAddr(input bit [15:0] RxKAst, input bit [18:0] RxKA, input bit [2:0] RxKTAOS, input bit RxKDBS);
+	function bit [19:1] RxCTAddr(input RotCoord_t RxKAst, input RotAddr_t RxKA, input bit [2:0] RxKTAOS, input bit RxKDBS);
 		bit   [19:1] addr;
 		bit   [18:0] offs;
+		bit   [15:0] frac;
 		
-		offs = {RxKTAOS,RxKAst} + RxKA;
+		{offs,frac} = {RxKTAOS,RxKAst} + RxKA;
 		
 		case (RxKDBS)
 			1'b0: addr = {offs[17:0],1'b0};	//2 words

@@ -113,6 +113,11 @@ module VDP2 (
 	output [18:0] NxOFFY1_DBG,
 	output [18:0] NxOFFY2_DBG,
 	output [18:0] NxOFFY3_DBG,
+	output [31:0] Xsp_DBG[2],Ysp_DBG[2],
+	output [31:0] Xp_DBG[2],Yp_DBG[2],
+	output [31:0] dX_DBG[2],dY_DBG[2],
+	output [31:0] Xst_DBG[2],Yst_DBG[2],
+	output [19:1] R0NP_ADDR_DBG,
 //	output RotTbl_t ROTA_TBL,
 	output [15:0] VRAM_WRITE_PEND_CNT,
 	output RotCoord_t   RPK_DBG,
@@ -919,17 +924,16 @@ module VDP2 (
 		NxLS_ADDR[1] = NxLSAddr(NSxREG[1].LSTA, LS_TBL_OFFS[1], LS_VAL_OFFS[1]);
 		
 		RxRP_ADDR    = RxRPAddr({REGS.RPTAU.RPTA,REGS.RPTAL.RPTA},{~RP_POS[7],RP_POS[6:2]});
-		RxCT_ADDR[0] = RxCTAddr(KAst[CT_RP].INT, RxKA[CT_RP].INT, RPxREG[CT_RP].KTAOS, RPxREG[CT_RP].KDBS);
-		RxCT_ADDR[1] = RxCTAddr(KAst[    1].INT, RxKA[    1].INT, RPxREG[    1].KTAOS, RPxREG[    1].KDBS);
-		RxCTA_ADDR   = RxCTAddr(KAst[    0].INT, RxKA[    0].INT, RPxREG[    0].KTAOS, RPxREG[    0].KDBS);
-		RxCTB_ADDR   = RxCTAddr(KAst[    1].INT, RxKA[    1].INT, RPxREG[    1].KTAOS, RPxREG[    1].KDBS);
+		RxCT_ADDR[0] = RxCTAddr(KAst[CT_RP], RxKA[CT_RP], RPxREG[CT_RP].KTAOS, RPxREG[CT_RP].KDBS);
+		RxCT_ADDR[1] = RxCTAddr(KAst[    1], RxKA[    1], RPxREG[    1].KTAOS, RPxREG[    1].KDBS);
+		RxCTA_ADDR   = RxCTAddr(KAst[    0], RxKA[    0], RPxREG[    0].KTAOS, RPxREG[    0].KDBS);
+		RxCTB_ADDR   = RxCTAddr(KAst[    1], RxKA[    1], RPxREG[    1].KTAOS, RPxREG[    1].KDBS);
 		
 		LW_ADDR[0]   = LWAddr({REGS.LWTA0U.WxLWTA,REGS.LWTA0L.WxLWTA}, LW_OFFS);
 		LW_ADDR[1]   = LWAddr({REGS.LWTA1U.WxLWTA,REGS.LWTA1L.WxLWTA}, LW_OFFS);
 		BS_ADDR      = BSAddr({REGS.BKTAU.BKTA,REGS.BKTAL.BKTA}, BS_OFFS, REGS.BKTAU.BKCLMD);
 		LN_ADDR      = LNAddr({REGS.LCTAU.LCTA,REGS.LCTAL.LCTA}, LN_OFFS, REGS.LCTAU.LCCLMD);
 	end
-//	assign NxVS_ADDR0 = NxVS_ADDR[18:1];
 		
 	
 	NxPNCNT_t    NBG_PN_CNT;
@@ -1836,7 +1840,7 @@ module VDP2 (
 				end
 				
 				if (RBG_PIPE[2].RxCT[0] || RBG_PIPE[2].RxCRCT[0]) begin
-					CT_RP = R0RP_PIPE[1];
+					CT_RP = R0RP_PIPE[2];
 					if (RBG_PIPE[2].RxCT[0]) 
 						if (RBG_PIPE[1].RxCT_EN[0]) 
 							case (RBG_PIPE[2].RxCTS[0])
@@ -4153,6 +4157,15 @@ module VDP2 (
 `ifdef DEBUG
 	assign VA_PIPE0 = VA_PIPE[0];
 	assign NBG_A0VA_DBG = NBG_A0VA;
+	assign R0NP_ADDR_DBG = RxPN_ADDR[0];
+	assign Xsp_DBG = Xsp;
+	assign Ysp_DBG = Ysp;
+	assign Xp_DBG = Xp;
+	assign Yp_DBG = Yp;
+	assign dX_DBG = dX;
+	assign dY_DBG = dY;
+	assign Xst_DBG = Xst;
+	assign Yst_DBG = Yst;
 //	assign N0SCX = SCX[0];
 //	assign N0SCY = SCY[0];
 //	assign CH_PIPE0 = RBG_CH_PIPE[0];
