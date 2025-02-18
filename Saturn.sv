@@ -239,8 +239,12 @@ module emu
 	reg        en216p;
 	reg  [4:0] voff;
 	always @(posedge CLK_VIDEO) begin
-			en216p <= ((HDMI_WIDTH == 1920) && (HDMI_HEIGHT == 1080) && !forced_scandoubler && !scale);
-			voff <= (vcopt < 6) ? {vcopt,1'b0} : ({vcopt,1'b0} - 5'd24);
+`ifndef DEBUG
+		en216p <= ((HDMI_WIDTH == 1920) && (HDMI_HEIGHT == 1080) && !forced_scandoubler && !scale);
+`else
+		en216p <= 0;
+`endif		
+		voff <= (vcopt < 6) ? {vcopt,1'b0} : ({vcopt,1'b0} - 5'd24);
 	end
 
 	wire vga_de;
@@ -318,7 +322,6 @@ module emu
 		"P3OS,Timing,Original,Fast;",
 `endif
 
-`ifndef DEBUG
 		"P4,Debug;",
 		"P4-;",
 		"P4o[36],VDP2 NBG0,Enable,Disable;",
@@ -332,42 +335,6 @@ module emu
 		"P4o[43],SCSP Direct sound,Enable,Disable;",
 		"P4o[44],SCSP DSP sound,Enable,Disable;",
 		"P4o[45],CD audio,Enable,Disable;",
-`else
-		"P4,Debug;",
-		"P4o[36],SCSP slot 0,Enable,Disable;",
-		"P4o[37],SCSP slot 1,Enable,Disable;",
-		"P4o[38],SCSP slot 2,Enable,Disable;",
-		"P4o[39],SCSP slot 3,Enable,Disable;",
-		"P4o[40],SCSP slot 4,Enable,Disable;",
-		"P4o[41],SCSP slot 5,Enable,Disable;",
-		"P4o[42],SCSP slot 6,Enable,Disable;",
-		"P4o[43],SCSP slot 7,Enable,Disable;",
-		"P4o[44],SCSP slot 8,Enable,Disable;",
-		"P4o[45],SCSP slot 9,Enable,Disable;",
-		"P4o[46],SCSP slot 10,Enable,Disable;",
-		"P4o[47],SCSP slot 11,Enable,Disable;",
-		"P4o[48],SCSP slot 12,Enable,Disable;",
-		"P4o[49],SCSP slot 13,Enable,Disable;",
-		"P4o[50],SCSP slot 14,Enable,Disable;",
-		"P4o[51],SCSP slot 15,Enable,Disable;",
-		"P4o[52],SCSP slot 16,Enable,Disable;",
-		"P4o[53],SCSP slot 17,Enable,Disable;",
-		"P4o[54],SCSP slot 18,Enable,Disable;",
-		"P4o[55],SCSP slot 19,Enable,Disable;",
-		"P4o[56],SCSP slot 20,Enable,Disable;",
-		"P4o[57],SCSP slot 21,Enable,Disable;",
-		"P4o[58],SCSP slot 22,Enable,Disable;",
-		"P4o[59],SCSP slot 23,Enable,Disable;",
-		"P4o[60],SCSP slot 24,Enable,Disable;",
-		"P4o[61],SCSP slot 25,Enable,Disable;",
-		"P4o[62],SCSP slot 26,Enable,Disable;",
-		"P4o[63],SCSP slot 27,Enable,Disable;",
-		
-		"P4O[28],SCSP slot 28,Enable,Disable;",
-		"P4O[29],SCSP slot 29,Enable,Disable;",
-		"P4O[30],SCSP slot 30,Enable,Disable;",
-		"P4O[31],SCSP slot 31,Enable,Disable;",
-`endif
 
 		"-;",
 		"R0,Reset;",
@@ -378,39 +345,39 @@ module emu
 	};
 
 	wire [127:0] status;
-	wire  [1:0] buttons;
-	wire [13:0] joystick_0,joystick_1,joystick_2,joystick_3,joystick_4;
-	wire  [7:0] joy0_x0,joy0_y0,joy0_x1,joy0_y1,joy1_x0,joy1_y0,joy1_x1,joy1_y1;
-	wire        ioctl_download;
-	wire        ioctl_wr;
-	wire [25:0] ioctl_addr;
-	wire [15:0] ioctl_data;
-	wire  [7:0] ioctl_index;
-	reg         ioctl_wait = 0;
+	wire [  1:0] buttons;
+	wire [ 13:0] joystick_0,joystick_1,joystick_2,joystick_3,joystick_4;
+	wire [  7:0] joy0_x0,joy0_y0,joy0_x1,joy0_y1,joy1_x0,joy1_y0,joy1_x1,joy1_y1;
+	wire         ioctl_download;
+	wire         ioctl_wr;
+	wire [ 25:0] ioctl_addr;
+	wire [ 15:0] ioctl_data;
+	wire [  7:0] ioctl_index;
+	reg          ioctl_wait = 0;
 	
-	reg  [31:0] sd_lba = '0;
-	reg         sd_rd = 0;
-	reg         sd_wr = 0;
-	wire        sd_ack;
-	wire  [7:0] sd_buff_addr;
-	wire [15:0] sd_buff_dout;
-	wire [15:0] sd_buff_din;
-	wire        sd_buff_wr;
-	wire        img_mounted;
-	wire        img_readonly;
-	wire [63:0] img_size;
+	reg  [ 31:0] sd_lba = '0;
+	reg          sd_rd = 0;
+	reg          sd_wr = 0;
+	wire         sd_ack;
+	wire [  7:0] sd_buff_addr;
+	wire [ 15:0] sd_buff_dout;
+	wire [ 15:0] sd_buff_din;
+	wire         sd_buff_wr;
+	wire         img_mounted;
+	wire         img_readonly;
+	wire [ 63:0] img_size;
 	
-	wire        forced_scandoubler;
-	wire [10:0] ps2_key;
-	wire [24:0] ps2_mouse;
-	wire [15:0] ps2_mouse_ext;
+	wire         forced_scandoubler;
+	wire [ 10:0] ps2_key;
+	wire [ 24:0] ps2_mouse;
+	wire [ 15:0] ps2_mouse_ext;
 	
-	wire [64:0] RTC;
+	wire [ 64:0] RTC;
 	
-	wire [35:0] EXT_BUS;
+	wire [ 35:0] EXT_BUS;
 	
-	wire [21:0] gamma_bus;
-	wire [15:0] sdram_sz;
+	wire [ 21:0] gamma_bus;
+	wire [ 15:0] sdram_sz;
 	
 	hps_io #(.CONF_STR(CONF_STR), .WIDE(1)) hps_io
 	(
@@ -432,7 +399,7 @@ module emu
 		.new_vmode(new_vmode),
 	
 		.status(status),
-		.status_in({status[63:8],region_req,status[5:0]}),
+		.status_in({status[127:8],region_req,status[5:0]}),
 		.status_set(region_set),
 		.status_menumask( {~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena} ),
 	
@@ -477,6 +444,8 @@ module emu
 	wire cdboot_download = ioctl_download & (ioctl_index[5:2] == 4'b0011);
 	
 	wire [2:0] cart_type = status[23:21];
+
+	wire stv_mode = (cart_type == 3'd5);
 	
 	
 	reg osd_btn = 0;
@@ -581,7 +550,7 @@ module emu
 	
 	wire reset = RESET | status[0] | buttons[1];
 	
-	reg rst_ram = 0;
+	reg rst_ram = 0, stv_res = 0;
 	reg download;
 	always @(posedge clk_sys) begin
 		reg [7:0] delay_cnt;
@@ -596,7 +565,7 @@ module emu
 		end
 	end
 	
-	wire rst_sys = reset | download | rst_ram;
+	wire rst_sys = reset | download | rst_ram | stv_res;
 	
 `ifndef MISTER_DUAL_SDRAM
 	wire fast_timing = status[28];
@@ -884,10 +853,10 @@ module emu
 		.RTC(RTC),
 		.SMPC_AREA(area_code),
 		.SMPC_DOTSEL(SMPC_DOTSEL),
-		.SMPC_PDR1I(cart_type == 3'd5 ? 7'h5C : snac ? USERJOYSTICK : SMPC_PDR1I),
+		.SMPC_PDR1I(stv_mode ? 7'h5C : snac ? USERJOYSTICK : SMPC_PDR1I),
 		.SMPC_PDR1O(SMPC_PDR1O),
 		.SMPC_DDR1(SMPC_DDR1),
-		.SMPC_PDR2I(cart_type == 3'd5 ? {6'b111111,STV_EEP_DO} : SMPC_PDR2I),
+		.SMPC_PDR2I(stv_mode ? {6'b111111,STV_EEP_DO} : SMPC_PDR2I),
 		.SMPC_PDR2O(SMPC_PDR2O),
 		.SMPC_DDR2(SMPC_DDR2),
 		
@@ -968,7 +937,53 @@ module emu
 		.COIN1(coin1)
 	);
 	
+	reg  [ 6: 1] STV_EEPROM_ADDR;
+	reg          STV_EEPROM_RD;
+	wire [15: 0] STV_EEPROM_Q;
+	wire         STV_EEPROM_RDY;
+	always @(posedge clk_sys) begin
+		reg [1:0] eep_state;
+		
+		if (reset) begin
+			STV_EEPROM_ADDR <= '0;
+			STV_EEPROM_RD <= 0;
+			STV_EEP_WREN <= 0;
+			eep_state <= stv_mode ? 2'd0 : 2'd3;
+			stv_res <= stv_mode;
+		end else begin
+			STV_EEP_WREN <= 0;
+			case (eep_state)
+				2'd0: begin
+					STV_EEPROM_RD <= 1;
+					eep_state <= 2'd1;
+				end
+				
+				2'd1: if (STV_EEPROM_RDY) begin
+					STV_EEPROM_RD <= 0;
+					if (STV_EEPROM_ADDR == 6'd0 && STV_EEPROM_Q != 16'h5345) begin
+						//do not update, leave default eeprom.
+						eep_state <= 2'd3;
+					end else begin
+						STV_EEP_WREN <= 1;
+						eep_state <= 2'd2;
+					end
+				end
+				
+				2'd2: begin
+					STV_EEPROM_ADDR <= STV_EEPROM_ADDR + 6'd1;
+					if (STV_EEPROM_ADDR == 6'd63) eep_state <= 2'd3;
+					else eep_state <= 2'd0;
+				end
+				
+				2'd3: begin
+					stv_res <= 0;
+				end
+			endcase
+		end
+	end
+	
 	wire        STV_EEP_DO;
+	reg         STV_EEP_WREN;
 	E93C45 #("rtl/stv_eeprom.mif") STV_EEP 
 	(
 		.CLK(clk_sys),
@@ -979,9 +994,9 @@ module emu
 		.CS(SMPC_PDR1O[2] & SMPC_DDR1[2]),
 		.SK(SMPC_PDR1O[3] & SMPC_DDR1[3]),
 		
-		.MEM_A('0),
-		.MEM_DI('0),
-		.MEM_WREN(0),
+		.MEM_A(STV_EEPROM_ADDR),
+		.MEM_DI(STV_EEPROM_Q),
+		.MEM_WREN(STV_EEP_WREN),
 		.MEM_DO()
 	);
 	
@@ -1027,7 +1042,8 @@ module emu
 		.LGUN_P2_SENSOR(lg_p2_sensor)		
 	);
 	
-
+	
+`ifndef DEBUG
 	wire lg_p1_ena = (status[17:15]==3'd1);
 	
 	wire       lg_p1_sensor;
@@ -1140,6 +1156,21 @@ module emu
 		.BTN_C(lg_p2_c),
 		.BTN_START(lg_p2_start)		// (used as the Start button signal, to HPS2PAD).
 	);
+`else
+	wire lg_p1_ena = 0;
+	wire lg_p1_a = 0;
+	wire lg_p1_start = 0;
+	wire lg_p1_sensor = 0;
+	wire [2:0] lg_p1_target = '0;
+	wire [1:0] gun_p1_cross_size = '0;
+		
+	wire lg_p2_ena = 0;
+	wire lg_p2_a = 0;
+	wire lg_p2_start = 0;
+	wire lg_p2_sensor = 0;	
+	wire [2:0] lg_p2_target = '0;
+	wire [1:0] gun_p2_cross_size = '0;
+`endif
 
 	
 	wire [13:1] CD_BUF_ADDR;
@@ -1226,14 +1257,12 @@ module emu
 		ioctl_wait <= bios_busy;
 	end
 	wire [26:1] IO_ADDR = cart_download ? {1'b1,ioctl_addr[25:1]} : {8'b00000000,ioctl_addr[18:1]};
-	wire [15:0] IO_DATA = cart_type == 3'h5 && bios_download ? ioctl_data : {ioctl_data[7:0],ioctl_data[15:8]};
+	wire [15:0] IO_DATA = stv_mode && bios_download ? ioctl_data : {ioctl_data[7:0],ioctl_data[15:8]};
 	wire        IO_WR = (bios_download | cart_download) & ioctl_wr;
 	
-	wire [31:0] ddr_do[10];
-	wire        ddr_busy[10];
-	wire [15:0] cdram_do,raml_do,vdp1vram_do,vdp1fb_do,cdbuf_do,cart_do,bsram_do;
+	wire [15:0] cdram_do,raml_do,vdp1vram_do,vdp1fb_do,cdbuf_do,cart_do,eeprom_do,bsram_do;
 	wire [31:0] ramh_do;
-	wire        cdram_busy,raml_busy,ramh_busy,vdp1vram_busy,vdp1fb_busy,cdbuf_busy,cart_busy,bios_busy,bsram_busy;
+	wire        cdram_busy,raml_busy,ramh_busy,vdp1vram_busy,vdp1fb_busy,cdbuf_busy,cart_busy,eeprom_busy,bios_busy,bsram_busy;
 	ddram ddram
 	(
 		.*,
@@ -1308,6 +1337,12 @@ module emu
 `endif
 		.cart_dout(cart_do),
 		.cart_busy(cart_busy),
+		
+		//STV EEPROM
+		.eeprom_addr(STV_EEPROM_ADDR),
+		.eeprom_rd  (STV_EEPROM_RD),
+		.eeprom_dout(eeprom_do),
+		.eeprom_busy(eeprom_busy),
 	
 		//BIOS/CART load
 		.bios_addr(IO_ADDR),
@@ -1329,11 +1364,14 @@ module emu
 	assign CD_BUF_DI = cdbuf_do;
 	assign CD_BUF_RDY = ~cdbuf_busy;
 	
-	assign CART_MEM_Q = cart_type == 3'h5 && CART_MEM_A >= (26'h0200000>>1) ? {cart_do[7:0],cart_do[15:8]} : cart_do;
+	assign CART_MEM_Q = stv_mode && CART_MEM_A >= (26'h0200000>>1) ? {cart_do[7:0],cart_do[15:8]} : cart_do;
 	assign CART_MEM_RDY = ~cart_busy;
 	
 	assign CD_RAM_Q = cdram_do;
 	assign CD_RAM_RDY = ~cdram_busy;
+	
+	assign STV_EEPROM_Q = eeprom_do;
+	assign STV_EEPROM_RDY = ~eeprom_busy;
 
 
 `ifdef MISTER_DUAL_SDRAM
@@ -1743,6 +1781,7 @@ module emu
 	assign VGA_SL = {~INTERLACE,~INTERLACE} & sl[1:0];
 	
 	//horizontal crop
+`ifndef DEBUG
 	wire hcrop_en = status[64];
 
 	reg [9:0] h_count;
@@ -1786,6 +1825,11 @@ module emu
 		.green_out(cofi_g),
 		.blue_out(cofi_b)
 	);
+`else
+	wire [7:0] cofi_r = R, cofi_g = G, cofi_b = B;
+	wire cofi_hs = ~HS_N, cofi_vs = ~VS_N;
+	wire hblank_cropped = ~HBL_N, cofi_vbl = ~VBL_N;
+`endif
 
 	video_mixer #(.LINE_LENGTH((352*2)+8), .HALF_DEPTH(0), .GAMMA(1)) video_mixer
 	(
@@ -1876,7 +1920,7 @@ module emu
 	reg  [2:0] SND_EN2 = 3'b111;
 
 `ifdef DEBUG
-	assign SLOT_EN = {~status[31:28],~status[63:36]};
+	assign SLOT_EN = '1;
 `else
 	assign SCRN_EN2 = ~status[42:36];
 	assign SND_EN2 = ~status[45:43];

@@ -21,7 +21,6 @@ module STV (
 	bit  [ 7: 0] OUT[8];
 	bit  [ 7: 0] DIR;
 	
-	
 	// 0x0001 PORT-A (P1)      JAMMA (56P)
 	// 0x0003 PORT-B (P2)      JAMMA (56P)
 	// 0x0005 PORT-C (SYSTEM)  JAMMA (56P)
@@ -105,14 +104,14 @@ module STV (
 			CS_N_OLD <= CS_N;
 			if (!CS_N && CS_N_OLD && RW_N) begin
 				case ({A,1'b1})
-					7'h01: REG_DO <= IN[0];
-					7'h03: REG_DO <= IN[1];
-					7'h05: REG_DO <= IN[2];
-					7'h07: REG_DO <= IN[3];
-					7'h09: REG_DO <= IN[4];
-					7'h0B: REG_DO <= IN[5];
-					7'h0D: REG_DO <= IN[6];
-					7'h0F: REG_DO <= IN[7];
+					7'h01: REG_DO <= IN[0] & (OUT[0]|{8{DIR[0]}});
+					7'h03: REG_DO <= IN[1] & (OUT[1]|{8{DIR[1]}});
+					7'h05: REG_DO <= IN[2] & (OUT[2]|{8{DIR[2]}});
+					7'h07: REG_DO <= IN[3] & (OUT[3]|{8{DIR[3]}});
+					7'h09: REG_DO <= IN[4] & (OUT[4]|{8{DIR[4]}});
+					7'h0B: REG_DO <= IN[5] & (OUT[5]|{8{DIR[5]}});
+					7'h0D: REG_DO <= IN[6] & (OUT[6]|{8{DIR[6]}});
+					7'h0F: REG_DO <= IN[7] & (OUT[7]|{8{DIR[7]}});
 					7'h11: REG_DO <= DIR;
 					default:;
 				endcase
