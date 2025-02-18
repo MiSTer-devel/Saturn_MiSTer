@@ -366,15 +366,15 @@ module SMPC (
 						MIRQ_N <= 1;
 						
 						if (CHECK_CONTINUE) begin
-							if (BREAK) begin
-								INTBACK_BREAK_PEND <= 1;
-								BREAK <= 0;
-								CHECK_CONTINUE <= 0;
-							end
-							else if (CONT != CONT_PREV) begin
+							if (CONT != CONT_PREV) begin
 								INTBACK_PERI <= 1;
 								SF <= 1;
 								CONT_PREV <= CONT;
+								CHECK_CONTINUE <= 0;
+							end
+							else if (BREAK) begin
+								INTBACK_BREAK_PEND <= 1;
+								BREAK <= 0;
 								CHECK_CONTINUE <= 0;
 							end
 						end
