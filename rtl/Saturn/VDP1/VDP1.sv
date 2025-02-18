@@ -1091,6 +1091,10 @@ module VDP1 (
 				end
 				
 				CMDS_NSPR_CALCX: begin
+					NEW_LINE_SX = RIGHT_VERT.X - LEFT_VERT.X;
+//					NEW_LINE_SY = RIGHT_VERT.Y - LEFT_VERT.Y;
+					NEW_LINE_ASX = Abs13(NEW_LINE_SX);
+//					NEW_LINE_ASY = Abs13(NEW_LINE_SY);
 					/*if (LEFT_VERT.Y == RIGHT_VERT.Y && $signed(LEFT_VERT.X) < $signed(SYS_CLIP_X1) && !CMD.CMDPMOD.PCLP) begin
 						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
 						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
@@ -1122,6 +1126,8 @@ module VDP1 (
 					EC_FIND <= 0;
 					HSS_EN <= 0;
 					
+					ROW_WIDTH <= NEW_LINE_ASX + 12'd1;
+					
 					if ((LINE_LEFT_OVER || LINE_RIGHT_OVER || LINE_TOP_OVER || LINE_BOTTOM_OVER) && !CMD.CMDPMOD.PCLP) begin
 						CMD_ST <= CMDS_LINE_NEXT;
 					end else begin
@@ -1132,9 +1138,9 @@ module VDP1 (
 				
 				CMDS_SSPR_CALCX: begin
 					NEW_LINE_SX = RIGHT_VERT.X - LEFT_VERT.X;
-					NEW_LINE_SY = RIGHT_VERT.Y - LEFT_VERT.Y;
+//					NEW_LINE_SY = RIGHT_VERT.Y - LEFT_VERT.Y;
 					NEW_LINE_ASX = Abs13(NEW_LINE_SX);
-					NEW_LINE_ASY = Abs13(NEW_LINE_SY);
+//					NEW_LINE_ASY = Abs13(NEW_LINE_SY);
 					if ($signed(LEFT_VERT.X) < $signed(SYS_CLIP_X1) && $signed(RIGHT_VERT.X) <= $signed(SYS_CLIP_X2) && CLIP_H && !DBG_EXT_OLD[5]) begin
 						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
 						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
@@ -1179,7 +1185,7 @@ module VDP1 (
 					LINE_DIRY <= 0;
 					EC_FIND <= 0;
 					
-					ROW_WIDTH <= NEW_LINE_ASX >= NEW_LINE_ASY ? NEW_LINE_ASX + 12'd1 : NEW_LINE_ASY + 12'd1;
+					ROW_WIDTH <= NEW_LINE_ASX + 12'd1;
 					
 					CMD_ST <= CMDS_SSPR_CALCTX;
 				end
