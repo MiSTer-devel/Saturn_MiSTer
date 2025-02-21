@@ -262,7 +262,7 @@ module SH7604_DMAC (
 					if (LW_CNT == 2'd1) begin
 						if (!CHCR[DMA_CH].TB) DMA_LOCK <= 0;
 					end 
-					if (!LW_CNT) begin
+					if (!LW_CNT || !TCR_NEXT) begin
 						if (!CHCR[DMA_CH].TA) begin
 							DMA_WR <= 0;
 							if (CHCR[DMA_CH].TB) begin
