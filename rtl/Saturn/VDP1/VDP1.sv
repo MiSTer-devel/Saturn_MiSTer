@@ -157,6 +157,7 @@ module VDP1 (
 		CMDS_LINE_START,
 		CMDS_EDGE_INIT,
 		CMDS_LINE_INIT,
+		CMDS_PRE_DRAW,
 		CMDS_NSPR_CALCX,
 		CMDS_NSPR_DRAW,
 		CMDS_SSPR_CALCX,
@@ -288,6 +289,7 @@ module VDP1 (
 				TEXT_X_READ_STEP = 1;
 			end
 			
+			CMDS_PRE_DRAW,
 			CMDS_SSPR_DRAW,
 			CMDS_LINE_DRAW: begin
 				if (CMD.CMDCTRL.COMM >= 4'h4) begin
@@ -1067,7 +1069,6 @@ module VDP1 (
 					if (GRD_CALC_STATE == 4'd15) begin
 						GRD_CALC_STATE <= '0;
 						RIGHT_GHCOLOR_STEP <= GRD_CALC_STEP;
-						TEXT_X <= '0;
 						CMD_ST <= CMDS_ROW_DRAW;
 					end
 				end
@@ -1348,12 +1349,31 @@ module VDP1 (
 						GRD_CALC_STATE <= '0;
 						LINE_GHCOLOR_STEP <= GRD_CALC_STEP;
 						
+						TEXT_X <= '0;
+						if (!TEXT_ERROR[12])
+							CMD_ST <= CMDS_PRE_DRAW;
+						else
 						case (CMD.CMDCTRL.COMM) 
 							4'h0: CMD_ST <= CMDS_NSPR_DRAW;
 							4'h1: CMD_ST <= CMDS_SSPR_DRAW;
 							default: CMD_ST <= CMDS_LINE_DRAW;
 						endcase
+							
 					end
+				end
+				
+				CMDS_PRE_DRAW: begin
+					if (TEXT_X_READ_STEP) begin
+						TEXT_X <= TEXT_X + (HSS_EN ? 2'd2 : 2'd1);
+						if (IS_PAT_EC) EC_FIND <= 1;
+					end
+					TEXT_ERROR <= NEXT_TEXT_ERROR;
+					
+					case (CMD.CMDCTRL.COMM) 
+						4'h0: CMD_ST <= CMDS_NSPR_DRAW;
+						4'h1: CMD_ST <= CMDS_SSPR_DRAW;
+						default: CMD_ST <= CMDS_LINE_DRAW;
+					endcase
 				end
 				
 				CMDS_NSPR_DRAW,
