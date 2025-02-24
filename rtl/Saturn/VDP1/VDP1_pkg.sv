@@ -297,7 +297,7 @@ package VDP1_PKG;
 	{
 		bit         DIR;
 		bit [ 4: 0] INT;
-		bit [12: 0] FRAC;
+		bit [11: 0] FRAC;
 	} ColorFP_t;
 	
 	typedef struct packed
@@ -310,9 +310,9 @@ package VDP1_PKG;
 	function RGBFP_t RGBItoF(input RGB_t CI);
 		RGBFP_t CF;
 		
-		CF.R = {1'b0,CI.R,13'b0000000000000};
-		CF.G = {1'b0,CI.G,13'b0000000000000};
-		CF.B = {1'b0,CI.B,13'b0000000000000};
+		CF.R = {1'b0,CI.R,12'b000000000000};
+		CF.G = {1'b0,CI.G,12'b000000000000};
+		CF.B = {1'b0,CI.B,12'b000000000000};
 		return CF;
 	endfunction
 	
