@@ -1,4 +1,4 @@
-module STV (
+module STVIO (
 	input              CLK,
 	input              RST_N,
 	input              CE_R,
@@ -113,7 +113,10 @@ module STV (
 					7'h0D: REG_DO <= IN[6] & (OUT[6]|{8{DIR[6]}});
 					7'h0F: REG_DO <= IN[7] & (OUT[7]|{8{DIR[7]}});
 					7'h11: REG_DO <= DIR;
-					default:;
+					
+					7'h17: REG_DO <= '0;
+					7'h19: REG_DO <= '0;
+					default: REG_DO <= '1;
 				endcase
 			end
 		end

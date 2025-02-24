@@ -49,13 +49,14 @@ module SCSP (
 	output     [15: 0] SOUND_L,
 	output     [15: 0] SOUND_R,
 	
+`ifdef STV_BUILD
 	input      [ 7: 0] STV_SW,
+`endif
 	
 	input      [ 2: 0] SND_EN
 	
 `ifdef DEBUG
                       ,
-	input      [31: 0] SLOT_EN,
 	output reg         DBG_68K_ERR,
 	output reg         DBG_SCU_HOOK,
 	output             PCM_EN_DBG,
@@ -956,19 +957,7 @@ module SCSP (
 			end
 			
 			S = OP7.SLOT;
-`ifdef DEBUG
-			if ((!SLOT_EN[ 0] && S == 5'd0 ) || (!SLOT_EN[ 1] && S == 5'd1 ) || (!SLOT_EN[ 2] && S == 5'd2 ) || (!SLOT_EN[ 3] && S == 5'd 3) ||
-						 (!SLOT_EN[ 4] && S == 5'd4 ) || (!SLOT_EN[ 5] && S == 5'd5 ) || (!SLOT_EN[ 6] && S == 5'd6 ) || (!SLOT_EN[ 7] && S == 5'd7 ) ||
-						 (!SLOT_EN[ 8] && S == 5'd8 ) || (!SLOT_EN[ 9] && S == 5'd9 ) || (!SLOT_EN[10] && S == 5'd10) || (!SLOT_EN[11] && S == 5'd11) ||
-						 (!SLOT_EN[12] && S == 5'd12) || (!SLOT_EN[13] && S == 5'd13) || (!SLOT_EN[14] && S == 5'd14) || (!SLOT_EN[15] && S == 5'd15) ||
-						 (!SLOT_EN[16] && S == 5'd16) || (!SLOT_EN[17] && S == 5'd17) || (!SLOT_EN[18] && S == 5'd18) || (!SLOT_EN[19] && S == 5'd19) ||
-						 (!SLOT_EN[20] && S == 5'd20) || (!SLOT_EN[21] && S == 5'd21) || (!SLOT_EN[22] && S == 5'd22) || (!SLOT_EN[23] && S == 5'd23) ||
-						 (!SLOT_EN[24] && S == 5'd24) || (!SLOT_EN[25] && S == 5'd25) || (!SLOT_EN[26] && S == 5'd26) || (!SLOT_EN[27] && S == 5'd27) ||
-						 (!SLOT_EN[28] && S == 5'd28) || (!SLOT_EN[29] && S == 5'd29) || (!SLOT_EN[30] && S == 5'd30) || (!SLOT_EN[31] && S == 5'd31))
-				TEMP = '0;
-			else 
-`endif
-				TEMP = LevelCalc(OP7.SD,OP7_SCR8.DISDL);
+			TEMP = LevelCalc(OP7.SD,OP7_SCR8.DISDL);
 			PAN_L = PanLCalc(TEMP,OP7_SCR8.DIPAN);
 			PAN_R = PanRCalc(TEMP,OP7_SCR8.DIPAN);
 			
@@ -1738,7 +1727,11 @@ module SCSP (
 				
 				MS_SCPU_WAIT: begin
 					if (CYCLE1_CE) begin
+`ifndef STV_BUILD
+						SCDO <= '0;
+`else
 						SCDO <= {8'h00,STV_SW};
+`endif
 						IO_ST <= MS_IDLE;
 					end
 				end
