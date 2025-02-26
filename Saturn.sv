@@ -346,13 +346,18 @@ module emu
 
 		"-;",
 		"R0,Reset;",
+`ifndef STV_BUILD
 		"J1,A,B,C,Start,R,X,Y,Z,L,Coin;",
+`else
+		"J1,B1,B2,B3,B4,B5,B6,Start,Coin,Service,Test;",
+`endif
 //		"jn,A,B,R,Start,Select,X,Y,L;", 
 //		"jp,Y,B,A,Start,Select,L,X,R;",
 		"V,v",`BUILD_DATE
 	};
 
 	wire [127:0] status;
+	wire [ 15:0] menumask;
 	wire [  1:0] buttons;
 	wire [ 13:0] joystick_0,joystick_1,joystick_2,joystick_3,joystick_4;
 	wire [  7:0] joy0_x0,joy0_y0,joy0_x1,joy0_y1,joy1_x0,joy1_y0,joy1_x1,joy1_y1;
@@ -407,9 +412,9 @@ module emu
 		.new_vmode(new_vmode),
 	
 		.status(status),
-		.status_in({status[127:8],region_req,status[5:0]}),
-		.status_set(region_set),
-		.status_menumask( {~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena} ),
+		.status_in(status),
+		.status_set(0),
+		.status_menumask(menumask),
 	
 		.ioctl_download(ioctl_download),
 		.ioctl_index(ioctl_index),
@@ -442,14 +447,28 @@ module emu
 		.EXT_BUS(EXT_BUS)
 	);
 	
-	reg  [1:0] region_req = '0;
-	reg        region_set = 0;
+`ifndef STV_BUILD
+	assign menumask = {~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
+`else
+	assign menumask = {1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
+`endif
 	
 	wire bios_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] != 2'h3);
 	wire cart_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] == 2'h3);
 	wire save_download = ioctl_download & (ioctl_index[5:2] == 4'b0001);
+`ifndef STV_BUILD
 	wire cdd_download = ioctl_download & (ioctl_index[5:2] == 4'b0010);
 	wire cdboot_download = ioctl_download & (ioctl_index[5:2] == 4'b0011);
+`else
+	wire stv_download = ioctl_download & (ioctl_index[5:2] == 6'b000000);
+	
+	reg  [7:0] STV_MODE = '0;//[3:0] - chip (1: RSG, 2: 315-5838, 3: 315-5881, ...)
+	always @(posedge clk_sys) begin
+		if (stv_download && ioctl_wr) begin
+			STV_MODE <= ioctl_data[7:0];
+		end
+	end
+`endif
 	
 `ifndef STV_BUILD
 	wire [2:0] cart_type = status[23:21];
@@ -614,12 +633,14 @@ module emu
 	wire [3:0] area_code = 4'h1;
 `endif
 																	
+`ifndef STV_BUILD														
 	wire [15:0] joy1 = {~joystick_0[0]|joystick_0[1], ~joystick_0[1]|joystick_0[0], ~joystick_0[2]|joystick_0[3], ~joystick_0[3]|joystick_0[2], ~joystick_0[7], ~joystick_0[4], ~joystick_0[6], ~joystick_0[5],
 							  ~joystick_0[8], ~joystick_0[9], ~joystick_0[10], ~joystick_0[11], ~joystick_0[12], 3'b111};
 	wire [15:0] joy2 = {~joystick_1[0]|joystick_1[1], ~joystick_1[1]|joystick_1[0], ~joystick_1[2]|joystick_1[3], ~joystick_1[3]|joystick_1[2], ~joystick_1[7], ~joystick_1[4], ~joystick_1[6], ~joystick_1[5],
 							  ~joystick_1[8], ~joystick_1[9], ~joystick_1[10], ~joystick_1[11], ~joystick_1[12], 3'b111};
-`ifdef STV_BUILD
-	wire        coin1 = ~joystick_0[13];
+`else
+	wire [13:0] joy1 = ~joystick_0[13:0];
+	wire [13:0] joy2 = ~joystick_1[13:0];
 `endif
 
 	wire snac = status[27];
@@ -906,7 +927,12 @@ module emu
 		.CD_RAM_RDY(CD_RAM_RDY),
 `endif
 		
+`ifndef STV_BUILD
 		.CART_MODE(cart_type),
+`else
+		.STV_RSG_MODE(STV_MODE[3:0] == 4'h1),
+		.STV_5838_MODE(STV_MODE[3:0] == 4'h2),
+`endif
 		.CART_MEM_A(CART_MEM_A),
 		.CART_MEM_D(CART_MEM_D),
 		.CART_MEM_WE(CART_MEM_WE),
@@ -940,7 +966,6 @@ module emu
 		
 		.SCRN_EN(SCRN_EN & SCRN_EN2),
 		.SND_EN(SND_EN & SND_EN2),
-		.SLOT_EN(SLOT_EN),
 		.DBG_PAUSE(DBG_PAUSE),
 		.DBG_BREAK(DBG_BREAK),
 		.DBG_RUN(DBG_RUN),
@@ -965,8 +990,7 @@ module emu
 		.RW_N(MEM_DQM_N[0]),
 		
 		.JOY1(joy1),
-		.JOY2(joy2),
-		.COIN1(coin1)
+		.JOY2(joy2)
 	);
 	
 	reg  [ 6: 1] STV_EEPROM_ADDR;
@@ -1942,11 +1966,9 @@ module emu
 	);
 
 	
-	
 	//debug
 	reg  [ 7: 0] SCRN_EN = 8'b11111111;
 	reg  [ 2: 0] SND_EN = 3'b111;
-	reg  [31: 0] SLOT_EN = '1;
 	reg          DBG_PAUSE = 0;
 	reg          DBG_BREAK = 0;
 	reg          DBG_RUN = 0;
@@ -2006,9 +2028,7 @@ module emu
 	reg  [7:0] SCRN_EN2 = 8'b11111111;
 	reg  [2:0] SND_EN2 = 3'b111;
 
-`ifdef DEBUG
-	assign SLOT_EN = '1;
-`else
+`ifndef DEBUG
 	assign SCRN_EN2 = ~status[42:36];
 	assign SND_EN2 = ~status[45:43];
 `endif

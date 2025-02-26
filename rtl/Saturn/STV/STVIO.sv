@@ -12,9 +12,8 @@ module STVIO (
 	input              CS_N,
 	input              RW_N,
 	
-	input      [15: 0] JOY1,
-	input      [15: 0] JOY2,
-	input              COIN1
+	input      [13: 0] JOY1,
+	input      [13: 0] JOY2
 );
 	
 	bit  [ 7: 0] IN[8];
@@ -50,8 +49,8 @@ module STVIO (
 	// b1 = Button 2
 	// b0 = Button 1
 	//	
-	assign IN[0] = {JOY1[14],JOY1[15],JOY1[12],JOY1[13],1'b1,JOY1[9],JOY1[8],JOY1[10]};
-	assign IN[1] = {JOY2[14],JOY2[15],JOY2[12],JOY2[13],1'b1,JOY2[9],JOY2[8],JOY2[10]};
+	assign IN[0] = {JOY1[1],JOY1[0],JOY1[3],JOY1[2],JOY1[4],JOY1[6],JOY1[5],JOY1[4]};
+	assign IN[1] = {JOY2[1],JOY2[0],JOY2[3],JOY2[2],JOY2[4],JOY2[6],JOY2[5],JOY2[4]};
 	
 	// PORTC (System) inputs...
 	// 
@@ -66,10 +65,10 @@ module STVIO (
 	//
 	// Button inputs to core are Active-LOW !
 	// 
-	assign IN[2] = {1'b1,1'b1,JOY2[11],JOY1[11],JOY1[7],JOY1[3],1'b1,COIN1};
+	assign IN[2] = {1'b1,1'b1,JOY2[10],JOY1[10],JOY1[12],JOY1[13],1'b1,JOY1[11]};
 	assign IN[3] = 8'h00;
 	assign IN[4] = 8'hFF;
-	assign IN[5] = {1'b1,JOY2[4],JOY2[5],JOY2[6],1'b1,JOY1[4],JOY1[5],JOY1[6]};
+	assign IN[5] = {1'b1,JOY2[9],JOY2[8],JOY2[7],1'b1,JOY1[9],JOY1[8],JOY1[7]};
 	assign IN[6] = 8'hFF;
 	assign IN[7] = 8'hFF;
 	

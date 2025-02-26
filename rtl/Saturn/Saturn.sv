@@ -109,7 +109,12 @@ module Saturn
 	input             CD_RAM_RDY,
 `endif
 	
+`ifndef STV_BUILD
 	input       [2:0] CART_MODE,
+`else
+	input             STV_RSG_MODE,
+	input             STV_5838_MODE,
+`endif
 	output     [25:1] CART_MEM_A,
 	output     [15:0] CART_MEM_D,
 	output     [ 1:0] CART_MEM_WE,
@@ -144,7 +149,6 @@ module Saturn
 	
 	input       [7:0] SCRN_EN,
 	input       [2:0] SND_EN,
-	input      [31:0] SLOT_EN,
 	input             DBG_PAUSE,
 	input             DBG_BREAK,
 	input             DBG_RUN,
@@ -817,16 +821,7 @@ module Saturn
 		
 		.DBG_EXT(DBG_EXT)
 	);
-	
-	
-	bit STV_SCSP_RES_N,STV_SCPU_RES_N;
-	always @(posedge CLK) begin	
-		if (SYS_CE_R) begin
-			STV_SCSP_RES_N <= ~(SMPC_PDR2O[3] | ~SMPC_DDR2[3]);
-			STV_SCPU_RES_N <= ~(SMPC_PDR2O[4] | ~SMPC_DDR2[4]);
-		end
-	end
-	
+
 	bit         SCCE_R;
 	bit         SCCE_F;
 	bit  [23:1] SCA;
@@ -841,7 +836,20 @@ module Saturn
 	bit         SCAVEC_N;
 	bit   [2:0] SCIPL_N;
 	
-	wire SCSP_RES_N = CART_MODE == 3'h5 ? STV_SCSP_RES_N : SYSRES_N;
+`ifndef STV_BUILD
+	wire SCSP_RES_N = SYSRES_N;
+	wire SCPU_RES_N = SNDRES_N;
+`else
+	bit STV_SCSP_RES_N,STV_SCPU_RES_N;
+	always @(posedge CLK) begin
+		if (SYS_CE_R) begin
+			STV_SCSP_RES_N <= ~(SMPC_PDR2O[3] | ~SMPC_DDR2[3]);
+			STV_SCPU_RES_N <= ~(SMPC_PDR2O[4] | ~SMPC_DDR2[4]);
+		end
+	end
+	wire SCSP_RES_N = STV_SCSP_RES_N;
+	wire SCPU_RES_N = STV_SCPU_RES_N;
+`endif
 	SCSP SCSP
 	(
 		.CLK(CLK),
@@ -895,14 +903,8 @@ module Saturn
 `endif
 		
 		.SND_EN(SND_EN)
-		
-`ifdef DEBUG
-		,
-		.SLOT_EN(SLOT_EN)
-`endif
 	);
 	
-	wire SCPU_RES_N = CART_MODE == 3'h5 ? STV_SCPU_RES_N : SNDRES_N;
 	bit M68K_RESO_N;
 	fx68k M68K
 	(
@@ -1079,18 +1081,28 @@ module Saturn
 	assign CD_RAM_WE = ~{SWRH_N,SWRL_N};
 	assign CD_RAM_RD = ~SRD_N;
 `else
+	assign ARQT_N = 1;
 	assign {CD_SL,CD_SR} = '0;
 `endif
 	
 	
 	bit  [15: 0] CART_DO;
 	bit          CART_AWAIT_N;
+`ifndef STV_BUILD
 	CART cart 
+`else
+	STV_CART cart 
+`endif
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
 		
+`ifndef STV_BUILD
 		.MODE(CART_MODE),
+`else
+		.STV_RSG_MODE(STV_RSG_MODE),
+		.STV_5838_MODE(STV_5838_MODE),
+`endif
 		
 		.RES_N(SYSRES_N),
 		
