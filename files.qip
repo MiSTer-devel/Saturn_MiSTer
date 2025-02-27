@@ -16,6 +16,7 @@ set_global_assignment -name SYSTEMVERILOG_FILE rtl/hps2pad.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/ps2mouse.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/lightgun.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/cofi.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/jtframe_resync.v
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/hps2cdd.sv
 set_global_assignment -name SDC_FILE Saturn.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE Saturn.sv
