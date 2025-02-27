@@ -267,7 +267,7 @@ module emu
 	// 0         1         2         3          4         5         6   	   7         8         9
 	// 01234567890123456789012345678901 23456789012345678901234567890123 45678901234567890123456789012345
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX X
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX XXXXXXXXXXX
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -287,7 +287,7 @@ module emu
 		"D0R[25],Save Backup RAM;",
 		"D0O[26],Autosave,Off,On;", 
 		"-;",
-		
+
 		"P1,Audio & Video;",
 		"P1-;",
 		"P1o[63:62],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
@@ -302,7 +302,10 @@ module emu
 		"P1o[61],Vertical Crop,Disabled,216p(5x);",
 		"P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
 		"P1o[56:55],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
-	
+`ifdef STV_BUILD
+		"P1o[69:65],CRT H offset,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
+		"P1o[74:70],CRT V offset,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
+`endif
 		"P2,Input;",
 		"P2-;",
 `ifndef STV_BUILD
@@ -1959,12 +1962,35 @@ module emu
 		.B(mixer_b),
 	
 		// Positive pulses.
-		.HSync(cofi_hs), 
-		.VSync(cofi_vs),  
+		.HSync(analog_hs), 
+		.VSync(analog_vs),  
 		.HBlank(hblank_cropped),
 		.VBlank(cofi_vbl) 
 	);
 
+//adjust analog H/V
+	wire analog_hs, analog_vs;
+	
+`ifdef STV_BUILD
+	wire [4:0] hoffset = status[69:65];
+	wire [4:0] voffset = status[74:70];
+
+	jtframe_resync #(5) resync (
+		.clk(clk_sys),
+		.pxl_cen(DCLK),
+		.hs_in(cofi_hs),
+		.vs_in(cofi_vs),
+		.LVBL(~cofi_vbl),
+		.LHBL(~hblank_cropped),
+		.hoffset(-hoffset),
+		.voffset(-voffset),
+		.hs_out(analog_hs),
+		.vs_out(analog_vs)
+	);
+`else
+	assign analog_hs = cofi_hs;
+	assign analog_vs = cofi_vs;
+`endif
 	
 	//debug
 	reg  [ 7: 0] SCRN_EN = 8'b11111111;
