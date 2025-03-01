@@ -303,8 +303,10 @@ module emu
 		"P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
 		"P1o[56:55],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
 `ifdef STV_BUILD
-		"P1o[69:65],CRT H offset,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
-		"P1o[74:70],CRT V offset,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
+		"P1-;",
+		"P1o[75],CRT H/V offset,Off,On;",
+		"D5P1o[69:65],CRT H offset,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
+		"D5P1o[74:70],CRT V offset,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
 `endif
 		"P2,Input;",
 		"P2-;",
@@ -453,7 +455,7 @@ module emu
 `ifndef STV_BUILD
 	assign menumask = {~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
 `else
-	assign menumask = {1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
+	assign menumask = {~status[75], 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
 `endif
 	
 	wire bios_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] != 2'h3);
@@ -1972,8 +1974,8 @@ module emu
 	wire analog_hs, analog_vs;
 	
 `ifdef STV_BUILD
-	wire [4:0] hoffset = status[69:65];
-	wire [4:0] voffset = status[74:70];
+	wire [4:0] hoffset = status[75] ? status[69:65] : 5'd0;
+	wire [4:0] voffset = status[75] ? status[74:70] : 5'd0;
 
 	jtframe_resync #(5) resync (
 		.clk(clk_sys),
@@ -1984,6 +1986,7 @@ module emu
 		.LHBL(~hblank_cropped),
 		.hoffset(-hoffset),
 		.voffset(-voffset),
+		.hres_mode(HRES[1]),
 		.hs_out(analog_hs),
 		.vs_out(analog_vs)
 	);
