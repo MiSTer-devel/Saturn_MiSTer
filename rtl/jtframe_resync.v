@@ -25,6 +25,7 @@ module jtframe_resync #(parameter BITS=4)(
     input         LHBL,
     input  [BITS - 1:0]  hoffset,
     input  [BITS - 1:0]  voffset,
+    input         hres_mode,
     output reg    hs_out,
     output reg    vs_out
 );
