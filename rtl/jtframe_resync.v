@@ -25,6 +25,7 @@ module jtframe_resync #(parameter BITS=4)(
     input         LHBL,
     input  [BITS - 1:0]  hoffset,
     input  [BITS - 1:0]  voffset,
+    input         hres_mode,
     output reg    hs_out,
     output reg    vs_out
 );
@@ -40,7 +41,9 @@ reg              last_LHBL, last_LVBL, last_hsin, last_vsin;
 wire             hb_edge, hs_edge, hs_n_edge, vb_edge, vs_edge, vs_n_edge;
 reg              field;
 
-wire [CNTW-1:0]  hpos_off = { {CNTW-BITS{hoffset[BITS - 1]}}, hoffset[(BITS-1):0]  };
+wire [CNTW-1:0]  hpos_off = hres_mode ? 
+    { {CNTW-BITS-1{hoffset[BITS-1]}}, hoffset, 1'b0 } : 
+    { {CNTW-BITS{hoffset[BITS-1]}}, hoffset };
 wire [CNTW-1:0]  htrip = hs_pos[field] + hpos_off;
 wire [CNTW-1:0]  vs_htrip = vs_hpos[field] + hpos_off;
 wire [CNTW-1:0]  vs_vtrip = vs_vpos[field] + { {CNTW-BITS{voffset[BITS-1]}}, voffset[(BITS-1):0]  };
