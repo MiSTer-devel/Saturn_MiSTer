@@ -1337,7 +1337,7 @@ module VDP1 (
 					LINE_GHCOLOR <= DIR[0] ? RIGHT_GHCOLOR : LEFT_GHCOLOR;
 					GRD_CALC_1 <= RGBFtoI(LEFT_GHCOLOR);
 					GRD_CALC_2 <= RGBFtoI(RIGHT_GHCOLOR);
-					GRD_CALC_S <= ROW_WIDTH /*- 12'd1*/;
+					GRD_CALC_S <= ROW_WIDTH;
 					CMD_ST <= CMDS_GRD_CALC_LINE;
 				end
 				
@@ -1934,7 +1934,7 @@ module VDP1 (
 	bit  [ 1: 0] DQM;
 	bit          BURST;
 	bit          READY;
-	bit          VRAM_SEL;
+	bit          VRAM_SEL,FBRAM_SEL;
 	
 	bit          CPU_VRAM_RRDY;
 	bit          CPU_FB_RRDY;
@@ -2030,6 +2030,7 @@ module VDP1 (
 						WE_N <= DI[14];
 						BURST <= DI[13];
 						VRAM_SEL <= (DI[11:10] == 2'b00);
+						FBRAM_SEL <= (DI[11:10] == 2'b01);
 					end else begin
 						A[8:1] <= DI[7:0];
 						DQM <= DI[13:12];
@@ -2039,6 +2040,7 @@ module VDP1 (
 			if (CS_N && !CS_N_OLD) begin
 				BURST <= 0;
 				VRAM_SEL <= 0;
+				FBRAM_SEL <= 0;
 			end
 			
 			if (CMD_READ && !CMD_READ_PEND) begin CMD_READ_PEND <= 1; VRAM_READ_POS <= '0; end
@@ -2312,7 +2314,7 @@ module VDP1 (
 							FB_ST <= FS_CPU_WAIT;
 						end
 					end
-					else if (((FB_READ_PEND && !FB_RD) || (FB_DRAW_PEND && !FB_WE)) && FB_DRAW_WE) begin
+					else if (((FB_READ_PEND && !FB_RD) || (FB_DRAW_PEND && !FB_WE)) && FB_DRAW_WE && !BURST && !FBRAM_SEL) begin
 						FB_Y = !DIE ? DRAW_Y[8:0] : DRAW_Y[9:1];
 						casex (TVMR.TVM[1:0]) 
 							2'bx0: begin
@@ -2344,14 +2346,16 @@ module VDP1 (
 				end
 				
 				FS_CPU_WAIT: begin
-					FB_ST <= FS_CPU_READ;
+					if (FB_RDY && CE_F) begin
+						FB_RD <= 0;
+						CPU_FB_RRDY <= 1;
+						FB_ST <= FS_CPU_READ;
+					end
 				end
 				
 				FS_CPU_READ: begin
-					if (FB_RDY && CE_R) begin
+					if (CE_R) begin
 						MEM_DO <= FB_DRAW_Q;
-						FB_RD <= 0;
-						CPU_FB_RRDY <= 1;
 						FB_ST <= FS_IDLE;
 					end
 				end
