@@ -467,7 +467,12 @@ module emu
 `else
 	wire stv_download = ioctl_download & (ioctl_index[5:2] == 6'b000000);
 	
-	reg  [7:0] STV_MODE = '0;//[3:0] - chip (1: RSG, 2: 315-5838, 3: 315-5881, ...)
+	//[3:0] - chip 
+	//1 - 315-5881:
+	//		[7:4] - 315-5838 game: 1:astrass, 2:elandore, 3:ffreveng, 4:rsgun, 5:sss, 6:twcup98/twsoc98, ...
+	//
+	//2 - 315-5838
+	reg  [7:0] STV_MODE = '0;
 	always @(posedge clk_sys) begin
 		if (stv_download && ioctl_wr) begin
 			STV_MODE <= ioctl_data[7:0];
@@ -935,7 +940,7 @@ module emu
 `ifndef STV_BUILD
 		.CART_MODE(cart_type),
 `else
-		.STV_RSG_MODE(STV_MODE[3:0] == 4'h1),
+		.STV_5881_MODE(STV_MODE[3:0] == 4'h1 ? STV_MODE[7:4] : 4'h0),
 		.STV_5838_MODE(STV_MODE[3:0] == 4'h2),
 `endif
 		.CART_MEM_A(CART_MEM_A),

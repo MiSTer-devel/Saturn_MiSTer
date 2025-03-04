@@ -16,11 +16,7 @@ module SEGA_315_5838 (
 	output     [23: 1] MEM_A,
 	input      [15: 0] MEM_DI,
 	output             MEM_RD,
-	input              MEM_RDY,
-	
-	output     [ 7: 0] TREE_LEN,
-	output     [ 7: 0] TREE_IDX,
-	output     [15: 0] TREE_PATT
+	input              MEM_RDY
 );
 
 	typedef struct packed
@@ -254,9 +250,5 @@ module SEGA_315_5838 (
 		.data_b(IO_DICT_DATA),
 		.wren_b(IO_DICT_WREN)
 	);
-	
-	assign TREE_LEN = DEC_TREE[TREE_CNT].LEN;
-	assign TREE_IDX = DEC_TREE[TREE_CNT].IDX;
-	assign TREE_PATT = DEC_TREE[TREE_CNT].PATTERN;
 	
 endmodule
