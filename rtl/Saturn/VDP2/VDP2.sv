@@ -1982,7 +1982,7 @@ module VDP2 (
 			case (DOTCLK_DIV)
 				2'd0: begin
 					ADD1 = Xp[0];
-					if (RPxREG[0].KTE && !RPxREG[0].KMD[0])
+					if (RPxREG[0].KTE && !RPxREG[0].KMD[1])
 						MULT1 = {CTD[0].INT,CTD[0].FRAC};
 					else
 						MULT1 = ScallingToRC(RP_KX[0]);
@@ -1990,7 +1990,7 @@ module VDP2 (
 				end
 				2'd1: begin
 					ADD1 = Yp[0];
-					if (RPxREG[0].KTE && !RPxREG[0].KMD[1])
+					if (RPxREG[0].KTE && !RPxREG[0].KMD[0])
 						MULT1 = {CTD[0].INT,CTD[0].FRAC};
 					else
 						MULT1 = ScallingToRC(RP_KY[0]);
@@ -1998,7 +1998,7 @@ module VDP2 (
 				end
 				2'd2: begin
 					ADD1 = Xp[1];
-					if (RPxREG[1].KTE && !RPxREG[1].KMD[0])
+					if (RPxREG[1].KTE && !RPxREG[1].KMD[1])
 						MULT1 = {CTD[1].INT,CTD[1].FRAC};
 					else
 						MULT1 = ScallingToRC(RP_KX[1]);
@@ -2006,7 +2006,7 @@ module VDP2 (
 				end
 				2'd3: begin
 					ADD1 = Yp[1];
-					if (RPxREG[1].KTE && !RPxREG[1].KMD[1])
+					if (RPxREG[1].KTE && !RPxREG[1].KMD[0])
 						MULT1 = {CTD[1].INT,CTD[1].FRAC};
 					else
 						MULT1 = ScallingToRC(RP_KY[1]);
