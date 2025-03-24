@@ -299,8 +299,8 @@ module emu
 		"P1o[50],Composite Blend,Off,On;",
 		"P1-;",
 		"P1o[64],Horizontal Crop,Off,On;",
-		"P1o[61],Vertical Crop,Disabled,216p(5x);",
-		"P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
+		"D8P1o[61],Vertical Crop,Disabled,216p(5x);",
+		"D8P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
 		"P1o[56:55],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
 `ifdef STV_BUILD
 		"P1-;",
@@ -311,6 +311,7 @@ module emu
 		"P2,Input;",
 		"P2-;",
 `ifndef STV_BUILD
+		"P2O[76],Swap Joysticks,No,Yes;",
 		"P2O[27],Pad 1 SNAC,OFF,ON;",
 		"P2-;",
 		"D5P2O[17:15],Pad 1,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Off;",
@@ -320,7 +321,7 @@ module emu
 		"D6P2O[49:48],LGun P1 Crosshair,Small,Medium,Big,None;",
 		"P2-;",
 		"P2-;",
-		"P2O[20:18],Pad 2,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Off;",
+		"D5P2O[20:18],Pad 2,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Off;",
 		"P2-;",
 		"D7P2O[57],LGun P2 XY Ctrl,Joy 2,Mouse;",
 		"D7P2O[58],LGun P2 Buttons,Joy 2,Mouse;",
@@ -453,7 +454,7 @@ module emu
 	);
 	
 `ifndef STV_BUILD
-	assign menumask = {~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
+	assign menumask = {(status[56:55] != 2'b00), ~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
 `else
 	assign menumask = {~status[75], 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
 `endif
@@ -1083,8 +1084,8 @@ module emu
 		.PDR2O(SMPC_PDR2O),
 		.DDR2(SMPC_DDR2),
 		
-		.JOY1(joy1),
-		.JOY2(joy2),
+		.JOY1(status[76] ? joy2 : joy1),
+		.JOY2(status[76] ? joy1 : joy2),
 
 		.JOY1_X1(joy0_x0),
 		.JOY1_Y1(joy0_y0),
