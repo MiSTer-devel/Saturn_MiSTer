@@ -117,9 +117,9 @@ module HPS2PAD (
 				PAD_WHEEL: begin
 					case (STATE1)
 						5'd0,
-						5'd1: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'hB;                          TL1 <= 1; STATE1 <= 5'd2; end
-						5'd2: if (PDR1O[6:5] == 2'b00) begin OUT1 <= 4'hF;                          TL1 <= 0; STATE1 <= 5'd3; end
-						5'd3: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'hF;                          TL1 <= 1; STATE1 <= 5'd4; end
+						5'd1: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'h1;                          TL1 <= 1; STATE1 <= 5'd2; end
+						5'd2: if (PDR1O[6:5] == 2'b00) begin OUT1 <= 4'h1;                          TL1 <= 0; STATE1 <= 5'd3; end
+						5'd3: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'h3;                          TL1 <= 1; STATE1 <= 5'd4; end
 						5'd4: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1[15:12];                   TL1 <= 0; STATE1 <= 5'd5; end
 						5'd5: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1[11: 8];                   TL1 <= 1; STATE1 <= 5'd6; end
 						5'd6: if (PDR1O[6:5] == 2'b00) begin OUT1 <= {1'b1,JOY1[ 6: 4]};            TL1 <= 0; STATE1 <= 5'd7; end
@@ -127,7 +127,7 @@ module HPS2PAD (
 						5'd8: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1_X1[7:4]^4'h8;             TL1 <= 0; STATE1 <= 5'd9; end
 						5'd9: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1_X1[3:0];                  TL1 <= 1; STATE1 <= 5'd10; end
 					endcase
-					if (PDR1O[6:5] == 2'b11) begin OUT1 <= 4'h0; TL1 <= 1; STATE1 <= 5'd0; end
+					if (PDR1O[6:5] == 2'b11) begin OUT1 <= 4'h1; TL1 <= 1; STATE1 <= 5'd0; end
 				end
 				
 				PAD_MOUSE: begin
@@ -171,6 +171,34 @@ module HPS2PAD (
 					if (PDR1O[6:5] == 2'b11) begin OUT1 <= 4'h1; TL1 <= 1; STATE1 <= 5'd0; end
 				end
 				
+				PAD_DUALMISSION: begin
+					case (STATE1)
+						5'd00,
+						5'd01: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'h1;                          TL1 <= 1; STATE1 <= 5'd2; end
+						5'd02: if (PDR1O[6:5] == 2'b00) begin OUT1 <= 4'h1;                          TL1 <= 0; STATE1 <= 5'd3; end
+						5'd03: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'h9;                          TL1 <= 1; STATE1 <= 5'd4; end
+						5'd04: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1[15:12];                   TL1 <= 0; STATE1 <= 5'd5; end
+						5'd05: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1[11: 8];                   TL1 <= 1; STATE1 <= 5'd6; end
+						5'd06: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1[ 7: 4];                   TL1 <= 0; STATE1 <= 5'd7; end
+						5'd07: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1[ 3: 0];                   TL1 <= 1; STATE1 <= 5'd8; end
+						5'd08: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1_X1[7:4]^4'h8;             TL1 <= 0; STATE1 <= 5'd9; end
+						5'd09: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1_X1[3:0];                  TL1 <= 1; STATE1 <= 5'd10; end
+						5'd10: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1_Y1[7:4]^4'h8;             TL1 <= 0; STATE1 <= 5'd11; end
+						5'd11: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1_Y1[3:0];                  TL1 <= 1; STATE1 <= 5'd12; end
+						5'd12: if (PDR1O[6:5] == 2'b00) begin OUT1 <= 4'h0/*JOY1_Z1[7:4]^4'h8*/;     TL1 <= 0; STATE1 <= 5'd13; end
+						5'd13: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'h0/*JOY1_Z1[3:0]*/;          TL1 <= 1; STATE1 <= 5'd14; end
+						5'd14: if (PDR1O[6:5] == 2'b00) begin OUT1 <= 4'hF;                          TL1 <= 0; STATE1 <= 5'd15; end
+						5'd15: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'hF;                          TL1 <= 1; STATE1 <= 5'd16; end
+						5'd16: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1_X2[7:4]^4'h8;             TL1 <= 0; STATE1 <= 5'd17; end
+						5'd17: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1_X2[3:0];                  TL1 <= 1; STATE1 <= 5'd18; end
+						5'd18: if (PDR1O[6:5] == 2'b00) begin OUT1 <= JOY1_Y2[7:4]^4'h8;             TL1 <= 0; STATE1 <= 5'd19; end
+						5'd19: if (PDR1O[6:5] == 2'b01) begin OUT1 <= JOY1_Y2[3:0];                  TL1 <= 1; STATE1 <= 5'd20; end
+						5'd20: if (PDR1O[6:5] == 2'b00) begin OUT1 <= 4'h0/*JOY1_Z2[7:4]^4'h8*/;     TL1 <= 0; STATE1 <= 5'd21; end
+						5'd21: if (PDR1O[6:5] == 2'b01) begin OUT1 <= 4'h0/*JOY1_Z2[3:0]*/;          TL1 <= 1; STATE1 <= 5'd22; end
+					endcase
+					if (PDR1O[6:5] == 2'b11) begin OUT1 <= 4'h1; TL1 <= 1; STATE1 <= 5'd0; end
+				end
+				
 				default: ;
 			endcase
 			
@@ -178,9 +206,9 @@ module HPS2PAD (
 				PAD_WHEEL: begin
 					case (STATE2)
 						5'd0,
-						5'd1: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'hB;                          TL2 <= 1; STATE2 <= 5'd2; end
-						5'd2: if (PDR2O[6:5] == 2'b00) begin OUT2 <= 4'hF;                          TL2 <= 0; STATE2 <= 5'd3; end
-						5'd3: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'hF;                          TL2 <= 1; STATE2 <= 5'd4; end
+						5'd1: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'h1;                          TL2 <= 1; STATE2 <= 5'd2; end
+						5'd2: if (PDR2O[6:5] == 2'b00) begin OUT2 <= 4'h1;                          TL2 <= 0; STATE2 <= 5'd3; end
+						5'd3: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'h3;                          TL2 <= 1; STATE2 <= 5'd4; end
 						5'd4: if (PDR2O[6:5] == 2'b00) begin OUT2 <= JOY2[15:12];                   TL2 <= 0; STATE2 <= 5'd5; end
 						5'd5: if (PDR2O[6:5] == 2'b01) begin OUT2 <= JOY2[11: 8];                   TL2 <= 1; STATE2 <= 5'd6; end
 						5'd6: if (PDR2O[6:5] == 2'b00) begin OUT2 <= {1'b1,JOY2[ 6: 4]};            TL2 <= 0; STATE2 <= 5'd7; end
@@ -188,7 +216,7 @@ module HPS2PAD (
 						5'd8: if (PDR2O[6:5] == 2'b00) begin OUT2 <= JOY2_X1[7:4]^4'h8;             TL2 <= 0; STATE2 <= 5'd9; end
 						5'd9: if (PDR2O[6:5] == 2'b01) begin OUT2 <= JOY2_X1[3:0];                  TL2 <= 1; STATE2 <= 5'd10; end
 					endcase
-					if (PDR2O[6:5] == 2'b11) begin OUT2 <= 4'h0; TL2 <= 1; STATE2 <= 5'd0; end
+					if (PDR2O[6:5] == 2'b11) begin OUT2 <= 4'h1; TL2 <= 1; STATE2 <= 5'd0; end
 				end
 				
 				PAD_MOUSE: begin
@@ -228,6 +256,34 @@ module HPS2PAD (
 						5'd14: if (JOY2_TYPE == PAD_3D &&
 						           PDR2O[6:5] == 2'b00) begin OUT2 <= 4'h0/*JOY2_Z2[7:4]^4'h8*/;           TL2 <= 0; STATE2 <= 5'd15; end
 						5'd15: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'h1/*JOY2_Z2[3:0]*/;                TL2 <= 1; STATE2 <= 5'd16; end
+					endcase
+					if (PDR2O[6:5] == 2'b11) begin OUT2 <= 4'h1; TL2 <= 1; STATE2 <= 5'd0; end
+				end
+				
+				PAD_DUALMISSION: begin
+					case (STATE2)
+						5'd00,
+						5'd01: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'h1;                          TL2 <= 1; STATE2 <= 5'd2; end
+						5'd02: if (PDR2O[6:5] == 2'b00) begin OUT2 <= 4'h1;                          TL2 <= 0; STATE2 <= 5'd3; end
+						5'd03: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'h9;                          TL2 <= 1; STATE2 <= 5'd4; end
+						5'd04: if (PDR2O[6:5] == 2'b00) begin OUT2 <= JOY2[15:12];                   TL2 <= 0; STATE2 <= 5'd5; end
+						5'd05: if (PDR2O[6:5] == 2'b01) begin OUT2 <= JOY2[11: 8];                   TL2 <= 1; STATE2 <= 5'd6; end
+						5'd06: if (PDR2O[6:5] == 2'b00) begin OUT2 <= JOY2[ 7: 4];                   TL2 <= 0; STATE2 <= 5'd7; end
+						5'd07: if (PDR2O[6:5] == 2'b01) begin OUT2 <= JOY2[ 3: 0];                   TL2 <= 1; STATE2 <= 5'd8; end
+						5'd08: if (PDR2O[6:5] == 2'b00) begin OUT2 <= JOY2_X1[7:4]^4'h8;             TL2 <= 0; STATE2 <= 5'd9; end
+						5'd09: if (PDR2O[6:5] == 2'b01) begin OUT2 <= JOY2_X1[3:0];                  TL2 <= 1; STATE2 <= 5'd10; end
+						5'd10: if (PDR2O[6:5] == 2'b00) begin OUT2 <= JOY2_Y1[7:4]^4'h8;             TL2 <= 0; STATE2 <= 5'd11; end
+						5'd11: if (PDR2O[6:5] == 2'b01) begin OUT2 <= JOY2_Y1[3:0];                  TL2 <= 1; STATE2 <= 5'd12; end
+						5'd12: if (PDR2O[6:5] == 2'b00) begin OUT2 <= 4'h0/*JOY2_Z1[7:4]^4'h8*/;     TL2 <= 0; STATE2 <= 5'd13; end
+						5'd13: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'h0/*JOY2_Z1[3:0]*/;          TL2 <= 1; STATE2 <= 5'd14; end
+						5'd14: if (PDR2O[6:5] == 2'b00) begin OUT2 <= 4'hF;                          TL2 <= 0; STATE2 <= 5'd15; end
+						5'd15: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'hF;                          TL2 <= 1; STATE2 <= 5'd16; end
+						5'd16: if (PDR2O[6:5] == 2'b00) begin OUT2 <= JOY2_X2[7:4]^4'h8;             TL2 <= 0; STATE2 <= 5'd17; end
+						5'd17: if (PDR2O[6:5] == 2'b01) begin OUT2 <= JOY2_X2[3:0];                  TL2 <= 1; STATE2 <= 5'd18; end
+						5'd18: if (PDR2O[6:5] == 2'b00) begin OUT2 <= JOY2_Y2[7:4]^4'h8;             TL2 <= 0; STATE2 <= 5'd19; end
+						5'd19: if (PDR2O[6:5] == 2'b01) begin OUT2 <= JOY2_Y2[3:0];                  TL2 <= 1; STATE2 <= 5'd20; end
+						5'd20: if (PDR2O[6:5] == 2'b00) begin OUT2 <= 4'h0/*JOY2_Z2[7:4]^4'h8*/;     TL2 <= 0; STATE2 <= 5'd21; end
+						5'd21: if (PDR2O[6:5] == 2'b01) begin OUT2 <= 4'h0/*JOY2_Z2[3:0]*/;          TL2 <= 1; STATE2 <= 5'd22; end
 					endcase
 					if (PDR2O[6:5] == 2'b11) begin OUT2 <= 4'h1; TL2 <= 1; STATE2 <= 5'd0; end
 				end
@@ -290,7 +346,8 @@ module HPS2PAD (
 			PAD_WHEEL,
 			PAD_MOUSE,
 			PAD_MISSION,
-			PAD_3D: begin
+			PAD_3D,
+			PAD_DUALMISSION: begin
 				PDR1I[4:0] = {TL1,OUT1};
 			end
 			
@@ -324,7 +381,8 @@ module HPS2PAD (
 			PAD_WHEEL,
 			PAD_MOUSE,
 			PAD_MISSION,
-			PAD_3D: begin
+			PAD_3D,
+			PAD_DUALMISSION: begin
 				PDR2I[4:0] = {TL2,OUT2};
 			end
 			

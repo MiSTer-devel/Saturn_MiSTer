@@ -801,10 +801,6 @@ module SMPC (
 				if (!PORT_DELAY) 
 				case (PORT_ST)
 					PS_IDLE: begin
-						if (JOY_START) begin
-							PORT_NUM <= 0;
-							PORT_ST <= PS_START;
-						end
 					end
 					
 					PS_START: begin
@@ -1025,7 +1021,7 @@ module SMPC (
 					end
 					
 					PS_ID5_4: begin
-						if (ID2 == 8'h02 || ID2 == 8'h15 || ID2 == 8'h16) begin
+						if (ID2 == 8'h02 || ID2 == 8'h13 || ID2 == 8'h15 || ID2 == 8'h16 || ID2 == 8'h19) begin//8'h13-wheel,8'h15-mission stick,8'h16-3dpad,8'h19-dual mission stick
 							OREG_DATA <= 8'hF1;
 							OREG_WRITE <= 1;
 							PORT_ST <= PS_ANALOG_5;
@@ -1097,6 +1093,11 @@ module SMPC (
 						PORT_ST <= PS_IDLE;
 					end
 				endcase
+				
+				if (JOY_START) begin
+					PORT_NUM <= 0;
+					PORT_ST <= PS_START;
+				end
 			end
 			
 			RW_N_OLD <= RW_N;
