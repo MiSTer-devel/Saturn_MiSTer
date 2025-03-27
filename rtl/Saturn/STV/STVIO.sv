@@ -13,64 +13,80 @@ module STVIO (
 	input              RW_N,
 	
 	input      [13: 0] JOY1,
-	input      [13: 0] JOY2
+	input      [13: 0] JOY2,
+	
+	input      [ 7: 0] MODE
 );
+	
+	bit  [ 3: 0] J1UDLR,J2UDLR;
+	bit          J1B1,J1B2,J1B3,J1B4,J1B5,J1B6,J2B1,J2B2,J2B3,J2B4,J2B5,J2B6;
+	bit          J1START,J2START,J1COIN,J2COIN,J1SERVICE,J2SERVICE,J1TEST,J2TEST;
+	assign {J1TEST,J1SERVICE,J1COIN,J1START,J1B6,J1B5,J1B4,J1B3,J1B2,J1B1,J1UDLR} = JOY1;
+	assign {J2TEST,J2SERVICE,J2COIN,J2START,J2B6,J2B5,J2B4,J2B3,J2B2,J2B1,J2UDLR} = JOY2;
 	
 	bit  [ 7: 0] IN[8];
 	bit  [ 7: 0] OUT[8];
 	bit  [ 7: 0] DIR;
-	
-	// 0x0001 PORT-A (P1)      JAMMA (56P)
-	// 0x0003 PORT-B (P2)      JAMMA (56P)
-	// 0x0005 PORT-C (SYSTEM)  JAMMA (56P)
-	// 0x0007 PORT-D (OUTPUT)  JAMMA (56P) + CN25 (JST NH 5P) RESERVED OUTPUT 4bit. (?)
-	// 0x0009 PORT-E (P3)      CN32 (JST NH 9P) EXTENSION I/O 8bit.
-	// 0x000b PORT-F (P4 / Extra 6B layout)    CN21 (JST NH 11P) EXTENSION I/O 8bit.
-	// 0x000d PORT-G           CN20 (JST HN 10P) EXTENSION INPUT 8bit. (?)
-	// 0x000f unused
-	// 0x0011 PORT_DIR
-	//
-	// (each bit of PORT_DIR configures the DIRection of each 8-bit IO port. 1=input, 0=output.)
-	//
-	//  eg. PORT_DIR[0]=1=PORTA pins are all INPUTs.
-	//  eg. PORT_DIR[1]=1=PORTB pins are all INPUTs.
-	//  eg. PORT_DIR[2]=1=PORTC pins are all INPUTs.
-	//  eg. PORT_DIR[3]=0=PORTD pins are all OUTPUTs.
+	always_comb begin
+		// 0x0001 PORT-A (P1)      JAMMA (56P)
+		// 0x0003 PORT-B (P2)      JAMMA (56P)
+		// 0x0005 PORT-C (SYSTEM)  JAMMA (56P)
+		// 0x0007 PORT-D (OUTPUT)  JAMMA (56P) + CN25 (JST NH 5P) RESERVED OUTPUT 4bit. (?)
+		// 0x0009 PORT-E (P3)      CN32 (JST NH 9P) EXTENSION I/O 8bit.
+		// 0x000b PORT-F (P4 / Extra 6B layout)    CN21 (JST NH 11P) EXTENSION I/O 8bit.
+		// 0x000d PORT-G           CN20 (JST HN 10P) EXTENSION INPUT 8bit. (?)
+		// 0x000f unused
+		// 0x0011 PORT_DIR
+		//
+		// (each bit of PORT_DIR configures the DIRection of each 8-bit IO port. 1=input, 0=output.)
+		//
+		//  eg. PORT_DIR[0]=1=PORTA pins are all INPUTs.
+		//  eg. PORT_DIR[1]=1=PORTB pins are all INPUTs.
+		//  eg. PORT_DIR[2]=1=PORTC pins are all INPUTs.
+		//  eg. PORT_DIR[3]=0=PORTD pins are all OUTPUTs.
 
 
-	// PORTs A, B, E, F. (Player 1, 2, 3, 4)...
-	// 
-	// b7 = Left
-	// b6 = Right
-	// b5 = Up
-	// b4 = Down
-	// b3 = Button 4 (P3/P4 use this for Start)
-	// b2 = Button 3
-	// b1 = Button 2
-	// b0 = Button 1
-	//	
-	assign IN[0] = {JOY1[1],JOY1[0],JOY1[3],JOY1[2],JOY1[4],JOY1[6],JOY1[5],JOY1[4]};
-	assign IN[1] = {JOY2[1],JOY2[0],JOY2[3],JOY2[2],JOY2[4],JOY2[6],JOY2[5],JOY2[4]};
+		// PORTs A, B, E, F. (Player 1, 2, 3, 4)...
+		// 
+		// b7 = Left
+		// b6 = Right
+		// b5 = Up
+		// b4 = Down
+		// b3 = Button 4 (P3/P4 use this for Start)
+		// b2 = Button 3
+		// b1 = Button 2
+		// b0 = Button 1
+		//	
+		IN[0][7:4] = {J1UDLR[1],J1UDLR[0],J1UDLR[3],J1UDLR[2]};
+		IN[1][7:4] = {J2UDLR[1],J2UDLR[0],J2UDLR[3],J2UDLR[2]};
+		if (MODE[3:0] == 4'h3) begin	//batmanfr
+			IN[0][3:0] = {J1B3,J1B2,J1B1,1'b1};
+			IN[1][3:0] = {J2B3,J2B2,J2B1,1'b1};
+		end else begin
+			IN[0][3:0] = {1'b1,J1B3,J1B2,J1B1};
+			IN[1][3:0] = {1'b1,J2B3,J2B2,J2B1};
+		end
 	
-	// PORTC (System) inputs...
-	// 
-	// b7 = Pause (if the game supports it)
-	// b6 = Multi-Cart Select.
-	// b5 = Start 2 ?
-	// b4 = Start 1 ?
-	// b3 = Service 1.
-	// b2 = Test ?
-	// b1 = Coin 2
-	// b0 = Coin 1
-	//
-	// Button inputs to core are Active-LOW !
-	// 
-	assign IN[2] = {1'b1,1'b1,JOY2[10],JOY1[10],JOY1[12],JOY1[13],1'b1,JOY1[11]};
-	assign IN[3] = 8'h00;
-	assign IN[4] = 8'hFF;
-	assign IN[5] = {1'b1,JOY2[9],JOY2[8],JOY2[7],1'b1,JOY1[9],JOY1[8],JOY1[7]};
-	assign IN[6] = 8'hFF;
-	assign IN[7] = 8'hFF;
+		// PORTC (System) inputs...
+		// 
+		// b7 = Pause (if the game supports it)
+		// b6 = Multi-Cart Select.
+		// b5 = Start 2 ?
+		// b4 = Start 1 ?
+		// b3 = Service 1.
+		// b2 = Test ?
+		// b1 = Coin 2
+		// b0 = Coin 1
+		//
+		// Button inputs to core are Active-LOW !
+		// 
+		IN[2] = {1'b1,1'b1,J2START,J1START,J1SERVICE,J1TEST,J2COIN,J1COIN};
+		IN[3] = 8'h00;
+		IN[4] = 8'hFF;
+		IN[5] = {1'b1,J2B6,J2B5,J2B4,1'b1,J1B6,J1B5,J1B4};
+		IN[6] = 8'hFF;
+		IN[7] = 8'hFF;
+	end
 	
 	bit  [ 7: 0] REG_DO;
 	always @(posedge CLK or negedge RST_N) begin

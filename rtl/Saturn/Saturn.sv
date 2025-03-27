@@ -114,6 +114,7 @@ module Saturn
 `else
 	input              STV_5838_MODE,
 	input      [ 3: 0] STV_5881_MODE,
+	input              STV_BATMAN_MODE,
 `endif
 	output      [25:1] CART_MEM_A,
 	output      [15:0] CART_MEM_D,
@@ -121,6 +122,17 @@ module Saturn
 	output             CART_MEM_RD,
 	input       [15:0] CART_MEM_Q,
 	input              CART_MEM_RDY,
+	
+`ifdef STV_BUILD
+	output     [24: 1] RAX_MEM_A,
+	input      [15: 0] RAX_MEM_DI,
+	output     [15: 0] RAX_MEM_DO,
+	output             RAX_MEM_RD,
+	output             RAX_MEM_WR,
+	input              RAX_MEM_RDY,
+	output     [15: 0] RAX_SOUND_L,
+	output     [15: 0] RAX_SOUND_R,
+`endif
 	
 `ifdef STV_BUILD
 	input      [ 7: 0] STV_SW,
@@ -1102,6 +1114,7 @@ module Saturn
 `else
 		.STV_5838_MODE(STV_5838_MODE),
 		.STV_5881_MODE(STV_5881_MODE),
+		.STV_BATMAN_MODE(STV_BATMAN_MODE),
 `endif
 		
 		.RES_N(SYSRES_N),
@@ -1129,6 +1142,18 @@ module Saturn
 		.MEM_WE(CART_MEM_WE),
 		.MEM_RD(CART_MEM_RD),
 		.MEM_RDY(CART_MEM_RDY)
+		
+`ifdef STV_BUILD
+		,
+		.RAX_MEM_A(RAX_MEM_A),
+		.RAX_MEM_DI(RAX_MEM_DI),
+		.RAX_MEM_DO(RAX_MEM_DO),
+		.RAX_MEM_RD(RAX_MEM_RD),
+		.RAX_MEM_WR(RAX_MEM_WR),
+		.RAX_MEM_RDY(RAX_MEM_RDY),
+		.RAX_SOUND_L(RAX_SOUND_L),
+		.RAX_SOUND_R(RAX_SOUND_R)
+`endif
 	);
 	
 endmodule

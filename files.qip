@@ -3,6 +3,8 @@ set_global_assignment -name QIP_FILE rtl/SH/SH7604/SH7604.qip
 set_global_assignment -name QIP_FILE rtl/SH/SH7034/SH7034.qip
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/SH_mem.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/SH7604_mem.sv
+set_global_assignment -name QIP_FILE rtl/ADSP_21XX/ADSP_2181.qip
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/ADSP_21XX_mem.sv
 set_global_assignment -name QIP_FILE rtl/Saturn/Saturn.qip
 set_global_assignment -name VHDL_FILE rtl/CEGen.vhd
 set_global_assignment -name VHDL_FILE rtl/bram.vhd
