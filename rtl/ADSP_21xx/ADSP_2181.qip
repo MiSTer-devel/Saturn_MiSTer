@@ -1,3 +1,3 @@
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) ADSP_21XX_pkg.sv ]
-set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) ADSP_21xx_core.sv ]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) ADSP_21XX_core.sv ]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) ADSP_2181.sv ]
