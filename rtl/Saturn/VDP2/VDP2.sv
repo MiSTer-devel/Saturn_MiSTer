@@ -1648,6 +1648,11 @@ module VDP2 (
 							
 							NX[2] <= '0;
 					      NSX[2] <= NSxREG[2].SCX;
+							
+							MOSAIC_VCNT <= MOSAIC_VCNT + 4'd1;
+							if (MOSAIC_VCNT == REGS.MZCTL.MZSZV || IS_LAST_LINE) begin
+								MOSAIC_VCNT <= '0;
+							end
 						end
 						3'b001: begin
 							if (NSxREG[0].LSCY && LS_RD[0])  begin NSY[0] <= NSxREG[0].SCY + LS_WD[26:8]; 
@@ -1706,11 +1711,6 @@ module VDP2 (
 							end
 							if (!MOSAIC_VCNT || !NSxREG[3].MZE || IS_LAST_LINE) begin
 								NMOSY[3] <= NY[3] + NSY[3];
-							end
-							
-							MOSAIC_VCNT <= MOSAIC_VCNT + 4'd1;
-							if (MOSAIC_VCNT == REGS.MZCTL.MZSZV || IS_LAST_LINE) begin
-								MOSAIC_VCNT <= '0;
 							end
 						end
 					endcase
@@ -2156,9 +2156,9 @@ module VDP2 (
 	wire [ 8: 0] WxEY[2] = '{REGS.WPEY0.WxEY,REGS.WPEY1.WxEY};
 	
 	wire W0_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[0][9:1],WxSX[0][0]&HRES[1]} || WxSX[0][9:0] >= 10'h360) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[0][9:1],WxEX[0][0]&HRES[1]} && {WxEX[0][9:1],WxEX[0][0]&HRES[1]} < 10'h360 && {WxEX[0][9:1],WxEX[0][0]&HRES[1]} != 10'h2EC &&
-	             (((WSCRNY                >= {WxSY[0][8:1],WxSY[0][0]&~DDI}                              ) && WSCRNY                 <= {WxEY[0][8:1],WxEY[0][0]&~DDI}    && WxSY[0][8:0] != 9'h1FE && WxEY[0][8:0] < 9'h1FE) || (WxEY[0][8:0] >= 9'h0F0 && WxEY[0][8:0] <= 9'h1ED && !DDI));
+	             (((WSCRNY                >=  WxSY[0][8:0]                                               ) && WSCRNY                 <=  WxEY[0][8:0]                     && WxSY[0][8:0] != 9'h1FE && WxEY[0][8:0] < 9'h1FE) || (WxEY[0][8:0] >= (VRES == 2'b00 ? 9'h0F0 : 9'h100) && WxEY[0][8:0] <= 9'h1ED && !DDI));
 	wire W1_HIT = ({SCRNX,SCRNX0&HRES[1]} >= {WxSX[1][9:1],WxSX[1][0]&HRES[1]} || WxSX[1][9:0] >= 10'h360) && {SCRNX,SCRNX0&HRES[1]} <= {WxEX[1][9:1],WxEX[1][0]&HRES[1]} && {WxEX[1][9:1],WxEX[1][0]&HRES[1]} < 10'h360 && {WxEX[1][9:1],WxEX[1][0]&HRES[1]} != 10'h2EC &&
-	             (((WSCRNY                >= {WxSY[1][8:1],WxSY[1][0]&~DDI}                              ) && WSCRNY                 <= {WxEY[1][8:1],WxEY[1][0]&~DDI}    && WxSY[1][8:0] != 9'h1FE && WxEY[1][8:0] < 9'h1FE) || (WxEY[1][8:0] >= 9'h0F0 && WxEY[1][8:0] <= 9'h1ED && !DDI));
+	             (((WSCRNY                >=  WxSY[1][8:0]                                               ) && WSCRNY                 <=  WxEY[1][8:0]                     && WxSY[1][8:0] != 9'h1FE && WxEY[1][8:0] < 9'h1FE) || (WxEY[1][8:0] >= (VRES == 2'b00 ? 9'h0F0 : 9'h100) && WxEY[1][8:0] <= 9'h1ED && !DDI));
 					  
 	bit          W0_HIT_PIPE[17*2];
 	bit          W1_HIT_PIPE[17*2];
@@ -2966,16 +2966,12 @@ module VDP2 (
 	assign RxCDP[1] = RBG_CDP[1];
 	
 	ScrollData_t NCX[4];
-	bit          NxDOT_FETCH[4];
-	bit          R0DOT_FETCH;
 	always @(posedge CLK or negedge RST_N) begin
 		ScrollData_t X[4];
 		
 		if (!RST_N) begin
 			// synopsys translate_off
 			NCX <= '{4{SCRLD_NULL}};
-			NxDOT_FETCH <= '{4{0}};
-			R0DOT_FETCH <= 0;
 			// synopsys translate_on
 		end
 		else begin
@@ -2989,12 +2985,6 @@ module VDP2 (
 					NCX[1] <= X[1];
 					NCX[2] <= X[2];
 					NCX[3] <= X[3];
-					
-					NxDOT_FETCH[0] <= (!MOSAIC_HCNT || !NSxREG[0].MZE);
-					NxDOT_FETCH[1] <= (!MOSAIC_HCNT || !NSxREG[1].MZE);
-					NxDOT_FETCH[2] <= (!MOSAIC_HCNT || !NSxREG[2].MZE);
-					NxDOT_FETCH[3] <= (!MOSAIC_HCNT || !NSxREG[3].MZE);
-					R0DOT_FETCH    <= (!MOSAIC_HCNT || !RSxREG[0].MZE);
 					
 					MOSAIC_HCNT <= MOSAIC_HCNT + 4'd1;
 					if (MOSAIC_HCNT == REGS.MZCTL.MZSZH) begin
@@ -3028,6 +3018,9 @@ module VDP2 (
 	CellParam_t N0DOTCDP, N1DOTCDP, N2DOTCDP, N3DOTCDP;
 	CellParam_t R0DOTCDP;
 	always @(posedge CLK or negedge RST_N) begin
+		bit          NxDOT_FETCH[4];
+		bit          R0DOT_FETCH;
+	
 		if (!RST_N) begin
 			// synopsys translate_off
 			R0DOT <= DD_NULL;
@@ -3038,10 +3031,11 @@ module VDP2 (
 			// synopsys translate_on
 		end
 		else if (DOT_CE_R || (DOT_CE_F & HRES[1])) begin
-			if (R0DOT_FETCH) begin
-				R0DOTDC <= RxDC[0];
-				R0DOTCDP <= RxCDP[0];
-			end
+			NxDOT_FETCH[0] = (!MOSAIC_HCNT || !NSxREG[0].MZE);
+			NxDOT_FETCH[1] = (!MOSAIC_HCNT || !NSxREG[1].MZE);
+			NxDOT_FETCH[2] = (!MOSAIC_HCNT || !NSxREG[2].MZE);
+			NxDOT_FETCH[3] = (!MOSAIC_HCNT || !NSxREG[3].MZE);
+			R0DOT_FETCH    = (!MOSAIC_HCNT || !RSxREG[0].MZE);
 			
 			if (NxDOT_FETCH[0]) begin
 				if (RSxREG[1].ON) begin
@@ -3102,6 +3096,11 @@ module VDP2 (
 			if (NxDOT_FETCH[3]) begin
 				N3DOTDC <= {24'h000000,NDC3[NCX[3].INT[3:0]][ 7: 0]};
 				N3DOTCDP <= NCDP3[NCX[3].INT[3]];
+			end
+			
+			if (R0DOT_FETCH) begin
+				R0DOTDC <= RxDC[0];
+				R0DOTCDP <= RxCDP[0];
 			end
 		end
 	end
