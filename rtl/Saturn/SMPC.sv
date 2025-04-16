@@ -366,7 +366,7 @@ module SMPC (
 						MIRQ_N <= 1;
 						
 						if (CHECK_CONTINUE) begin
-							if (CONT != CONT_PREV) begin
+							if (CONT != CONT_PREV && INTBACK_EXEC) begin
 								INTBACK_PERI <= 1;
 								SF <= 1;
 								CONT_PREV <= CONT;
