@@ -283,8 +283,10 @@ module emu
 		"ST-V;;",
 `endif
 		"-;",
+`ifndef STV_BUILD
 		"D0R[24],Load Backup RAM;",
 		"D0R[25],Save Backup RAM;",
+`endif
 		"D0O[26],Autosave,Off,On;", 
 		"-;",
 
@@ -367,10 +369,11 @@ module emu
 	wire [  1:0] buttons;
 	wire [ 13:0] joystick_0,joystick_1,joystick_2,joystick_3,joystick_4;
 	wire [  7:0] joy0_x0,joy0_y0,joy0_x1,joy0_y1,joy1_x0,joy1_y0,joy1_x1,joy1_y1;
-	wire         ioctl_download;
-	wire         ioctl_wr;
+	wire         ioctl_download,ioctl_upload;
+	wire         ioctl_upload_req;
+	wire         ioctl_wr,ioctl_rd;
 	wire [ 25:0] ioctl_addr;
-	wire [ 15:0] ioctl_data;
+	wire [ 15:0] ioctl_data,ioctl_din;
 	wire [  7:0] ioctl_index;
 	reg          ioctl_wait = 0;
 	
@@ -424,9 +427,14 @@ module emu
 	
 		.ioctl_download(ioctl_download),
 		.ioctl_index(ioctl_index),
-		.ioctl_wr(ioctl_wr),
+		.ioctl_upload(ioctl_upload),
+		.ioctl_upload_req(ioctl_upload_req),
+		.ioctl_upload_index(8'h04),
 		.ioctl_addr(ioctl_addr),
 		.ioctl_dout(ioctl_data),
+		.ioctl_din(ioctl_din),
+		.ioctl_wr(ioctl_wr),
+		.ioctl_rd(ioctl_rd),
 		.ioctl_wait(ioctl_wait),
 	
 		.sd_lba('{sd_lba}),
@@ -456,12 +464,13 @@ module emu
 `ifndef STV_BUILD
 	assign menumask = {(status[56:55] != 2'b00), ~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
 `else
-	assign menumask = {~status[75], 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
+	assign menumask = {~status[75], 1'b1, 1'b1, ~status[8], 1'b1, 1'b0};
 `endif
 	
 	wire bios_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] != 2'h3);
 	wire cart_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] == 2'h3);
 	wire save_download = ioctl_download & (ioctl_index[5:2] == 4'b0001);
+	wire save_upload = ioctl_upload & (ioctl_index[5:2] == 4'b0001);
 `ifndef STV_BUILD
 	wire cdd_download = ioctl_download & (ioctl_index[5:2] == 4'b0010);
 	wire cdboot_download = ioctl_download & (ioctl_index[5:2] == 4'b0011);
@@ -1036,16 +1045,19 @@ module emu
 	wire [15: 0] STV_EEPROM_Q;
 	wire         STV_EEPROM_RDY;
 	always @(posedge clk_sys) begin
+		reg eep_load_skip = 0;
 		reg [1:0] eep_state;
 		
+		STV_EEP_MEM_WREN <= 0;
 		if (reset) begin
-			STV_EEPROM_ADDR <= '0;
-			STV_EEPROM_RD <= 0;
-			STV_EEP_WREN <= 0;
-			eep_state <= 2'd0;
+			STV_EEPROM_ADDR <= ioctl_addr[6:1];
+			STV_EEP_MEM_DI <= {ioctl_data[7:0],ioctl_data[15:8]};
+			STV_EEP_MEM_WREN <= save_download & ioctl_wr & ioctl_addr[16];
+			if (save_download && !eep_load_skip) eep_load_skip <= 1;
+			eep_state <= eep_load_skip ? 2'd3 : 2'd0;
 			stv_res <= 1;
 		end else begin
-			STV_EEP_WREN <= 0;
+			eep_load_skip <= 0;
 			case (eep_state)
 				2'd0: begin
 					STV_EEPROM_RD <= 1;
@@ -1058,7 +1070,8 @@ module emu
 						//do not update, leave default eeprom.
 						eep_state <= 2'd3;
 					end else begin
-						STV_EEP_WREN <= 1;
+						STV_EEP_MEM_DI <= STV_EEPROM_Q;
+						STV_EEP_MEM_WREN <= 1;
 						eep_state <= 2'd2;
 					end
 				end
@@ -1071,13 +1084,16 @@ module emu
 				
 				2'd3: begin
 					stv_res <= 0;
+					STV_EEPROM_ADDR <= ioctl_addr[6:1];
 				end
 			endcase
 		end
 	end
 	
-	wire        STV_EEP_DO;
-	reg         STV_EEP_WREN;
+	wire         STV_EEP_DO;
+	reg  [15: 0] STV_EEP_MEM_DI;
+	reg  [15: 0] STV_EEP_MEM_DO;
+	reg          STV_EEP_MEM_WREN;
 	E93C45 #("rtl/stv_eeprom.mif") STV_EEP 
 	(
 		.CLK(clk_sys),
@@ -1089,9 +1105,9 @@ module emu
 		.SK(SMPC_PDR1O[3] & SMPC_DDR1[3]),
 		
 		.MEM_A(STV_EEPROM_ADDR),
-		.MEM_DI(STV_EEPROM_Q),
-		.MEM_WREN(STV_EEP_WREN),
-		.MEM_DO()
+		.MEM_DI(STV_EEP_MEM_DI),
+		.MEM_WREN(STV_EEP_MEM_WREN),
+		.MEM_DO(STV_EEP_MEM_DO)
 	);
 `endif
 	
@@ -1345,13 +1361,8 @@ module emu
 	);
 
 	//DDRAM
-	always @(posedge clk_sys) begin
-		reg old_busy;
-		
-//		old_busy <= ddr_busy[7];
-//		if ((bios_download || cart_download) && ioctl_wr) ioctl_wait <= 1;
-//		if (~ddr_busy[7] && old_busy) ioctl_wait <= 0;
-		ioctl_wait <= bios_busy;
+	always @(posedge clk_sys) begin		
+		ioctl_wait <= (bios_download && bios_busy) || (cart_download && bios_busy) || (save_download && bsram_busy) || (save_upload && bsram_busy);
 	end
 	wire [26:1] IO_ADDR = cart_download ? {1'b1,ioctl_addr[25:1]} : {8'b00000000,ioctl_addr[18:1]};
 	wire [15:0] IO_DATA = {ioctl_data[7:0],ioctl_data[15:8]};
@@ -1480,10 +1491,17 @@ module emu
 		.bios_busy(bios_busy),
 		
 		//SRAM backup
+`ifndef STV_BUILD
 		.bsram_addr(sd_lba[11:7] ? {1'b1,sd_lba[10:7]-4'h1,sd_lba[6:0],tmpram_addr} : {5'b00000,sd_lba[6:0],tmpram_addr}),
 		.bsram_din ({8'hFF,tmpram_dout[15:8]}),
 		.bsram_wr  ({2{tmpram_req & bk_loading}}),
 		.bsram_rd  ((tmpram_req & ~bk_loading)),
+`else
+		.bsram_addr({5'b00000,ioctl_addr[15:1]}),
+		.bsram_din ({8'hFF,ioctl_data[15:8]}),
+		.bsram_wr  ({2{save_download & ioctl_wr & ~ioctl_addr[16]}}),
+		.bsram_rd  (save_upload & ioctl_rd & ~ioctl_addr[16]),
+`endif
 		.bsram_dout(bsram_do),
 		.bsram_busy(bsram_busy)
 	);
@@ -1499,6 +1517,8 @@ module emu
 	
 	assign CD_RAM_Q = cdram_do;
 	assign CD_RAM_RDY = ~cdram_busy;
+	
+	assign ioctl_din = '0;
 `else
 	assign CART_MEM_Q = CART_MEM_A >= (26'h0200000>>1) ? {cart_do[7:0],cart_do[15:8]} : cart_do;
 	assign CART_MEM_RDY = ~cart_busy;
@@ -1508,6 +1528,8 @@ module emu
 	
 	assign CART_RAX_MEM_DI = rax_do;
 	assign CART_RAX_MEM_RDY = ~rax_busy;
+	
+	assign ioctl_din = !ioctl_addr[16] ? {bsram_do[7:0],bsram_do[15:8]} : {STV_EEP_MEM_DO[7:0],STV_EEP_MEM_DO[15:8]};
 `endif
 
 
@@ -1739,6 +1761,7 @@ module emu
 `endif
 
 /////////////////////////  BRAM SAVE/LOAD  /////////////////////////////
+`ifndef STV_BUILD
 	wire downloading = save_download;
 	wire bk_cart    = cart_type == 3'h4;
 	wire bk_change  = (~SRAM_CS_N & ~MEM_DQM_N[0]) | (CART_MEM_WE[0] & bk_cart);
@@ -1870,8 +1893,6 @@ module emu
 	reg tmpram_req;
 	always @(posedge clk_sys) begin
 		reg state;
-
-	//	tmpram_lba <= sd_lba[10:0] - 11'h10;
 		
 		if (tmpram_req && !tmpram_busy) tmpram_req <= 0;
 
@@ -1890,6 +1911,36 @@ module emu
 	end
 
 	assign sd_buff_din = tmpram_sd_buff_q; 
+`else
+	wire bk_change  = (~SRAM_CS_N & ~MEM_DQM_N[0]);
+	wire bk_load    = status[24];
+	wire bk_save    = status[25];
+	wire autosave   = status[26];
+	
+	wire bk_save_a  = autosave & OSD_STATUS;
+	
+	reg bk_save_req = 0;
+	always @(posedge clk_sys) begin
+		reg old_save = 0,old_save_a = 0;
+		reg old_change;
+		reg sav_pending;
+
+		old_change <= bk_change;
+		if (bk_change && !old_change) sav_pending <= 1;
+		
+		old_save <= bk_save;
+		old_save_a <= bk_save_a;
+		if((bk_save && !old_save) || (bk_save_a && !old_save_a && sav_pending)) begin
+			bk_save_req <= 1; 
+			sav_pending <= 0;
+		end
+		else begin
+			bk_save_req <= 0;
+		end
+	end
+	
+	assign ioctl_upload_req = bk_save_req;
+`endif
 
 	
 /////////////////////////  Video  /////////////////////////////
