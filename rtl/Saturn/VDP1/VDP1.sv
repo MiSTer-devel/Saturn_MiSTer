@@ -174,6 +174,7 @@ module VDP1 (
 		CMDS_AA_DRAW,
 		CMDS_LINE_END,
 		CMDS_LINE_NEXT,
+		CMDS_ROW_CLIP,
 		CMDS_END
 	} CMDState_t;
 	CMDState_t CMD_ST;
@@ -685,9 +686,9 @@ module VDP1 (
 								
 								4'h2,
 								4'h3: begin	//distored sprite
-									if (&CMD_COORD_LEFT_OVER || &CMD_COORD_RIGHT_OVER || &CMD_COORD_TOP_OVER || &CMD_COORD_BOTTOM_OVER) begin
+									/*if (&CMD_COORD_LEFT_OVER || &CMD_COORD_RIGHT_OVER || &CMD_COORD_TOP_OVER || &CMD_COORD_BOTTOM_OVER) begin
 										CMD_ST <= CMDS_END;
-									end else if (CMD.CMDPMOD.CCB[2]) begin
+									end else*/ if (CMD.CMDPMOD.CCB[2]) begin
 										GRD_READ <= 1;
 										CMD_DELAY <= 8'd10;
 										CMD_ST <= CMDS_GRD_LOAD;
@@ -1505,7 +1506,7 @@ module VDP1 (
 						{RIGHT_GHCOLOR.G.INT,RIGHT_GHCOLOR.G.FRAC} <= {RIGHT_GHCOLOR.G.INT,RIGHT_GHCOLOR.G.FRAC} + ({RIGHT_GHCOLOR_STEP.G.INT,RIGHT_GHCOLOR_STEP.G.FRAC}^{17{RIGHT_GHCOLOR_STEP.G.DIR}}) + RIGHT_GHCOLOR_STEP.G.DIR;
 						{RIGHT_GHCOLOR.B.INT,RIGHT_GHCOLOR.B.FRAC} <= {RIGHT_GHCOLOR.B.INT,RIGHT_GHCOLOR.B.FRAC} + ({RIGHT_GHCOLOR_STEP.B.INT,RIGHT_GHCOLOR_STEP.B.FRAC}^{17{RIGHT_GHCOLOR_STEP.B.DIR}}) + RIGHT_GHCOLOR_STEP.B.DIR;
 						
-						CMD_ST <= CMDS_ROW_DRAW;
+						CMD_ST <= !CMD.CMDPMOD.PCLP && !FAST ? CMDS_ROW_CLIP : CMDS_ROW_DRAW;
 						COL_D <= COL_D - 12'd1;
 						if (COL_D == 12'd0) begin
 							CMD_ST <= CMDS_END;
@@ -1542,6 +1543,14 @@ module VDP1 (
 						CMD_ST <= CMDS_END;
 					end else begin
 						CMD_ST <= CMDS_END;
+					end
+				end
+				
+				CMDS_ROW_CLIP: begin
+					CMD_DELAY <= CMD_DELAY - 9'd1;
+					if (!CMD_DELAY || PENALTY_CNT >= CMD_DELAY) begin
+						CMD_DELAY <= 9'd8;
+						CMD_ST <= CMDS_ROW_DRAW;
 					end
 				end
 				
@@ -1711,7 +1720,7 @@ module VDP1 (
 			endcase
 			
 			if (((CMD_ST == CMDS_LINE_DRAW && CMD.CMDCTRL.COMM <= 4'h3) || CMD_ST == CMDS_NSPR_DRAW || CMD_ST == CMDS_SSPR_DRAW) && PAT_PREREAD_WAIT && !CPU_VRAM_BUSY && CE_R) PENALTY_CNT <= PENALTY_CNT + 10'd1;
-			if (CMD_ST == CMDS_EXEC && CMD_DELAY && PENALTY_CNT >= CMD_DELAY) PENALTY_CNT <= PENALTY_CNT - CMD_DELAY;
+			if ((CMD_ST == CMDS_EXEC || CMD_ST == CMDS_ROW_CLIP) && CMD_DELAY && PENALTY_CNT >= CMD_DELAY) PENALTY_CNT <= PENALTY_CNT - CMD_DELAY;
 		end
 	end
 	assign DRAW_WAIT = (FBD_ST != FBDS_IDLE) || CPU_VRAM_BUSY;
