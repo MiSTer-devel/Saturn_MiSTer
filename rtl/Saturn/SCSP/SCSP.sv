@@ -1406,7 +1406,7 @@ module SCSP (
 		bit         MEM_START;
 		bit [ 2: 0] MEM_DEV;
 		bit         REG_START;
-		bit         SCU_REG_RPEND,SCU_REG_WPEND;
+		bit         SCU_MEM_WPEND,SCU_REG_RPEND,SCU_REG_WPEND;
 		
 		if (!RST_N) begin
 			MEM_ST <= MS_IDLE;
@@ -1432,7 +1432,7 @@ module SCSP (
 			SCU_RRDY <= 1;
 			SCU_WPEND <= 0;
 			SCU_WRDY <= 1;
-			{SCU_REG_RPEND,SCU_REG_WPEND} <= '0;
+			{SCU_MEM_WPEND,SCU_REG_RPEND,SCU_REG_WPEND} <= '0;
 		end else begin
 			if (!CS_N && DTEN_N && AD_N && CE_R) begin
 				if (!DI[15]) begin
@@ -1499,6 +1499,7 @@ module SCSP (
 			MEM_RFS <= 0;
 			case (MEM_ST)
 				MS_IDLE: if (MEM_START) begin
+					SCU_MEM_WPEND <= SCU_WPEND;
 					if (WD_READ && PCM_EN) begin
 						MEM_A <= ADP[18:1];
 						MEM_D <= '0;
@@ -1530,8 +1531,9 @@ module SCSP (
 						MEM_CS <= ~SCU_RA[19];
 						MEM_DEV <= 3'd4;
 						MEM_ST <= MS_SCU_WAIT;
-					end else if (!SCU_WA[20] && SCU_WPEND) begin
+					end else if (!SCU_WA[20] && SCU_MEM_WPEND) begin
 						SCU_WPEND <= 0;
+						SCU_MEM_WPEND <= 0;
 						MEM_A <= SCU_WA[18:1];
 						MEM_D <= SCU_D;
 						MEM_WE <= SCU_WE;
