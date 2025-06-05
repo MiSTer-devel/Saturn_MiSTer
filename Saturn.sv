@@ -1381,12 +1381,17 @@ module emu
 	wire [15:0] IO_DATA = {ioctl_data[7:0],ioctl_data[15:8]};
 	wire        IO_WR = (bios_download | cart_download) & ioctl_wr;
 	
+`ifndef STV_BUILD
 	reg  [31: 0] ramh_din;
 	reg  [ 3: 0] ramh_wr;
 	always @(posedge clk_ram) begin
 		ramh_din <= dezaemon2_hack && MEM_A[19:0] == 20'h1746C && MEM_DO == 32'h5A015E01 ? 32'h5A115E01 : MEM_DO;
 		ramh_wr <= {4{~RAMH_CS_N}} & ~MEM_DQM_N;
 	end
+`else
+	wire [31: 0] ramh_din = MEM_DO;
+	wire [ 3: 0] ramh_wr = {4{~RAMH_CS_N}} & ~MEM_DQM_N;
+`endif
 	
 	wire [15:0] cdram_do,raml_do,vdp1vram_do,vdp1fb_do,cdbuf_do,cart_do,eeprom_do,bsram_do,rax_do;
 	wire [31:0] ramh_do;
