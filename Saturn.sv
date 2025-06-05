@@ -53,6 +53,7 @@ module emu
 	input  [11:0] HDMI_HEIGHT,
 	output        HDMI_FREEZE,
 	output        HDMI_BLACKOUT,
+	output        HDMI_BOB_DEINT,
 
 `ifdef MISTER_FB
 	// Use framebuffer in DDRAM (USE_FB=1 in qsf)
@@ -185,6 +186,7 @@ module emu
 	assign LED_USER  = bios_download;
 	assign VGA_SCALER= 0;
 	assign HDMI_BLACKOUT = 1;
+	assign HDMI_BOB_DEINT= 0;
 	
 	wire [1:0] ar = status[63:62];
 	wire [7:0] arx,ary;
@@ -277,7 +279,7 @@ module emu
 		"FS2,BIN,Load bios;",
 		"FS3,BIN,Load cartridge;",
 		"-;",
-		"O[23:21],Cartridge,None,ROM 2M,DRAM 1M,DRAM 4M,BACKUP;",
+		"O[23:21],Cartridge,None,ROM 2M,DRAM 1M,DRAM 4M,DRAM 6M DEV,BACKUP;",
 		"O[35:33],Region,Japan,Taiwan,USA,Brazil,Korea,Asia,Europe,Auto;",
 `else
 		"ST-V;;",
@@ -620,10 +622,21 @@ module emu
 	
 	//region select
 `ifndef STV_BUILD
-	reg [7:0] cd_area_symbol;
+	reg [127: 0] game_id;
+	reg [  7: 0] cd_area_symbol;
+	reg          dezaemon2_hack = 0;
 	always @(posedge clk_sys) begin
 		if (cdboot_download && ioctl_wr) begin
 			case (ioctl_addr[7:0])
+				8'h20: game_id[127:112] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				8'h22: game_id[111:96] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				8'h24: game_id[95:80] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				8'h26: game_id[79:64] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				8'h28: game_id[63:48] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				8'h2A: game_id[47:32] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				8'h2C: game_id[31:16] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				8'h2E: game_id[15:0] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				8'h30: dezaemon2_hack <= (game_id[127:48] == "T-16804G  ");
 				8'h40: cd_area_symbol <= ioctl_data[7:0];
 			endcase
 		end
@@ -1368,6 +1381,13 @@ module emu
 	wire [15:0] IO_DATA = {ioctl_data[7:0],ioctl_data[15:8]};
 	wire        IO_WR = (bios_download | cart_download) & ioctl_wr;
 	
+	reg  [31: 0] ramh_din;
+	reg  [ 3: 0] ramh_wr;
+	always @(posedge clk_ram) begin
+		ramh_din <= dezaemon2_hack && MEM_A[19:0] == 20'h1746C && MEM_DO == 32'h5A015E01 ? 32'h5A115E01 : MEM_DO;
+		ramh_wr <= {4{~RAMH_CS_N}} & ~MEM_DQM_N;
+	end
+	
 	wire [15:0] cdram_do,raml_do,vdp1vram_do,vdp1fb_do,cdbuf_do,cart_do,eeprom_do,bsram_do,rax_do;
 	wire [31:0] ramh_do;
 	wire        cdram_busy,raml_busy,ramh_busy,vdp1vram_busy,vdp1fb_busy,cdbuf_busy,cart_busy,eeprom_busy,bios_busy,bsram_busy,rax_busy;
@@ -1385,8 +1405,8 @@ module emu
 		.ramh_rd  (0),
 `else
 		.ramh_addr(MEM_A[19:2]),
-		.ramh_din (MEM_DO),
-		.ramh_wr  ({4{~RAMH_CS_N}} & ~MEM_DQM_N),
+		.ramh_din (ramh_din),
+		.ramh_wr  (ramh_wr),
 		.ramh_rd  (~RAMH_CS_N & ~MEM_RD_N),
 `endif
 		.ramh_dout(ramh_do),
@@ -1552,8 +1572,8 @@ module emu
 		.clk(clk_ram),
 		
 		.addr({MEM_A[19:2],1'b0}),
-		.din(MEM_DO),
-		.wr({4{~RAMH_CS_N}} & ~MEM_DQM_N),
+		.din(ramh_din),
+		.wr(ramh_wr),
 		.rd(~RAMH_CS_N & ~MEM_RD_N),
 		.dout(sdr2_do),
 		.rfs(~RAMH_CS_N & RAMH_RFS),
