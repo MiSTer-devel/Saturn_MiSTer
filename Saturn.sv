@@ -269,7 +269,7 @@ module emu
 	// 0         1         2         3          4         5         6   	   7         8         9
 	// 01234567890123456789012345678901 23456789012345678901234567890123 45678901234567890123456789012345
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXX     XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX XXXXXXXXXXXX
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXXX    XX          XXXXXXXXXXXXXXXXXX XXXXXXXXXXXX
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -283,6 +283,8 @@ module emu
 		"O[35:33],Region,Japan,Taiwan,USA,Brazil,Korea,Asia,Europe,Auto;",
 `else
 		"ST-V;;",
+		"-;",
+		"D1O[30],BIOS select,Default,Alternative;",
 `endif
 		"-;",
 `ifndef STV_BUILD
@@ -339,20 +341,6 @@ module emu
 		"P3-;",
 		"P3OS,Timing,Original,Fast;",
 `endif
-
-		"P4,Debug;",
-		"P4-;",
-		"P4o[36],VDP2 NBG0,Enable,Disable;",
-		"P4o[37],VDP2 NBG1,Enable,Disable;",
-		"P4o[38],VDP2 NBG2,Enable,Disable;",
-		"P4o[39],VDP2 NBG3,Enable,Disable;",
-		"P4o[40],VDP2 RBG0,Enable,Disable;",
-		"P4o[41],VDP2 Sprite,Enable,Disable;",
-		"P4o[42],VDP2 Shadow,Enable,Disable;",
-		"P4-;",
-		"P4o[43],SCSP Direct sound,Enable,Disable;",
-		"P4o[44],SCSP DSP sound,Enable,Disable;",
-		"P4o[45],CD audio,Enable,Disable;",
 
 		"-;",
 		"R0,Reset;",
@@ -466,7 +454,7 @@ module emu
 `ifndef STV_BUILD
 	assign menumask = {(status[56:55] != 2'b00), ~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
 `else
-	assign menumask = {~status[75], 1'b1, 1'b1, ~status[8], 1'b1, 1'b0};
+	assign menumask = {~status[75], 1'b1, 1'b1, ~status[8], ~STV_ALTBIOS, 1'b0};
 `endif
 	
 	wire bios_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] != 2'h3);
@@ -479,20 +467,24 @@ module emu
 `else
 	wire stv_download = ioctl_download & (ioctl_index[5:2] == 6'b000000);
 	
-	//[3:0] - chip (1: 315-5881, 2: 315-5838, 3: Acclaim RAX (batmanfr), ...)
+	//[3:0] - chip/mapping (1: 315-5881, 2: 315-5838, 3: Acclaim RAX (batmanfr), 4: sanjeon, ...)
 	//[7:4] - game (1:astrass, 2:elandore, 3:ffreveng, 4:rsgun, 5:sss, 6:twcup98/twsoc98, ...)
-	reg  [7:0] STV_MODE = '0;
+	reg  [7:0] STV_MODE = 8'h00;
+	reg        STV_ALTBIOS = 0;
 	always @(posedge clk_sys) begin
 		if (stv_download && ioctl_wr) begin
 			STV_MODE <= ioctl_data[7:0];
+			STV_ALTBIOS <= ioctl_data[8];
 		end
 	end
 `endif
 	
 `ifndef STV_BUILD
 	wire [2:0] cart_type = status[23:21];
+	wire bios_sel = 0;
 `else
 	wire [2:0] cart_type = 3'd5;
+	wire bios_sel = status[30] & STV_ALTBIOS;
 `endif
 	
 	reg osd_btn = 0;
@@ -636,7 +628,7 @@ module emu
 				8'h2A: game_id[47:32] <= {ioctl_data[7:0],ioctl_data[15:8]};
 				8'h2C: game_id[31:16] <= {ioctl_data[7:0],ioctl_data[15:8]};
 				8'h2E: game_id[15:0] <= {ioctl_data[7:0],ioctl_data[15:8]};
-				8'h30: dezaemon2_hack <= (game_id[127:48] == "T-16804G  ");
+				8'h30: dezaemon2_hack <= (game_id[127:64] == "T-16804G");
 				8'h40: cd_area_symbol <= ioctl_data[7:0];
 			endcase
 		end
@@ -1015,8 +1007,8 @@ module emu
 		
 		.FAST(fast_timing),
 		
-		.SCRN_EN(SCRN_EN & SCRN_EN2),
-		.SND_EN(SND_EN & SND_EN2),
+		.SCRN_EN(SCRN_EN),
+		.SND_EN(SND_EN),
 		.DBG_PAUSE(DBG_PAUSE),
 		.DBG_BREAK(DBG_BREAK),
 		.DBG_RUN(DBG_RUN),
@@ -1060,6 +1052,8 @@ module emu
 	always @(posedge clk_sys) begin
 		reg eep_load_skip = 0;
 		reg [1:0] eep_state;
+		reg bios_sel_old = 0;
+		reg [3:0] stv_res_delay;
 		
 		STV_EEP_MEM_WREN <= 0;
 		if (reset) begin
@@ -1069,7 +1063,9 @@ module emu
 			if (save_download && !eep_load_skip) eep_load_skip <= 1;
 			eep_state <= eep_load_skip ? 2'd3 : 2'd0;
 			stv_res <= 1;
+			stv_res_delay <= '0;
 		end else begin
+			bios_sel_old <= bios_sel;
 			eep_load_skip <= 0;
 			case (eep_state)
 				2'd0: begin
@@ -1081,6 +1077,7 @@ module emu
 					STV_EEPROM_RD <= 0;
 					if (STV_EEPROM_ADDR == 6'd0 && STV_EEPROM_Q != 16'h5345) begin
 						//do not update, leave default eeprom.
+						stv_res <= 0;
 						eep_state <= 2'd3;
 					end else begin
 						STV_EEP_MEM_DI <= STV_EEPROM_Q;
@@ -1091,13 +1088,23 @@ module emu
 				
 				2'd2: begin
 					STV_EEPROM_ADDR <= STV_EEPROM_ADDR + 6'd1;
-					if (STV_EEPROM_ADDR == 6'd63) eep_state <= 2'd3;
+					if (STV_EEPROM_ADDR == 6'd63) begin
+						stv_res <= 0;
+						eep_state <= 2'd3;
+					end
 					else eep_state <= 2'd0;
 				end
 				
 				2'd3: begin
-					stv_res <= 0;
 					STV_EEPROM_ADDR <= ioctl_addr[6:1];
+					
+					if (bios_sel != bios_sel_old) begin
+						stv_res <= 1;
+						stv_res_delay <= 15;
+					end
+					
+					if (stv_res_delay) stv_res_delay <= stv_res_delay - 1'd1;
+					else if (stv_res) stv_res <= 0;
 				end
 			endcase
 		end
@@ -1388,9 +1395,14 @@ module emu
 		ramh_din <= dezaemon2_hack && MEM_A[19:0] == 20'h1746C && MEM_DO == 32'h5A015E01 ? 32'h5A115E01 : MEM_DO;
 		ramh_wr <= {4{~RAMH_CS_N}} & ~MEM_DQM_N;
 	end
+	wire [21: 1] raml_addr = {~RAML_CS_N,~SRAM_CS_N,ROM_CS_N&SRAM_CS_N&MEM_A[19],MEM_A[18:1]};
 `else
 	wire [31: 0] ramh_din = MEM_DO;
 	wire [ 3: 0] ramh_wr = {4{~RAMH_CS_N}} & ~MEM_DQM_N;
+	
+	wire [21: 1] raml_addr = !RAML_CS_N ? {2'b10,MEM_A[19:1]} :
+	                         !SRAM_CS_N ? {6'b010000,MEM_A[15:1]} :
+									              {2'b00,bios_sel,MEM_A[18:1]};
 `endif
 	
 	wire [15:0] cdram_do,raml_do,vdp1vram_do,vdp1fb_do,cdbuf_do,cart_do,eeprom_do,bsram_do,rax_do;
@@ -1433,7 +1445,7 @@ module emu
 		.cdram_busy(cdram_busy),
 	
 		//CPU bus (ROM,SRAM,RAML)
-		.raml_addr({~RAML_CS_N,~SRAM_CS_N,ROM_CS_N&SRAM_CS_N&MEM_A[19],MEM_A[18:1]}),
+		.raml_addr(raml_addr),
 		.raml_din (MEM_DO[15:0]),
 		.raml_wr  ({2{~SRAM_CS_N|~RAML_CS_N}} & ~MEM_DQM_N[1:0]),
 		.raml_rd  ((~ROM_CS_N | ~SRAM_CS_N | ~RAML_CS_N) & ~MEM_RD_N),
@@ -1545,7 +1557,8 @@ module emu
 	
 	assign ioctl_din = '0;
 `else
-	assign CART_MEM_Q = CART_MEM_A >= (26'h0200000>>1) ? {cart_do[7:0],cart_do[15:8]} : cart_do;
+	assign CART_MEM_Q = STV_MODE[3:0] == 4'h4 ? ~{{cart_do[14],cart_do[8],cart_do[13],cart_do[15],cart_do[9],cart_do[11],cart_do[12],cart_do[10]},{cart_do[6],cart_do[0],cart_do[5],cart_do[7],cart_do[1],cart_do[3],cart_do[4],cart_do[2]}} : //sanjeon
+	                    CART_MEM_A >= (26'h0200000>>1) ? {cart_do[7:0],cart_do[15:8]} : cart_do;
 	assign CART_MEM_RDY = ~cart_busy;
 	
 	assign STV_EEPROM_Q = eeprom_do;
@@ -1911,7 +1924,6 @@ module emu
 		.q_b(tmpram_sd_buff_q)
 	);
 
-	//reg [10:0] tmpram_lba;
 	reg  [8:1] tmpram_addr;
 	reg tmpram_tx_start;
 	reg tmpram_tx_finish;
@@ -2131,6 +2143,8 @@ module emu
 	
 	reg  [ 7: 0] DBG_EXT = '0;
 	
+`ifdef DEBUG
+	
 	wire         pressed = ps2_key[9];
 	wire [ 8: 0] code    = ps2_key[8:0];
 	always @(posedge clk_sys) begin
@@ -2142,7 +2156,6 @@ module emu
 		old_state <= ps2_key[10];
 		if((ps2_key[10] != old_state) && pressed) begin
 			casex(code)
-`ifdef DEBUG
 				'h005: begin SCRN_EN[0] <= ~SCRN_EN[0]; end 	// F1
 				'h006: begin SCRN_EN[1] <= ~SCRN_EN[1]; end 	// F2
 				'h004: begin SCRN_EN[2] <= ~SCRN_EN[2]; end 	// F3
@@ -2158,35 +2171,23 @@ module emu
 //				'h009: begin DBG_BREAK <= ~DBG_BREAK; end 	// F10
 //				'h078: begin DBG_RUN <= 1; end 	// F11
 				'h177: begin DBG_PAUSE <= ~DBG_PAUSE; end 	// Pause
-`endif
-				default:;
 			endcase
 		end
 		
-		if(/*(ps2_key[10] != old_state) &&*/ pressed) begin
+		if(pressed) begin
 			casex(code)
-`ifdef DEBUG
-				'h016: begin DBG_EXT[0] <= 1/*~DBG_EXT[0]*/; end 	// 1
-				'h01E: begin DBG_EXT[1] <= 1/*~DBG_EXT[1]*/; end 	// 2
-				'h026: begin DBG_EXT[2] <= 1/*~DBG_EXT[2]*/; end 	// 3
-				'h025: begin DBG_EXT[3] <= 1/*~DBG_EXT[3]*/; end 	// 4
-				'h02E: begin DBG_EXT[4] <= 1/*~DBG_EXT[4]*/; end 	// 5
-				'h036: begin DBG_EXT[5] <= 1/*~DBG_EXT[5]*/; end 	// 6
-				'h03D: begin DBG_EXT[6] <= 1/*~DBG_EXT[6]*/; end 	// 7
-				'h03E: begin DBG_EXT[7] <= 1/*~DBG_EXT[7]*/; end 	// 8
-`endif
+				'h016: begin DBG_EXT[0] <= 1; end 	// 1
+				'h01E: begin DBG_EXT[1] <= 1; end 	// 2
+				'h026: begin DBG_EXT[2] <= 1; end 	// 3
+				'h025: begin DBG_EXT[3] <= 1; end 	// 4
+				'h02E: begin DBG_EXT[4] <= 1; end 	// 5
+				'h036: begin DBG_EXT[5] <= 1; end 	// 6
+				'h03D: begin DBG_EXT[6] <= 1; end 	// 7
+				'h03E: begin DBG_EXT[7] <= 1; end 	// 8
 				default:;
 			endcase
 		end
 	end
-	
-	
-	reg  [7:0] SCRN_EN2 = 8'b11111111;
-	reg  [2:0] SND_EN2 = 3'b111;
-
-`ifndef DEBUG
-	assign SCRN_EN2 = ~status[42:36];
-	assign SND_EN2 = ~status[45:43];
 `endif
 
 
