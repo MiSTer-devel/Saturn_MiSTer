@@ -259,9 +259,9 @@ package SH7604_PKG;
 		bit         OVIE;			//R/W
 		bit         UNUSED2;
 	} TIER_t;
-	parameter bit [7:0] TIER_WMASK = 8'h8E;
-	parameter bit [7:0] TIER_RMASK = 8'h8E;
-	parameter bit [7:0] TIER_INIT = 8'h01;
+	parameter bit [7:0] TIER_WMASK = 8'hFE;
+	parameter bit [7:0] TIER_RMASK = 8'hFF;
+	parameter bit [7:0] TIER_INIT = 8'h00;
 	
 	typedef struct packed		//R/W;FFFFFE11
 	{
@@ -304,9 +304,9 @@ package SH7604_PKG;
 		bit         OLVLA;		//R/W
 		bit         OLVLB;		//R/W
 	} TOCR_t;
-	parameter bit [7:0] TOCR_WMASK = 8'h13;
-	parameter bit [7:0] TOCR_RMASK = 8'h13;
-	parameter bit [7:0] TOCR_INIT = 8'hE0;
+	parameter bit [7:0] TOCR_WMASK = 8'h1F;
+	parameter bit [7:0] TOCR_RMASK = 8'hFF;
+	parameter bit [7:0] TOCR_INIT = 8'h00;
 	
 	typedef bit [15:0] FICR_t;	//R;FFFFFE18-FFFFFE19
 	parameter bit [15:0] FICR_WMASK = 16'h0000;
@@ -327,7 +327,7 @@ package SH7604_PKG;
 		bit [ 1: 0] UNUSED;
 		bit [ 2: 0] CKS;			//R/W
 	} WTCSR_t;
-	parameter bit [7:0] WTCSR_WMASK = 8'hFF;
+	parameter bit [7:0] WTCSR_WMASK = 8'hE7;
 	parameter bit [7:0] WTCSR_RMASK = 8'hFF;
 	parameter bit [7:0] WTCSR_INIT = 8'h18;
 	

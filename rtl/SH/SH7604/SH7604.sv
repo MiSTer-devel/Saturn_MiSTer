@@ -167,6 +167,7 @@ module SH7604
 	//WDT
 	bit [31:0] WDT_DO;
 	bit        WDT_ACT;
+	bit        WDT_BUSY;
 	bit        ITI_IRQ;
 	bit        WDT_PRES;
 	bit        WDT_MRES;
@@ -333,7 +334,7 @@ module SH7604
 						    DMAC_ACT ? 1'b0 : 
 						    UBC_ACT  ? 1'b0 :  
 						    FRT_ACT  ? 1'b0 : 
-						    WDT_ACT  ? 1'b0 : 
+						    WDT_ACT  ? WDT_BUSY : 
 						    SCI_ACT  ? 1'b0 : 
 	                              BSC_IBUS_BUSY;
 
@@ -690,6 +691,7 @@ module SH7604
 		.FTCI(FTCI),
 		.FTI(FTI),
 		
+		.CLK4_CE(CLK4_CE),
 		.CLK8_CE(CLK8_CE),
 		.CLK32_CE(CLK32_CE),
 		.CLK128_CE(CLK128_CE),
@@ -737,7 +739,7 @@ module SH7604
 		.IBUS_BA(IBUS_BA),
 		.IBUS_WE(IBUS_WE),
 		.IBUS_REQ(IBUS_REQ),
-		.IBUS_BUSY(),
+		.IBUS_BUSY(WDT_BUSY),
 		.IBUS_ACT(WDT_ACT),
 		
 		.ITI_IRQ(ITI_IRQ),

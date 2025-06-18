@@ -31,22 +31,22 @@ module SH7604_DIVU (
 	VCRDIV_t    VCRDIV;
 	bit         BUSY;
 	
-	wire REG_SEL = (IBUS_A >= 32'hFFFFFF00 && IBUS_A <= 32'hFFFFFF1F);
+	wire REG_SEL = (IBUS_A >= 32'hFFFFFF00 && IBUS_A <= 32'hFFFFFF3F);
 	wire DIV32_START = REG_SEL && IBUS_A[4:0] == 5'h04 && IBUS_WE && IBUS_REQ;
 	wire DIV64_START = REG_SEL && IBUS_A[4:0] == 5'h14 && IBUS_WE && IBUS_REQ;
 	
 	
-	bit    [5:0] STEP;
-	bit   [64:0] R;
-	bit   [31:0] Q;
+	bit  [ 5: 0] STEP;
+	bit  [64: 0] R;
+	bit  [64: 0] D;
+	bit  [31: 0] Q;
 	bit          R_SIGN,D_SIGN;
 	bit          OVF;
+	wire [64: 0] SUM = $signed(R) - $signed(D);
 	always @(posedge CLK or negedge RST_N) begin
-		bit   [64:0] VAL;
+		bit  [64: 0] VAL;
 		bit          NEG;
-		bit   [64:0] NRES;
-		bit   [64:0] D;
-		bit   [64:0] SUM;
+		bit  [64: 0] NRES;
 		bit          DIV64;
 		bit          OVF0;
 		
@@ -102,15 +102,21 @@ module SH7604_DIVU (
 				if (!DVSR) OVF0 <= 1;
 			end
 			if (STEP >= 6'd3 && STEP <= 6'd35) begin
-				SUM = $signed(R) - $signed(D);
 				R <= !SUM[64] ? SUM : R;
 				Q <= {Q[30:0],~SUM[64]};
 				D <= {D[64],D[64:1]};
 				
-				if (STEP == 6'd3 && !SUM[64] && DIV64) OVF0 <= 1;
-				if (STEP == 6'd4 && !SUM[64] && DIV64) OVF0 <= 1;
+				if (STEP == 6'd3 && !SUM[64] && DIV64) begin
+					OVF0 <= 1; 
+					R <= SUM;
+				end
+				if (STEP == 6'd4 && !SUM[64] && DIV64) begin
+					OVF0 <= 1; 
+					R <= SUM;
+				end
 				if (STEP == 6'd5 && OVF0) begin
 					OVF <= 1; 
+					R <= SUM;
 					STEP <= 6'd38;
 				end
 			end
@@ -173,16 +179,25 @@ module SH7604_DIVU (
 			end
 			
 			if (STEP >= 6'd3 && STEP <= 6'd35) begin
-				{DVDNTH,DVDNTL} <= {DVDNTH[30:0],DVDNTL,1'b0};
+				{DVDNTH,DVDNTL} <= {DVDNTH[30:0],DVDNTL,~SUM[64]^R_SIGN};
 			end
 			if (STEP == 6'd37) begin
 				DVDNTH <= R[31:0];
-				DVDNTH2 <= R[31:0];
 			end
 			if (STEP == 6'd38) begin
-				DVCR.OVF = OVF;
-				DVDNTL <= !OVF || DVCR.OVFIE ? Q : {R_SIGN^D_SIGN,{31{~(R_SIGN^D_SIGN)}}};
-				DVDNTL2 <= !OVF || DVCR.OVFIE ? Q : {R_SIGN^D_SIGN,{31{~(R_SIGN^D_SIGN)}}};
+				if (!OVF) begin
+					DVDNTL <= Q;
+					DVDNTL2 <= Q;
+				end else begin
+					if (!DVCR.OVFIE) begin
+						DVDNTL <= {R_SIGN^D_SIGN,{31{~(R_SIGN^D_SIGN)}}};
+						DVDNTL2 <= {R_SIGN^D_SIGN,{31{~(R_SIGN^D_SIGN)}}};
+					end else begin
+						DVDNTL2 <= DVDNTL;
+					end
+					DVCR.OVF <= 1;
+				end
+				DVDNTH2 <= DVDNTH;
 			end
 		end
 	end
@@ -226,7 +241,7 @@ module SH7604_DIVU (
 		end
 	end
 	
-	assign IBUS_DO = REG_SEL ? REG_DO : '0;
+	assign IBUS_DO = REG_SEL ? (IBUS_BA != 4'b1111 ? {2{REG_DO[15:0]}} : REG_DO) : '0;
 	assign IBUS_BUSY = BUSY;
 	assign IBUS_ACT = REG_SEL;
 
