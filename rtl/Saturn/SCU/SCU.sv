@@ -2124,7 +2124,8 @@ module SCU
 							DMA_ST <= DMA_IDLE;
 						end else if (!DMD[DMA_CH].MOD || DMA_EC || DMA_ERR) begin
 							DMA_RUN[DMA_CH] <= 0;
-							DMA_INT_PEND[DMA_CH] <= 1;
+							if (!DMA_ERR) DMA_INT_PEND[DMA_CH] <= 1;
+							else DMAIL_PEND <= 1;
 							DMA_ST <= DMA_IDLE;
 						end else begin
 							DMA_IND <= 1;
@@ -2571,7 +2572,6 @@ module SCU
 	bit [15:0] EXT_INT;
 	bit        INT_SET; 
 	always @(posedge CLK or negedge RST_N) begin
-		bit        VBII_PEND,VBOI_PEND,HBII_PEND,T0I_PEND,T1I_PEND;
 		bit        TM1_SYNC_ALLOW;
 		
 		if (!RST_N) begin
@@ -2586,7 +2586,6 @@ module SCU
 			PAD_INT <= 0;
 			DMAIL_INT <= 0;
 			INT_SET <= 0;
-			{VBII_PEND,VBOI_PEND,HBII_PEND,T0I_PEND,T1I_PEND} <= 0;
 			TM1_SYNC_ALLOW <= 0;
 		end else if (!RES_N) begin
 			IST <= IST_INIT;
@@ -2599,14 +2598,8 @@ module SCU
 			PAD_INT <= 0;
 			DMAIL_INT <= 0;
 			INT_SET <= 0;
-			{VBII_PEND,VBOI_PEND,HBII_PEND,T0I_PEND,T1I_PEND} <= 0;
 			TM1_SYNC_ALLOW <= 0;
 		end else if (CE_R) begin
-			if (VBIN_PEND      && !VBIN_INT ) VBII_PEND <= 1;
-			if (VBOUT_PEND     && !VBOUT_INT) VBOI_PEND <= 1;
-			if (HBIN_PEND      && !HBIN_INT ) HBII_PEND <= 1;
-			if (TM0_PEND       && !TM0_INT  ) T0I_PEND <= 1;
-			if (TM1_PEND       && !TM1_INT  ) T1I_PEND <= 1;
 			
 			if (VBIN_PEND      ) IST.VBII <= 1;
 			if (VBOUT_PEND     ) IST.VBOI <= 1;
@@ -2620,37 +2613,36 @@ module SCU
 			if (DMA_INT_PEND[2]) IST.D2EI <= 1;
 			if (DMA_INT_PEND[1]) IST.D1EI <= 1;
 			if (DMA_INT_PEND[0]) IST.D0EI <= 1;
-//			if (DMAIL_PEND     ) IST.DII <= 1;
+			if (DMAIL_PEND     ) IST.DII <= 1;
 			if (VDP1_PEND      ) IST.SDEI <= 1;
 			
 			if ((IMS.MS3 && !TM1_SYNC_ALLOW) || !T1MD.MD) begin
 				TM1_SYNC_ALLOW <= 1;
 			end
 			
-			if (REG_WR && CA[7:2] == 8'hA0>>2) begin	//IMS
-				if (INT_SET) INT_SET <= 0;
-			end
 			if (REG_WR && CA[7:2] == 8'hA4>>2) begin	//IST
-				if (!CDI[0]  && IST.VBII ) {VBII_PEND,IST.VBII} <= 0;
-				if (!CDI[1]  && IST.VBOI ) {VBOI_PEND,IST.VBOI} <= 0;
-				if (!CDI[2]  && IST.HBII ) {HBII_PEND,IST.HBII} <= 0;
-				if (!CDI[3]  && IST.T0I  ) {T0I_PEND,IST.T0I} <= 0;
-				if (!CDI[4]  && IST.T1I  ) {T1I_PEND,IST.T1I} <= 0;
+				if (!CDI[0]  && IST.VBII ) IST.VBII <= 0;
+				if (!CDI[1]  && IST.VBOI ) IST.VBOI <= 0;
+				if (!CDI[2]  && IST.HBII ) IST.HBII <= 0;
+				if (!CDI[3]  && IST.T0I  ) IST.T0I <= 0;
+				if (!CDI[4]  && IST.T1I  ) IST.T1I <= 0;
 				if (!CDI[5]  && IST.DSPEI) IST.DSPEI <= 0;
 				if (!CDI[6]  && IST.SRI  ) IST.SRI <= 0;
 				if (!CDI[7]  && IST.SMI  ) IST.SMI <= 0;
+				if (!CDI[8]  && IST.PADI ) IST.PADI <= 0;
 				if (!CDI[9]  && IST.D2EI ) IST.D2EI <= 0;
 				if (!CDI[10] && IST.D1EI ) IST.D1EI <= 0;
 				if (!CDI[11] && IST.D0EI ) IST.D0EI <= 0;
+				if (!CDI[12] && IST.DII  ) IST.DII <= 0;
 				if (!CDI[13] && IST.SDEI ) IST.SDEI <= 0;
 			end 
 			
-			if      (VBII_PEND && !IMS.MS0  && !INT_SET) begin VBIN_INT <= 1;   VBII_PEND <= 0; IST.VBII <= 0;  INT_SET <= 1; end
-			else if (VBOI_PEND && !IMS.MS1  && !INT_SET) begin VBOUT_INT <= 1;  VBOI_PEND <= 0; IST.VBOI <= 0;  INT_SET <= 1; end
-			else if (HBII_PEND && !IMS.MS2  && !INT_SET) begin HBIN_INT <= 1;   HBII_PEND <= 0; IST.HBII <= 0;  INT_SET <= 1; end
-			else if (T0I_PEND  && !IMS.MS3  && !INT_SET) begin TM0_INT <= 1;    T0I_PEND <= 0;  IST.T0I <= 0;   INT_SET <= 1; TM1_SYNC_ALLOW <= 0; end
-			else if (T1I_PEND  && !IMS.MS4  && !INT_SET &&
-		                                TM1_SYNC_ALLOW) begin TM1_INT <= 1;    T1I_PEND <= 0;  IST.T1I <= 0;   INT_SET <= 1; end
+			if      (IST.VBII  && !IMS.MS0  && !INT_SET) begin VBIN_INT <= 1;   IST.VBII <= 0;  INT_SET <= 1; end
+			else if (IST.VBOI  && !IMS.MS1  && !INT_SET) begin VBOUT_INT <= 1;  IST.VBOI <= 0;  INT_SET <= 1; end
+			else if (IST.HBII  && !IMS.MS2  && !INT_SET) begin HBIN_INT <= 1;   IST.HBII <= 0;  INT_SET <= 1; end
+			else if (IST.T0I   && !IMS.MS3  && !INT_SET) begin TM0_INT <= 1;    IST.T0I <= 0;   INT_SET <= 1; TM1_SYNC_ALLOW <= 0; end
+			else if (IST.T1I   && !IMS.MS4  && !INT_SET &&
+		                                TM1_SYNC_ALLOW) begin TM1_INT <= 1;    IST.T1I <= 0;   INT_SET <= 1; end
 			else if (IST.DSPEI && !IMS.MS5  && !INT_SET) begin DSP_INT <= 1;    IST.DSPEI <= 0; INT_SET <= 1; end
 			else if (IST.SRI   && !IMS.MS6  && !INT_SET) begin SCSP_INT <= 1;   IST.SRI <= 0;   INT_SET <= 1; end
 			else if (IST.SMI   && !IMS.MS7  && !INT_SET) begin SM_INT <= 1;     IST.SMI <= 0;   INT_SET <= 1; end
@@ -2658,10 +2650,9 @@ module SCU
 			else if (IST.D2EI  && !IMS.MS9  && !INT_SET) begin DMA_INT[2] <= 1; IST.D2EI <= 0;  INT_SET <= 1; end
 			else if (IST.D1EI  && !IMS.MS10 && !INT_SET) begin DMA_INT[1] <= 1; IST.D1EI <= 0;  INT_SET <= 1; end
 			else if (IST.D0EI  && !IMS.MS11 && !INT_SET) begin DMA_INT[0] <= 1; IST.D0EI <= 0;  INT_SET <= 1; end
-//			else if (IST.DII   && !IMS.MS12 && !INT_SET) begin DMAIL_INT <= 1;  IST.DII <= 1;   INT_SET <= 1; end
+			else if (IST.DII   && !IMS.MS12 && !INT_SET) begin DMAIL_INT <= 1;  IST.DII <= 0;   INT_SET <= 1; end
 			else if (IST.SDEI  && !IMS.MS13 && !INT_SET) begin VDP1_INT <= 1;   IST.SDEI <= 0;  INT_SET <= 1; end
 
-			DMAIL_INT <= 0;
 			EXT_INT <= '0;
 			
 			if (IVECF_RISE) begin
@@ -2682,9 +2673,11 @@ module SCU
 						if (DMA_INT[1]) DMA_INT[1] <= 0;
 					end
 					4'h5: if (DMA_INT[0]) DMA_INT[0] <= 0;
+					4'h3: if (DMAIL_INT) DMAIL_INT <= 0;
 					4'h2: if (VDP1_INT) VDP1_INT <= 0;
 					default:;
 				endcase
+				if (INT_SET) INT_SET <= 0;
 			end
 		end
 	end
@@ -2825,6 +2818,9 @@ module SCU
 					8'hC4: RSEL <= CDI[0] & RSEL_WMASK[0];
 					default:;
 				endcase
+			end
+			if (IVECF_RISE) begin
+				IMS <= IMS_INIT;
 			end
 			
 			REG_WAIT <= 0;
