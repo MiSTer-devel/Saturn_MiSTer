@@ -141,8 +141,8 @@ module DCC
 			MFTI = 1;
 			SFTI = 1;
 			
-			WE_N_OLD <= &WE_N;
-			if (!(&WE_N) && WE_N_OLD) begin
+			WE_N_OLD <= WE_N[0];
+			if (!WE_N[0] && WE_N_OLD) begin
 				if (SINIT_SEL) MFTI <= 0;
 				if (MINIT_SEL) SFTI <= 0;
 			end
