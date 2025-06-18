@@ -844,6 +844,7 @@ module VDP1 (
 							4'h7: CMD_ST <= CMDS_POLYLINE_START;							
 							4'h6: CMD_ST <= CMDS_LINE_START;
 						endcase
+						CMD_DELAY <= 9'd8;
 					end
 				end
 				
@@ -1363,7 +1364,7 @@ module VDP1 (
 					end
 				end
 				
-				CMDS_PRE_DRAW: begin
+				CMDS_PRE_DRAW: if (!DRAW_WAIT && (SPR_DATA_READY || CMD.CMDCTRL.COMM >= 4'h4)) begin
 					if (TEXT_X_READ_STEP) begin
 						TEXT_X <= TEXT_X + (HSS_EN ? 2'd2 : 2'd1);
 						if (IS_PAT_EC) EC_FIND <= 1;
@@ -1630,7 +1631,7 @@ module VDP1 (
 					if (CPU_VRAM_BUSY) begin
 						FBD_ST <= FBDS_SKIP;
 					end else if (SPR_DATA_READY || CMD.CMDCTRL.COMM >= 4'h4) begin
-						if ((CMD_ST == CMDS_NSPR_DRAW || CMD_ST == CMDS_SSPR_DRAW || CMD_ST == CMDS_LINE_DRAW || CMD_ST == CMDS_AA_DRAW || CMD_ST == CMDS_LINE_END)) begin
+						if ((CMD_ST == CMDS_PRE_DRAW || CMD_ST == CMDS_NSPR_DRAW || CMD_ST == CMDS_SSPR_DRAW || CMD_ST == CMDS_LINE_DRAW || CMD_ST == CMDS_AA_DRAW || CMD_ST == CMDS_LINE_END)) begin
 							if ((CMD_ST == CMDS_AA_DRAW || CMD_ST == CMDS_LINE_END)) begin
 								DRAW_X <= LOC_COORD.X + AA_X;
 								DRAW_Y <= LOC_COORD.Y + AA_Y;
