@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>puyosun</setname>
+	<mameversion>277</mameversion>
+	<description>Puyo Puyo Sun (J 961115 V0.001)</description>
+	<rotation>horizontal</rotation>
+	<year>1996</year>
+	<manufacturer>Compile</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,-,-,Start,Coin,Service,Test" default="A,B,X,Y,Start,Select,R,L" />
 	<rom index="1" md5="" zip="puyosun.zip" address="0x32000000">
 		<part repeat="0x80">00</part>

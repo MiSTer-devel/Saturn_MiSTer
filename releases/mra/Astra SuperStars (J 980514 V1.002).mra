@@ -1,9 +1,14 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>astrass</setname>
+	<mameversion>277</mameversion>
+	<description>Astra SuperStars (J 980514 V1.002)</description>
+	<rotation>horizontal</rotation>
+	<year>1998</year>
+	<manufacturer>Sunsoft</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,Button 5,Button 6,Start,Coin,Service,Test" default="A,B,X,Y,L,R,Start,Select" />
 	<rom index="0">
-		<part>11</part>
+		<part>11 </part>
 	</rom>
 	<rom index="1" md5="" zip="astrass.zip" address="0x32000000">
 		<part repeat="0x80">00</part>

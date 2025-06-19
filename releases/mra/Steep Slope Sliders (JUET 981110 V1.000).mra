@@ -1,9 +1,14 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>sss</setname>
+	<mameversion>277</mameversion>
+	<description>Steep Slope Sliders (JUET 981110 V1.000)</description>
+	<rotation>horizontal</rotation>
+	<year>1998</year>
+	<manufacturer>Capcom / Cave / Victor Interactive Software</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,-,-,Start,Coin,Service,Test" default="A,B,X,Y,Start,Select,R,L" />
 	<rom index="0">
-		<part>51</part>
+		<part>51 01</part>
 	</rom>
 	<rom index="1" md5="" zip="sss.zip" address="0x32000000">
 		<interleave output="64">
@@ -13,6 +18,9 @@
 	<rom index="2" md5="" zip="stvbios.zip" address="0x30000000">
 		<interleave output="64">
 			<part crc="d1be2adf" name="epr-17952a.ic8" map="21436587" />
+		</interleave>
+		<interleave output="64">
+			<part crc="f688ae60" name="epr-23603.ic8" map="21436587" />
 		</interleave>
 	</rom>
 	<rom index="3" md5="" zip="sss.zip" address="0x34000000">

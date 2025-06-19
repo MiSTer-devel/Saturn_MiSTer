@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>critcrsh</setname>
+	<mameversion>277</mameversion>
+	<description>Critter Crusher (EA 951204 V1.000)</description>
+	<rotation>horizontal</rotation>
+	<year>1995</year>
+	<manufacturer>Sega</manufacturer>
 	<buttons names="Button 1,-,-,-,-,-,Start,Coin,Service,Test" default="A,Start,Select,R,L" />
 	<rom index="1" md5="" zip="critcrsh.zip" address="0x32000000">
 		<interleave output="64">

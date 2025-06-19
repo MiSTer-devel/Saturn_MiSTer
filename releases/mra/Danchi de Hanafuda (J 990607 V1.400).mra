@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>danchih</setname>
+	<mameversion>277</mameversion>
+	<description>Danchi de Hanafuda (J 990607 V1.400)</description>
+	<rotation>horizontal</rotation>
+	<year>1999</year>
+	<manufacturer>Altron (Tecmo license)</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,-,-,Start,Coin,Service,Test" default="A,B,X,Y,Start,Select,R,L" />
 	<rom index="1" md5="" zip="danchih.zip" address="0x32000000">
 		<part repeat="0x80">00</part>

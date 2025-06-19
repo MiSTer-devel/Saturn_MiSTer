@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>myfairld</setname>
+	<mameversion>277</mameversion>
+	<description>Virtual Mahjong 2 - My Fair Lady (J 980608 V1.000)</description>
+	<rotation>horizontal</rotation>
+	<year>1998</year>
+	<manufacturer>Micronet</manufacturer>
 	<buttons names="Button 1,Button 2,-,-,-,-,Start,Coin,Service,Test" default="A,B,Start,Select,R,L" />
 	<rom index="1" md5="" zip="myfairld.zip" address="0x32000000">
 		<interleave output="64">
