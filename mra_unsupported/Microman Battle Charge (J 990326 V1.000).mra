@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>micrombc</setname>
+	<mameversion>277</mameversion>
+	<description>Microman Battle Charge (J 990326 V1.000)</description>
+	<rotation>horizontal</rotation>
+	<year>1999</year>
+	<manufacturer>Sega</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,Button 5,-,Start,Coin,Service,Test" default="A,B,X,Y,L,Start,Select" />
 	<rom index="1" md5="" zip="micrombc.zip" address="0x32000000">
 		<interleave output="64">

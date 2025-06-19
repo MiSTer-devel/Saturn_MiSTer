@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>danchiq</setname>
+	<mameversion>277</mameversion>
+	<description>Danchi de Quiz Okusan Yontaku Desuyo! (J 001128 V1.200)</description>
+	<rotation>horizontal</rotation>
+	<year>2000</year>
+	<manufacturer>Altron</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,-,-,Start,Coin,Service,Test" default="A,B,X,Y,Start,Select,R,L" />
 	<rom index="1" md5="" zip="danchiq.zip" address="0x32000000">
 		<part repeat="0x80">00</part>

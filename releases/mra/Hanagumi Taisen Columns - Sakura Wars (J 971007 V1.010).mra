@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>hanagumi</setname>
+	<mameversion>277</mameversion>
+	<description>Hanagumi Taisen Columns - Sakura Wars (J 971007 V1.010)</description>
+	<rotation>horizontal</rotation>
+	<year>1997</year>
+	<manufacturer>Sega</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,-,-,Start,Coin,Service,Test" default="A,B,X,Y,Start,Select,R,L" />
 	<rom index="1" md5="" zip="hanagumi.zip" address="0x32000000">
 		<part repeat="0x80">00</part>

@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>groovef</setname>
+	<mameversion>277</mameversion>
+	<description>Groove on Fight - Gouketsuji Ichizoku 3 (J 970416 V1.001)</description>
+	<rotation>horizontal</rotation>
+	<year>1997</year>
+	<manufacturer>Atlus</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,Button 5,Button 6,Start,Coin,Service,Test" default="A,B,X,Y,L,R,Start,Select" />
 	<rom index="1" md5="" zip="groovef.zip" address="0x32000000">
 		<part repeat="0x80">00</part>

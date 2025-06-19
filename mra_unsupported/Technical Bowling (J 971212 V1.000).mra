@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>techbowl</setname>
+	<mameversion>277</mameversion>
+	<description>Technical Bowling (J 971212 V1.000)</description>
+	<rotation>horizontal</rotation>
+	<year>1997</year>
+	<manufacturer>Sega</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,Button 5,-,Start,Coin,Service,Test" default="A,B,X,Y,L,Start,Select" />
 	<rom index="1" md5="" zip="techbowl.zip" address="0x32000000">
 		<interleave output="64">

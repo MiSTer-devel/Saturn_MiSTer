@@ -1,6 +1,11 @@
 <misterromdescription>
 	<rbf>ST-V</rbf>
 	<setname>othellos</setname>
+	<mameversion>277</mameversion>
+	<description>Othello Shiyouyo (J 980423 V1.002)</description>
+	<rotation>horizontal</rotation>
+	<year>1998</year>
+	<manufacturer>Success</manufacturer>
 	<buttons names="Button 1,Button 2,Button 3,Button 4,-,-,Start,Coin,Service,Test" default="A,B,X,Y,Start,Select,R,L" />
 	<rom index="1" md5="" zip="othellos.zip" address="0x32000000">
 		<part repeat="0x80">00</part>
