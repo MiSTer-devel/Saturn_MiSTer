@@ -381,7 +381,11 @@ module SMPC (
 					end
 					
 					CS_WAIT: begin
-						if (!WAIT_CNT) begin
+						if (NEXT_COMM_ST == CS_EXEC && COMREG == 8'h10 && BREAK) begin
+							WAIT_CNT <= '0;
+							COMM_ST <= CS_END;
+						end
+						else if (!WAIT_CNT) begin
 							if (NEXT_COMM_ST == CS_INTBACK_PERI) JOY_START <= 1;
 							COMM_ST <= NEXT_COMM_ST;
 						end
