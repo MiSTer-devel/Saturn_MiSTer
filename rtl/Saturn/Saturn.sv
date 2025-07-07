@@ -19,6 +19,7 @@ module Saturn
 	output             SRAM_CS_N,
 	output             RAML_CS_N,
 	output             RAMH_CS_N,
+	output             RAMH_BURST,
 	output             RAMH_RFS,
 `ifdef STV_BUILD
 	output             STVIO_CS_N,
@@ -158,6 +159,7 @@ module Saturn
 	output     [15: 0] SOUND_R,
 	
 	input              FAST,
+	input              BLUR_MESH,
 	
 	input      [ 7: 0] SCRN_EN,
 	input      [ 2: 0] SND_EN,
@@ -260,6 +262,7 @@ module Saturn
 	bit         ECRD_WR_N;
 	bit         ECCS3_N;
 	bit         ECRD_N;
+	bit         ECBURST;
 	bit         ECRFS;
 	bit         ECWAIT_N;
 
@@ -550,6 +553,7 @@ module Saturn
 		.ECRD_WR_N(ECRD_WR_N),
 		.ECCS3_N(ECCS3_N),
 		.ECRD_N(ECRD_N),
+		.ECBURST(ECBURST),
 		.ECRFS(ECRFS),
 		.ECWAIT_N(ECWAIT_N),
 		
@@ -651,6 +655,7 @@ module Saturn
 	assign SRAM_CS_N = SRAMCE_N;
 	assign RAML_CS_N = DRAMCE_N;
 	assign RAMH_CS_N = MSHCS3_N;
+	assign RAMH_BURST = ECBURST;
 	assign RAMH_RFS = MSRFS | ECRFS;
 `ifdef STV_BUILD
 	assign STVIO_CS_N = ~(CA >= 25'h0400000 && CA <= 25'h040007F && ~CCS0_N);
@@ -758,6 +763,7 @@ module Saturn
 		.FB_MODE3(VDP1_FB_MODE3),
 		
 		.FAST(FAST),
+		.BLUR_MESH(BLUR_MESH),
 		
 		.DBG_EXT(DBG_EXT)
 		

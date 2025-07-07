@@ -1,30 +1,31 @@
 module sdram2
 (
-	inout  reg [15:0] SDRAM_DQ,   // 16 bit bidirectional data bus
-	output reg [12:0] SDRAM_A,    // 13 bit multiplexed address bus
-	output reg        SDRAM_DQML, // byte mask
-	output reg        SDRAM_DQMH, // byte mask
-	output reg  [1:0] SDRAM_BA,   // two banks
-	output reg        SDRAM_nCS,  // a single chip select
-	output reg        SDRAM_nWE,  // write enable
-	output reg        SDRAM_nRAS, // row address select
-	output reg        SDRAM_nCAS, // columns address select
-	output            SDRAM_CLK,
-	output            SDRAM_CKE,
+	inout  reg [15: 0] SDRAM_DQ,   // 16 bit bidirectional data bus
+	output reg [12: 0] SDRAM_A,    // 13 bit multiplexed address bus
+	output reg         SDRAM_DQML, // byte mask
+	output reg         SDRAM_DQMH, // byte mask
+	output reg [ 1: 0] SDRAM_BA,   // two banks
+	output reg         SDRAM_nCS,  // a single chip select
+	output reg         SDRAM_nWE,  // write enable
+	output reg         SDRAM_nRAS, // row address select
+	output reg         SDRAM_nCAS, // columns address select
+	output             SDRAM_CLK,
+	output             SDRAM_CKE,
 
 	// cpu/chipset interface
-	input             init,			// init signal after FPGA config to initialize RAM
-	input             clk,			// sdram is accessed at up to 128MHz
+	input              init,			// init signal after FPGA config to initialize RAM
+	input              clk,			// sdram is accessed at up to 128MHz
 
-	input      [19:1] addr,
-	input      [31:0] din,
-	input       [3:0] wr,
-	input             rd,
-	output     [31:0] dout,
-	input             rfs,
-	output            busy,
+	input      [19: 2] addr,
+	input      [31: 0] din,
+	input      [ 3: 0] wr,
+	input              rd,
+	input              burst,
+	output     [31: 0] dout,
+	input              rfs,
+	output             busy,
 	
-	output            dbg_rfs_timeout,
+	output             dbg_rfs_timeout,
 
 	output [1:0] dbg_ctrl_bank,
 	output [1:0] dbg_ctrl_cmd,
@@ -120,18 +121,20 @@ module sdram2
 	
 	reg         rd_busy,wr_busy;
 	reg         is_read,is_write,is_refresh;
-	reg [19: 1] address;
+	reg [19: 2] address;
 	reg [31: 0] wr_data;
 	reg [ 3: 0] wr_be;
 	
 	always @(posedge clk) begin
 		reg old_rd, old_wr, old_rfs;
+		reg cont;
 		reg [ 1: 0] burst_cnt;
 		reg [10: 0] rfs_wait_cnt;
 		
 		if (!init_done) begin
 			st_num <= 4'd11;
 			{is_read,is_write,is_refresh} <= '0;
+			cont <= 0;
 			{rd_busy,wr_busy} <= '0;
 			burst_cnt <= '0;
 			dbg_rfs_timeout <= 0;
@@ -146,12 +149,19 @@ module sdram2
 			old_rfs <= rfs;
 			if (rd && !old_rd) begin
 				burst_cnt <= burst_cnt + 2'd1;
-				if (burst_cnt == 2'd0) begin
+				if (burst_cnt == 2'd0 && !cont) begin
 					address <= addr;
 					rd_busy <= 1;
 					is_read <= 1;
 					st_num <= 4'd0;
 				end
+				if (burst_cnt == 2'd1 && cont && burst) begin
+					address <= address + 18'd4;
+//					rd_busy <= 1;
+					is_read <= 1;
+					st_num <= 4'd0;
+				end
+				cont <= burst;
 			end
 			else if (wr && !old_wr) begin
 				address <= addr;
@@ -170,7 +180,7 @@ module sdram2
 			
 			if (is_refresh && st_num == 4'd6) is_refresh <= 0;
 			if (is_read && st_num == 4'd10) rd_busy <= 0;
-			if (is_write && st_num == 4'd5) wr_busy <= 0;
+			if (is_write && st_num == 4'd4) wr_busy <= 0;
 			if (is_read && st_num == 4'd10) is_read <= 0;
 			if (is_write && st_num == 4'd6) is_write <= 0;
 		end
@@ -245,16 +255,16 @@ module sdram2
 	
 	wire       data0_read = state[4].RD;
 	wire       out0_read  = state[5].RD;
-	wire [1:0] out0_addr  = state[5].ADDR[3:2];
+	wire [2:0] out0_addr  = state[5].ADDR[4:2];
 	wire [1:0] out0_bank  = state[5].BANK;
 	
 	wire       data1_read = state[5].RD;
 	wire       out1_read  = state[6].RD;
-	wire [1:0] out1_addr  = state[6].ADDR[3:2];
+	wire [2:0] out1_addr  = state[6].ADDR[4:2];
 	wire [1:0] out1_bank  = state[6].BANK;
 	
 	reg [15:0] rbuf;
-	reg [31:0] dout_buf[4];
+	reg [31:0] dout_buf[8];
 	always @(posedge clk) begin
 		rbuf <= SDRAM_DQ;
 
@@ -262,7 +272,7 @@ module sdram2
 		if (out1_read) dout_buf[out1_addr][15: 0] <= rbuf;
 	end
 		
-	assign dout = dout_buf[addr[3:2]];
+	assign dout = dout_buf[addr[4:2]];
 	assign busy = rd_busy | wr_busy;
 	
 

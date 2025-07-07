@@ -65,7 +65,7 @@ module SCU_DSP (
 	
 	bit        LPS_EXE;
 	bit        PAUSED;
-	bit        FLUSH;
+	DMAInst_t  DMAI;
 
 	bit  [5:0] DATA_RAM_ADDR [4];
 	bit [31:0] DATA_RAM_D [4];
@@ -78,14 +78,12 @@ module SCU_DSP (
 	bit [31:0] PRG_RAM_Q;
 	
 	bit  [7:0] DATA_TRANS_ADDR;
-//	bit        PRG_TRANS_AS;
-	bit        PRG_TRANS_WE;
-	bit  [7:0] PRG_TRANS_ADDR;
 	bit        DATA_TRANS_WE;
 	bit        DATA_TRANS_RE;
+	bit        PRG_TRANS_WE;
 	
 	wire DMA_EN = T0 && DMA_ACK;
-	wire RUN = (EX || ES) && ~PAUSED;
+	wire RUN = (EX || ES) && ~EP && ~PAUSED;
 
 	
 	reg [31:0] IC;
@@ -95,12 +93,20 @@ module SCU_DSP (
 			IC <= '0;
 		end else if (!RES_N) begin
 			IC <= '0;
-		end else if (CE) begin
-			if (!EX) begin
-				IC <= '0;
-			end 
-			if (RUN && (!LPS_EXE || LOP == 0)) begin
-				IC <= FLUSH ? '0 : PRG_RAM_Q;
+		end else begin
+			if (CE) begin
+				if (RUN) begin
+					IC <= PRG_RAM_Q;
+				end
+				if (DMAI.PRGW && DECI.D1BUS.PCW && T0) begin
+					IC <= '0;
+				end
+			end
+		
+			if (CE_R) begin
+				if (A == 2'b00 && WE && DI[15]) begin
+					if (!EX) IC <= '0;
+				end
 			end
 		end
 	end
@@ -108,9 +114,6 @@ module SCU_DSP (
 	wire COND = IC[24] ? ((IC[22]&T0) | (IC[21]&C) | (IC[20]&S) | (IC[19]&Z)) : ((~IC[22]|~T0) & (~IC[21]|~C) & (~IC[20]|~S) & (~IC[19]|~Z));
 	assign DECI = Decode(IC, COND);
 	assign DBG_DECI = DECI;
-	
-	DMAInst_t  DMAI;
-	
 	
 	//ALU
 	ALUReg_t   ALU_Q;
@@ -139,6 +142,7 @@ module SCU_DSP (
 	
 	always @(posedge CLK or negedge RST_N) begin
 		bit S31, S47, ZL, ZH;
+		bit OVF31, UNF31, OVF47;
 		
 		if (!RST_N) begin
 			S <= 0;
@@ -150,33 +154,36 @@ module SCU_DSP (
 			Z <= 0;
 			C <= 0;
 			V <= 0;
-		end else if (RUN && CE) begin
-			S31 = ALU_Q[31];
-			S47 = ALU_Q[47];
-			ZL = ~|ALU_Q.L;
-			ZH = ~|ALU_Q.H;
-			if (DECI.ALU) begin
-				case (IC[29:26])
-					4'b0001: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					4'b0010: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					4'b0011: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					4'b0100: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					4'b0101: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					4'b0110: begin S <= S47; Z <= ZL&ZH; C <= ALU_C; end
-					4'b1000: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					4'b1001: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					4'b1010: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					4'b1011: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					4'b1111: begin S <= S31; Z <= ZL;    C <= ALU_C; end
-					default:;
-				endcase
-				V <= 0;//TODO
+		end else begin
+			if (RUN && CE) begin
+				S31 = ALU_Q[31];
+				S47 = ALU_Q[47];
+				ZL = ~|ALU_Q.L;
+				ZH = ~|ALU_Q.H;
+				OVF31 = (~(AC[31] ^ P[31])) & (AC[31] ^ ALU_Q[31]);
+				UNF31 = ( (AC[31] ^ P[31])) & (AC[31] ^ ALU_Q[31]);
+				OVF47 = (~(AC[47] ^ P[47])) & (AC[47] ^ ALU_Q[47]);
+				if (DECI.ALU) begin
+					case (IC[29:26])
+						4'b0001: begin S <= S31; Z <= ZL;    C <= ALU_C; end
+						4'b0010: begin S <= S31; Z <= ZL;    C <= ALU_C; end
+						4'b0011: begin S <= S31; Z <= ZL;    C <= ALU_C; end
+						4'b0100: begin S <= S31; Z <= ZL;    C <= ALU_C; V <= V | OVF31; end
+						4'b0101: begin S <= S31; Z <= ZL;    C <= ALU_C; V <= V | UNF31; end
+						4'b0110: begin S <= S47; Z <= ZL&ZH; C <= ALU_C; V <= V | OVF47; end
+						4'b1000: begin S <= S31; Z <= ZL;    C <= ALU_C; end
+						4'b1001: begin S <= S31; Z <= ZL;    C <= ALU_C; end
+						4'b1010: begin S <= S31; Z <= ZL;    C <= ALU_C; end
+						4'b1011: begin S <= S31; Z <= ZL;    C <= ALU_C; end
+						4'b1111: begin S <= S31; Z <= ZL;    C <= ALU_C; end
+						default:;
+					endcase
+				end
 			end
-//			else begin
-//				if (A == 2'b00 && RE) begin
-//					V <= 0;
-//				end
-//			end
+			
+			if (A == 2'b00 && RE) begin
+				V <= 0;
+			end
 		end
 	end
 	
@@ -202,7 +209,7 @@ module SCU_DSP (
 		end else if (DECI.D1BUS.RAMR) begin
 			D1BUS = DATA_RAM_Q[DECI.D1BUS.RAMS];
 		end else begin
-			D1BUS = '0;
+			D1BUS = '1;
 		end
 		
 		D0BUSO = DATA_RAM_Q[DMAI.RAMS];
@@ -225,8 +232,7 @@ module SCU_DSP (
 			//X set
 			if (DECI.XBUS.RXW) begin
 				RX <= XBUS;
-			end
-			if (DECI.D1BUS.RXW) begin
+			end else if (DECI.D1BUS.RXW) begin
 				RX <= D1BUS;
 			end
 			
@@ -249,14 +255,15 @@ module SCU_DSP (
 			if (DECI.XBUS.PW) begin
 				if (DECI.XBUS.MULS) P <= MUL[47:0];
 				else P <= {{16{XBUS[31]}},XBUS};
-			end
-			if (DECI.D1BUS.PW) begin
+			end else if (DECI.D1BUS.PW) begin
 				P <= {{16{D1BUS[31]}},D1BUS};
 			end
 		end
 	end
 	
 	always @(posedge CLK or negedge RST_N) begin
+		bit RX_CONFLICT;
+		
 		if (!RST_N) begin
 			// synopsys translate_off
 			CT0 <= '0;
@@ -270,17 +277,34 @@ module SCU_DSP (
 			CT2 <= '0;
 			CT3 <= '0;
 		end else begin
+			RX_CONFLICT = DECI.D1BUS.RXW & DECI.XBUS.RXW;
 			if (RUN && CE) begin
-				if (DECI.XBUS.CTI[0] || DECI.YBUS.CTI[0] || DECI.D1BUS.CTI[0] || DECI.DMA.CTI[0]) CT0 <= CT0 + 6'd1;
+				if (DECI.XBUS.CTI[0] || DECI.YBUS.CTI[0] || 
+				   (DECI.D1BUS.CTI[0] && !DECI.D1BUS.DCTI[0] && !DECI.XBUS.CTI[0] && !DECI.YBUS.CTI[0] && !RX_CONFLICT) ||
+				   (DECI.D1BUS.DCTI[0]                       && !(DECI.XBUS.RAMR && DECI.XBUS.RAMS == 2'd0) && !(DECI.YBUS.RAMR && DECI.YBUS.RAMS == 2'd0) && !(DECI.D1BUS.RAMR && DECI.D1BUS.RAMS == 2'd0) && !RX_CONFLICT) || 
+					DECI.DMA.CTI[0]) 
+					CT0 <= CT0 + 6'd1;
 				if (DECI.D1BUS.CTW[0]) CT0 <= D1BUS[5:0];
 				
-				if (DECI.XBUS.CTI[1] || DECI.YBUS.CTI[1] || DECI.D1BUS.CTI[1] || DECI.DMA.CTI[1]) CT1 <= CT1 + 6'd1;
+				if (DECI.XBUS.CTI[1] || DECI.YBUS.CTI[1] || 
+				   (DECI.D1BUS.CTI[1] && !DECI.D1BUS.DCTI[1] && !DECI.XBUS.CTI[1] && !DECI.YBUS.CTI[1] && !RX_CONFLICT) ||
+				   (DECI.D1BUS.DCTI[1]                       && !(DECI.XBUS.RAMR && DECI.XBUS.RAMS == 2'd1) && !(DECI.YBUS.RAMR && DECI.YBUS.RAMS == 2'd1) && !(DECI.D1BUS.RAMR && DECI.D1BUS.RAMS == 2'd1) && !RX_CONFLICT) || 
+					DECI.DMA.CTI[1]) 
+					CT1 <= CT1 + 6'd1;
 				if (DECI.D1BUS.CTW[1]) CT1 <= D1BUS[5:0];
 				
-				if (DECI.XBUS.CTI[2] || DECI.YBUS.CTI[2] || DECI.D1BUS.CTI[2] || DECI.DMA.CTI[2]) CT2 <= CT2 + 6'd1;
+				if (DECI.XBUS.CTI[2] || DECI.YBUS.CTI[2] || 
+				   (DECI.D1BUS.CTI[2] && !DECI.D1BUS.DCTI[2] && !DECI.XBUS.CTI[2] && !DECI.YBUS.CTI[2] && !RX_CONFLICT) ||
+				   (DECI.D1BUS.DCTI[2]                       && !(DECI.XBUS.RAMR && DECI.XBUS.RAMS == 2'd2) && !(DECI.YBUS.RAMR && DECI.YBUS.RAMS == 2'd2) && !(DECI.D1BUS.RAMR && DECI.D1BUS.RAMS == 2'd2) && !RX_CONFLICT) || 
+					DECI.DMA.CTI[2]) 
+					CT2 <= CT2 + 6'd1;
 				if (DECI.D1BUS.CTW[2]) CT2 <= D1BUS[5:0];
 				
-				if (DECI.XBUS.CTI[3] || DECI.YBUS.CTI[3] || DECI.D1BUS.CTI[3] || DECI.DMA.CTI[3]) CT3 <= CT3 + 6'd1;
+				if (DECI.XBUS.CTI[3] || DECI.YBUS.CTI[3] || 
+				   (DECI.D1BUS.CTI[3] && !DECI.D1BUS.DCTI[3] && !DECI.XBUS.CTI[3] && !DECI.YBUS.CTI[3] && !RX_CONFLICT) || 
+				   (DECI.D1BUS.DCTI[3]                       && !(DECI.XBUS.RAMR && DECI.XBUS.RAMS == 2'd3) && !(DECI.YBUS.RAMR && DECI.YBUS.RAMS == 2'd3) && !(DECI.D1BUS.RAMR && DECI.D1BUS.RAMS == 2'd3) && !RX_CONFLICT) || 
+					DECI.DMA.CTI[3]) 
+					CT3 <= CT3 + 6'd1;
 				if (DECI.D1BUS.CTW[3]) CT3 <= D1BUS[5:0];
 			end
 			
@@ -313,59 +337,81 @@ module SCU_DSP (
 					PC <= D1BUS[7:0];
 					TOP <= PC;
 				end
-				if (DECI.JPCW) begin
-					PC <= IC[7:0];
-				end
-				if (DECI.CTL.BTM) begin
-					if (LOP) begin
-						LOP <= LOP - 12'd1;
-						PC <= TOP;
-					end
-				end
-				if (DECI.CTL.LPS) begin
+				if (DECI.CTL.LPS && LOP) begin
 					LPS_EXE <= 1;
+					PC <= PC;
 				end
 				
-				if (LPS_EXE) begin
+				if (DECI.CTL.LPS) begin
 					if (LOP) begin
-						LOP <= LOP - 12'd1;
+						LPS_EXE <= 1;
+						PC <= PC;
+					end
+					LOP <= LOP - 12'd1;
+				end
+				else if (LPS_EXE) begin
+					if (LOP) begin
 						PC <= PC;
 					end
 					else begin
 						LPS_EXE <= 0;
 					end
+					LOP <= LOP - 12'd1;
+				end
+				if (DECI.CTL.BTM) begin
+					if (LOP) begin
+						PC <= TOP;
+					end
+					LOP <= LOP - 12'd1;
 				end
 				
 				if (DECI.D1BUS.LOPW) begin
 					LOP <= D1BUS[11:0];
 				end
-				
+
+				if (DECI.JPCW) begin
+					PC <= IC[7:0];
+				end
+
 				if (DECI.D1BUS.TOPW) begin
 					TOP <= D1BUS[7:0];
 				end
 			end
 			
-			if (DMA_EN && CE_R) begin
-				if (DMAI.PRGW) PC <= PC + 6'd1;
+			if (CE) begin
+				if (DMA_END_PEND && DMAI.PRGW) begin
+					PC <= TOP;
+				end
 			end
 			
-			if (A == 2'b00 && WE && DI[15] && CE_R) begin
-				PC <= DI[7:0];
+			if (CE_R) begin
+				if (DMA_EN) begin
+					if (DMAI.PRGW) begin
+						PC <= PC + 8'd1;
+					end
+				end
+				if (!EX) begin
+					if (PRG_TRANS_WE) begin
+						PC <= PC + 8'd1;
+					end
+					if (A == 2'b00 && WE && DI[15]) begin
+						PC <= DI[7:0];
+					end
+				end
 			end
 		end
 	end
 	
 	wire [ 7: 0] TN_VAL = DECI.DMA.CNTM ? DATA_RAM_Q[DECI.DMA.CNTS][7:0] : IC[7:0];
 	wire [ 7: 0] TN0_NEXT = TN0 - 8'd1;
+		bit       DMA_END_PEND;
 	always @(posedge CLK or negedge RST_N) begin
 		bit       DMA_END_OLD;
-		bit       DMA_END_PEND;
 		
 		if (!RST_N) begin
 			TN0 <= '0;
 			T0 <= 0;
 			PAUSED <= 0;
-			FLUSH <= 0;
 			DMAI <= '0;
 			DMA_REQ <= 0;
 			DMA_END_PEND <= 0;
@@ -376,7 +422,6 @@ module SCU_DSP (
 			TN0 <= '0;
 			T0 <= 0;
 			PAUSED <= 0;
-			FLUSH <= 0;
 			DMAI <= '0;
 			DMA_REQ <= 0;
 		end else begin
@@ -384,23 +429,21 @@ module SCU_DSP (
 				if (RUN) begin
 					if (DECI.DMA.ST && !T0) begin
 						T0 <= 1;
-						PAUSED <= DECI.DMA.PRGW;
 						TN0 <= TN_VAL;
 						DMAI <= DECI.DMA;
 						DMA_REQ <= 1;
 					end
+					if (DMAI.PRGW && DECI.D1BUS.PCW && T0) begin
+						PAUSED <= 1;
+					end
 				end
 				
 				DMA_END_PEND <= 0;
-				FLUSH <= 0;
 				if (DMA_END_PEND) begin
 					T0 <= 0;
 					PAUSED <= 0;
-					FLUSH <= DMAI.PRGW;
 					DMAI <= '0;
 				end
-				
-				
 			end
 			
 			if (CE_F) begin
@@ -419,6 +462,13 @@ module SCU_DSP (
 				end
 			end 
 			if (CE_R) begin
+				if (!EX) begin
+					if (A == 2'b00 && WE && DI[15]) begin
+						T0 <= 0;
+						PAUSED <= 0;
+						DMAI <= '0;
+					end
+				end
 				if (DMA_EN) begin
 					DMA_REQ <= 0;
 					TN0 <= TN0_NEXT;
@@ -468,6 +518,8 @@ module SCU_DSP (
 	
 	//Control port
 	always @(posedge CLK or negedge RST_N) begin
+		bit         ENDI_LAST;
+		
 		if (!RST_N) begin
 			EX <= 0;
 			EP <= 0; 
@@ -475,7 +527,6 @@ module SCU_DSP (
 			ES <= 0;
 			LE <= 0;
 			E <= 0;
-			PRG_TRANS_ADDR <= '0;
 			PRG_TRANS_WE <= 0;
 			DATA_TRANS_ADDR <= '0;
 			DATA_TRANS_WE <= 0;
@@ -487,29 +538,38 @@ module SCU_DSP (
 			ES <= 0;
 			LE <= 0;
 			E <= 0;
+			ENDI_LAST <= 0;
 		end else begin
 			if (CE_R) begin
 				PRG_TRANS_WE <= 0;
 				DATA_TRANS_WE <= 0;
-				if (PRG_TRANS_WE) PRG_TRANS_ADDR <= PRG_TRANS_ADDR + 8'd1;
 				if (DATA_TRANS_WE) DATA_TRANS_ADDR <= DATA_TRANS_ADDR + 8'd1;
 				
 				if (WE) begin
 					case (A)
 						2'b00: begin
-							EX <= DI[16];
-							LE <= DI[15];
-							PRG_TRANS_ADDR <= DI[7:0];
-							if (EX && !EP && DI[25]) begin
-								EP <= 1; 
-								PR <= 0;
+							if (DI[25]) begin
+								if (!EP) begin
+									EP <= 1; 
+								end
+							end else	if (DI[26]) begin
+								if (EP) begin
+									EP <= 0; 
+								end
+							end else begin
+								if (!EX && DI[16]) begin
+									EX <= 1;
+								end else if (EX && !DI[16]) begin
+									EX <= 0;
+								end
+								
+								if (!EX && DI[17]) begin
+									ES <= 1;
+								end
 							end
-							if (EX && !PR && DI[26]) begin
-								PR <= 1;
-								EP <= 0; 
-							end
-							if (!EX && DI[17]) begin
-								ES <= 1;
+							
+							if (DI[15]) begin
+								LE <= 1;
 							end
 						end
 						2'b01: begin
@@ -525,18 +585,17 @@ module SCU_DSP (
 					endcase
 				end
 			end 
-			
-			begin
+			/*if (CE_F)*/ begin
 				DATA_TRANS_RE <= 0;
 				if (DATA_TRANS_RE) DATA_TRANS_ADDR <= DATA_TRANS_ADDR + 8'd1;
 				
 				if (RE) begin
 					case (A)
-						2'b00: DO <= {8'h00,T0,S,Z,C,V,E,1'b0,EX,8'h00,PC};
+						2'b00: DO <= {8'h00,T0,S,Z,C,V,E,1'b0,EX&~EP,8'h00,PC};
 						2'b01: DO <= '0;
 						2'b10: DO <= '0;
 						2'b11: begin
-							DO <= DATA_RAM_Q[DATA_TRANS_ADDR[7:6]];
+							DO <= !EX || EP ? DATA_RAM_Q[DATA_TRANS_ADDR[7:6]] : '1;
 							DATA_TRANS_RE <= 1;
 						end
 						default: DO <= '0;
@@ -552,6 +611,7 @@ module SCU_DSP (
 				
 				if (DECI.CTL.END) begin
 					EX <= 0;
+					ENDI_LAST <= DECI.CTL.EI;
 					if (DECI.CTL.EI) E <= 1;
 				end
 			end
@@ -561,7 +621,7 @@ module SCU_DSP (
 	assign IRQ = E;
 	
 	//PRG RAM
-	assign PRG_RAM_ADDR = T0 || RUN ? PC : PRG_TRANS_ADDR;
+	assign PRG_RAM_ADDR = PC;
 	assign PRG_RAM_D = T0 ? D0BUSI : DI;
 	assign PRG_RAM_WE = T0 ? DMAI.PRGW & DMA_EN & CE_R : !RUN & PRG_TRANS_WE & CE_R;
 	DSP_PRG_RAM #(8,32," ","prg.txt") PRG_RAM(CLK, PRG_RAM_ADDR, PRG_RAM_D, PRG_RAM_WE, PRG_RAM_Q);

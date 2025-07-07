@@ -269,7 +269,7 @@ module emu
 	// 0         1         2         3          4         5         6   	   7         8         9
 	// 01234567890123456789012345678901 23456789012345678901234567890123 45678901234567890123456789012345
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXXX    XX          XXXXXXXXXXXXXXXXXX XXXXXXXXXXXX
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXXXX   XX          XXXXXXXXXXXXXXXXXX XXXXXXXXXXXX
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -336,11 +336,12 @@ module emu
 		
 `endif
 		
-`ifndef MISTER_DUAL_SDRAM
 		"P3,Hardware;",
 		"P3-;",
+`ifndef MISTER_DUAL_SDRAM
 		"P3OS,Timing,Original,Fast;",
 `endif
+		"P3OV,Blurred VDP1 mesh,Off,On;",
 
 		"-;",
 		"R0,Reset;",
@@ -611,6 +612,7 @@ module emu
 `else
 	wire fast_timing = 0;
 `endif
+	wire blur_mesh = status[31];
 	
 	//region select
 `ifndef STV_BUILD
@@ -685,6 +687,7 @@ module emu
 	wire         SRAM_CS_N;
 	wire         RAML_CS_N;
 	wire         RAMH_CS_N;
+	wire         RAMH_BURST;
 	wire         RAMH_RFS;
 	wire [ 3: 0] MEM_DQM_N;
 	wire         MEM_RD_N;
@@ -867,6 +870,7 @@ module emu
 		.SRAM_CS_N(SRAM_CS_N),
 		.RAML_CS_N(RAML_CS_N),
 		.RAMH_CS_N(RAMH_CS_N),
+		.RAMH_BURST(RAMH_BURST),
 		.RAMH_RFS(RAMH_RFS),
 `ifdef STV_BUILD
 		.STVIO_CS_N(STVIO_CS_N),
@@ -1006,6 +1010,7 @@ module emu
 		.SOUND_R(SOUND_R),
 		
 		.FAST(fast_timing),
+		.BLUR_MESH(blur_mesh),
 		
 		.SCRN_EN(SCRN_EN),
 		.SND_EN(SND_EN),
@@ -1381,12 +1386,12 @@ module emu
 	);
 
 	//DDRAM
-	always @(posedge clk_sys) begin		
+	always @(posedge clk_sys) begin
 		ioctl_wait <= (bios_download && bios_busy) || (cart_download && bios_busy) || (save_download && bsram_busy) || (save_upload && bsram_busy);
 	end
-	wire [26:1] IO_ADDR = cart_download ? {1'b1,ioctl_addr[25:1]} : {8'b00000000,ioctl_addr[18:1]};
-	wire [15:0] IO_DATA = {ioctl_data[7:0],ioctl_data[15:8]};
-	wire        IO_WR = (bios_download | cart_download) & ioctl_wr;
+	wire [26: 1] IO_ADDR = cart_download ? {1'b1,ioctl_addr[25:1]} : {8'b00000000,ioctl_addr[18:1]};
+	wire [15: 0] IO_DATA = {ioctl_data[7:0],ioctl_data[15:8]};
+	wire         IO_WR = (bios_download | cart_download) & ioctl_wr;
 	
 `ifndef STV_BUILD
 	reg  [31: 0] ramh_din;
@@ -1589,10 +1594,11 @@ module emu
 		.init(rst_ram),
 		.clk(clk_ram),
 		
-		.addr({MEM_A[19:2],1'b0}),
+		.addr(MEM_A[19:2]),
 		.din(ramh_din),
 		.wr(ramh_wr),
 		.rd(~RAMH_CS_N & ~MEM_RD_N),
+		.burst(RAMH_BURST),
 		.dout(sdr2_do),
 		.rfs(~RAMH_CS_N & RAMH_RFS),
 		.busy(sdr2_busy)
