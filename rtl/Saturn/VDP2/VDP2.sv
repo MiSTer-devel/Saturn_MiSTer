@@ -947,7 +947,7 @@ module VDP2 (
 	bit  [ 3: 2] LS_VAL_OFFS[2];
 	bit  [12: 2] LS_TBL_OFFS[2];
 	bit          LW_POS;
-	bit  [ 9: 2] LW_OFFS;
+	bit  [10: 2] LW_OFFS;
 	bit  [ 6: 0] VS_OFFS;
 	bit  [ 8: 0] BS_OFFS;
 	bit  [ 8: 0] LN_OFFS;
@@ -1257,7 +1257,7 @@ module VDP2 (
 				end else if (LW_FETCH) begin
 					VRAM_BANK <= LW_ADDR[LW_POS][18:17];
 					LW_POS <= ~LW_POS;
-					if (LW_POS) LW_OFFS <= LW_OFFS + 8'd1;
+					if (LW_POS) LW_OFFS <= LW_OFFS + (DDI ? 9'd2 : 9'd1);
 				end else if (RPA_FETCH || RPB_FETCH) begin
 					RP_POS[6:2] <= RP_POS[6:2] + 5'd1;
 					if (RP_POS[6:2] == 5'd23) RP_POS <= {~RP_POS[7],5'd0};
@@ -1407,7 +1407,7 @@ module VDP2 (
 				if (LAST_DOT && V_CNT == NEXT_TO_LAST_LINE) begin
 					NBG_PN_FETCH <= '{4{0}};
 					LW_POS <= 0;
-					LW_OFFS <= '0;
+					LW_OFFS <= DDI && !ODD ? 9'd1 : 9'd0;
 					BS_OFFS <= '0;
 					LN_OFFS <= '0;
 					RP_POS <= '0;
