@@ -47,6 +47,7 @@ module VDP1 (
 	output             FB_MODE3,
 	
 	input              FAST,
+	input              BLUR_MESH,
 	
 	input      [ 7: 0] DBG_EXT
 	
@@ -105,6 +106,7 @@ module VDP1 (
 	bit          OUT_EN;
 	bit          DRAW_TERMINATE;
 	bit          DRAW_END;
+	bit          FRAME_ODD;
 	
 	bit  [15: 0] CLT_Q;
 	
@@ -1766,7 +1768,7 @@ module VDP1 (
 			
 		SCLIP = !DRAW_X[10]                                    && DRAW_X[9:0] <= SYS_CLIP.X2[9:0] && !DRAW_Y[10]                                    && DRAW_Y[9:0] <= SYS_CLIP.Y2[9:0];
 		UCLIP = !DRAW_X[10] && DRAW_X[9:0] >= USR_CLIP.X1[9:0] && DRAW_X[9:0] <= USR_CLIP.X2[9:0] && !DRAW_Y[10] && DRAW_Y[9:0] >= USR_CLIP.Y1[9:0] && DRAW_Y[9:0] <= USR_CLIP.Y2[9:0];
-		MESH = ~(DRAW_X[0] ^ DRAW_Y[0]);
+		MESH = ~(DRAW_X[0] ^ DRAW_Y[0]) ^ (FRAME_ODD&BLUR_MESH);
 		IDRAW = ~(DIL ^ DRAW_Y[0]);
 		FB_DRAW_D = CALC_C;
 		FB_DRAW_WE = (~TP | CMD.CMDPMOD.SPD) & (~EC | CMD.CMDPMOD.ECD) & SCLIP & ((UCLIP^CMD.CMDPMOD.CMOD) | ~CMD.CMDPMOD.CLIP) & (MESH | ~CMD.CMDPMOD.MESH) & (IDRAW | ~DIE);
@@ -1879,7 +1881,7 @@ module VDP1 (
 				end
 			end
 			
-			if ((HTIM_N || |HTIM_PIPE) && VBLANK_ERASE && CE_R) begin
+			if ((HTIM_N || |HTIM_PIPE) && (VBLANK_ERASE || (TVMR.VBE && !VTIM_N)) && CE_R) begin
 				OUT_X <= OUT_X + 9'd1;
 				if ({1'b0,OUT_X} + 10'd1 == (!EWRR.X3[9] ? {EWRR.X3,3'b000} : 10'h200)) begin
 					OUT_X <= {EWLR.X1,3'b000};
@@ -1900,7 +1902,7 @@ module VDP1 (
 	end
 	
 	assign FRAME_ERASE_EN = ERASE_HIT && FRAME_ERASE && VTIM_N;
-	assign VBLANK_ERASE_EN = ERASE_HIT && VBLANK_ERASE && (HTIM_N || |HTIM_PIPE);
+	assign VBLANK_ERASE_EN = ERASE_HIT && (VBLANK_ERASE || (TVMR.VBE && !VTIM_N)) && (HTIM_N || |HTIM_PIPE);
 	
 	assign FB_ERASE_A = {OUT_Y[7:0],OUT_X[8:0]};
 	assign FB_DISP_A = TVMR.TVM[1:0] == 2'b10 ? {OUT_RY.INT[7:0],OUT_RX.INT[8:0]} : 
@@ -2554,9 +2556,9 @@ module VDP1 (
 				end
 				
 				if (!VTIM_N && VTIM_N_OLD) begin
-					if (TVMR.VBE) begin
-						VBLANK_ERASE <= 1;
-					end
+//					if (TVMR.VBE) begin
+//						VBLANK_ERASE <= 1;
+//					end
 					if (VBERASE_PEND) begin
 						VBLANK_ERASE <= 1;
 					end
@@ -2564,6 +2566,7 @@ module VDP1 (
 				end
 				if (VTIM_N && !VTIM_N_OLD) begin
 					VBLANK_ERASE <= 0;
+					FRAME_ODD <= ~FRAME_ODD;
 				end
 			end
 		end
