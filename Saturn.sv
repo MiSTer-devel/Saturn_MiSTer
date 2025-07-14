@@ -2052,7 +2052,6 @@ module emu
 	wire [9:0] crop_amount = hcrop_en ? ((active_width == 10'd704) ? 10'd4 : (INTERLACE ? 10'd4 : 10'd2)) : 10'd0;
 
 	wire hcrop_blank = (h_count < crop_amount) || (h_count >= (active_width - crop_amount));
-	wire hblank_cropped = cofi_hbl | (hcrop_en & hcrop_blank);
 	
 	wire [7:0] cofi_r, cofi_g, cofi_b;
 	wire       cofi_hs, cofi_vs, cofi_hbl, cofi_vbl;
@@ -2079,7 +2078,7 @@ module emu
 `else
 	wire [7:0] cofi_r = R, cofi_g = G, cofi_b = B;
 	wire cofi_hs = ~HS_N, cofi_vs = ~VS_N;
-	wire hblank_cropped = ~HBL_N, cofi_vbl = ~VBL_N;
+	wire cofi_hbl = ~HBL_N, cofi_vbl = ~VBL_N;
 `endif
 
 `ifndef STV_BUILD
@@ -2088,10 +2087,13 @@ module emu
 	wire [7:0] mixer_r = lg_p1_targ_draw ? {8{lg_p1_target[0]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : cofi_r;
 	wire [7:0] mixer_g = lg_p1_targ_draw ? {8{lg_p1_target[1]}} : lg_p2_targ_draw ? {8{lg_p2_target[1]}} : cofi_g;
 	wire [7:0] mixer_b = lg_p1_targ_draw ? {8{lg_p1_target[2]}} : lg_p2_targ_draw ? {8{lg_p2_target[2]}} : cofi_b;
+	wire [7:0] crop_r = (hcrop_en && hcrop_blank) ? 8'd0 : mixer_r;
+	wire [7:0] crop_g = (hcrop_en && hcrop_blank) ? 8'd0 : mixer_g;
+	wire [7:0] crop_b = (hcrop_en && hcrop_blank) ? 8'd0 : mixer_b;
 `else
-	wire [7:0] mixer_r = cofi_r;
-	wire [7:0] mixer_g = cofi_g;
-	wire [7:0] mixer_b = cofi_b;
+	wire [7:0] crop_r = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_r;
+	wire [7:0] crop_g = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_g;
+	wire [7:0] crop_b = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_b;
 `endif
 
 	video_mixer #(.LINE_LENGTH((352*2)+8), .HALF_DEPTH(0), .GAMMA(1)) video_mixer
@@ -2104,14 +2106,14 @@ module emu
 		.freeze_sync(),
 	
 		.VGA_DE(vga_de),
-		.R(mixer_r),
-		.G(mixer_g),
-		.B(mixer_b),
+		.R(crop_r),
+		.G(crop_g),
+		.B(crop_b),
 	
 		// Positive pulses.
 		.HSync(analog_hs), 
 		.VSync(analog_vs),  
-		.HBlank(hblank_cropped),
+		.HBlank(cofi_hbl),
 		.VBlank(cofi_vbl) 
 	);
 
@@ -2128,7 +2130,7 @@ module emu
 		.hs_in(cofi_hs),
 		.vs_in(cofi_vs),
 		.LVBL(~cofi_vbl),
-		.LHBL(~hblank_cropped),
+		.LHBL(~cofi_hbl),
 		.hoffset(-hoffset),
 		.voffset(-voffset),
 		.hres_mode(HRES[1]),
