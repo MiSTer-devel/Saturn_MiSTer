@@ -479,6 +479,29 @@ module Saturn
 	
 	assign MSHIRL_N  = CIRL_N;
 	assign SSHIRL_N  = {1'b1,BIRL,1'b1};
+	
+	bit [31:0] OPEN_BUS;
+	always @(posedge CLK or negedge RST_N) begin
+	bit         MSHDQM_N_OLD;
+	
+		if (!RST_N) begin
+			OPEN_BUS <= '1;
+		end else if (!SYSRES_N) begin
+			
+		end else begin
+			MSHDQM_N_OLD <= &MSHDQM_N;
+			if (&MSHDQM_N_OLD & MSHDQM_N_OLD) begin
+				if (!MSHDQM_N[3]) OPEN_BUS[31:24] <= MSHDO[31:24];
+				if (!MSHDQM_N[2]) OPEN_BUS[23:16] <= MSHDO[23:16];
+				if (!MSHDQM_N[1]) OPEN_BUS[15: 8] <= MSHDO[15: 8];
+				if (!MSHDQM_N[0]) OPEN_BUS[ 7: 0] <= MSHDO[ 7: 0];
+			end
+			
+			if (!MSHRD_N && MSHWAIT_N) begin
+				OPEN_BUS <= MSHDI;
+			end
+		end
+	end
 
 	assign MSHDI     = CDO;
 	assign MSHWAIT_N = CWAIT_N & (MEM_WAIT_N | (MSHCS3_N & DRAMCE_N & ROMCE_N & SRAMCE_N));
@@ -490,8 +513,12 @@ module Saturn
                      !STVIO_CS_N                                     ? MEM_DI :
 `endif
                      !SMPCCE_N                                       ? {4{SMPC_DO}} :
-							SCU_DO;
-	assign CDI      = MSHDO;
+							!MSHCS1_N || !MSHCS2_N || !MSHIVECF_N           ? SCU_DO :
+							OPEN_BUS;
+	assign CDI      = {!MSHDQM_N[3] ? MSHDO[31:24] : OPEN_BUS[31:24],
+	                   !MSHDQM_N[2] ? MSHDO[23:16] : OPEN_BUS[23:16],
+							 !MSHDQM_N[1] ? MSHDO[15: 8] : OPEN_BUS[15: 8],
+							 !MSHDQM_N[0] ? MSHDO[ 7: 0] : OPEN_BUS[ 7: 0]};
 	assign CBS_N    = MSHBS_N;
 	assign CCS0_N   = MSHCS0_N;
 	assign CCS1_N   = MSHCS1_N;
