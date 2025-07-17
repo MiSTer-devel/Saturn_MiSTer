@@ -517,9 +517,7 @@ module SCU_DSP (
 	DSP_DATA_RAM #(6,32) DATA_RAM3(CLK, DATA_RAM_ADDR[3], DATA_RAM_D[3], DATA_RAM_WE[3], DATA_RAM_Q[3]);
 	
 	//Control port
-	always @(posedge CLK or negedge RST_N) begin
-		bit         ENDI_LAST;
-		
+	always @(posedge CLK or negedge RST_N) begin		
 		if (!RST_N) begin
 			EX <= 0;
 			EP <= 0; 
@@ -538,7 +536,6 @@ module SCU_DSP (
 			ES <= 0;
 			LE <= 0;
 			E <= 0;
-			ENDI_LAST <= 0;
 		end else begin
 			if (CE_R) begin
 				PRG_TRANS_WE <= 0;
@@ -611,7 +608,6 @@ module SCU_DSP (
 				
 				if (DECI.CTL.END) begin
 					EX <= 0;
-					ENDI_LAST <= DECI.CTL.EI;
 					if (DECI.CTL.EI) E <= 1;
 				end
 			end

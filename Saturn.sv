@@ -482,7 +482,6 @@ module emu
 	
 `ifndef STV_BUILD
 	wire [2:0] cart_type = status[23:21];
-	wire bios_sel = 0;
 `else
 	wire [2:0] cart_type = 3'd5;
 	wire bios_sel = status[30] & STV_ALTBIOS;
