@@ -129,31 +129,29 @@ module VDP2 (
 	
 	//H 427/455
 	//V 263/313
-	parameter HRES_320  = 9'd427;
-	parameter HRES_352  = 9'd455;//
-	parameter HS_START_320  = 9'd350;
-	parameter HS_START_352  = 9'd380;
-	parameter HS_MID_320  = 9'd137;
-	parameter HS_MID_352  = 9'd153;
-	parameter HBL_START_320 = 9'd312;
-	parameter HBL_START_352 = 9'd344;
-//	parameter HBL_END_320 = 9'd415 - 9'd1;//9'd410;
-//	parameter HBL_END_352 = 9'd443 - 9'd1;//9'd442;
-	parameter VRES_NTSC = 9'd263;
-	parameter VRES_PAL  = 9'd313;
-	parameter VS_START_224  = 9'd239;
-	parameter VS_START_240  = 9'd245;//?
-	parameter VS_START_PAL_224  = VS_START_224+9'd25;
-	parameter VS_START_PAL_240  = VS_START_240+9'd24;
-	parameter VS_START_256  = 9'd276;//?
-	parameter VS_END_224    = VS_START_224 + 9'd3;
-	parameter VS_END_240    = VS_START_240 + 9'd3;
-	parameter VS_END_PAL_224    = VS_START_PAL_224 + 9'd3;
-	parameter VS_END_PAL_240    = VS_START_PAL_240 + 9'd3;
-	parameter VS_END_256    = VS_START_256 + 9'd3;
-	parameter VBL_START_224 = 9'd224;
-	parameter VBL_START_240 = 9'd240;
-	parameter VBL_START_256 = 9'd256;
+	parameter HRES_320         = 9'd427;
+	parameter HRES_352         = 9'd455;
+	parameter HS_START_320     = 9'd350;
+	parameter HS_START_352     = 9'd380;
+	parameter HS_MID_320       = 9'd137;
+	parameter HS_MID_352       = 9'd153;
+	parameter HBL_START_320    = 9'd312;
+	parameter HBL_START_352    = 9'd344;
+	parameter VRES_NTSC        = 9'd263;
+	parameter VRES_PAL         = 9'd313;
+	parameter VS_START_224     = 9'd239;
+	parameter VS_START_240     = 9'h0F5;
+	parameter VS_START_PAL_224 = 9'd264;
+	parameter VS_START_PAL_240 = 9'd269;
+	parameter VS_START_PAL_256 = 9'd276;
+	parameter VS_END_224       = VS_START_224 + 9'd3;
+	parameter VS_END_240       = /*VS_START_240*/9'h1EE + 9'd3;
+	parameter VS_END_PAL_224   = VS_START_PAL_224 + 9'd3;
+	parameter VS_END_PAL_240   = VS_START_PAL_240 + 9'd3;
+	parameter VS_END_PAL_256   = VS_START_PAL_256 + 9'd3;
+	parameter VBL_START_224    = 9'h0E0;
+	parameter VBL_START_240    = 9'h0F0;
+	parameter VBL_START_256    = 9'h100;
 	
 	VDP2Regs_t REGS;
 	
@@ -180,7 +178,7 @@ module VDP2 (
 	
 	bit          DOT_CE_R,DOT_CE_F;
 	bit  [ 8: 0] H_CNT, V_CNT;
-	bit  [ 8: 0] VCT;
+	bit  [ 8: 0] HCT,VCT;
 	bit  [ 8: 0] SCRNX, SCRNY;
 	bit          SCRNX0;
 	bit  [ 3: 0] MOSAIC_HCNT,MOSAIC_VCNT;
@@ -218,26 +216,26 @@ module VDP2 (
 	assign DCE_F = DOT_CE_F;
 	
 	wire LAST_DOT = (H_CNT == HRES_320 - 1 && !HRES[0]) || (H_CNT == HRES_352 - 1 && HRES[0]);
-//	wire PRELAST_DOT = (H_CNT == HRES_320 - 2 && !HRES[0]) || (H_CNT == HRES_352 - 2 && HRES[0]);
 	wire [8:0] VBL_HPOS = !HRES[0] ? 9'h15B : 9'h177;
 	wire [8:0] HS_START = (!HRES[0] ? HS_START_320 : HS_START_352) - (!PAL ? 9'd0 : 9'd4);
 	wire [8:0] HS_MID = (!HRES[0] ? HS_MID_320 : HS_MID_352) - (!PAL ? 9'd0 : 9'd4);
 	wire [8:0] HS_END =  HS_START + 9'd32; 
-	wire [8:0] HBL_END = !HRES[1] ? 9'd3 : 9'd2;
+	wire [8:0] HBL_END = !HRES[1] ? 9'd2 : 9'd1;
 	wire [8:0] HDISP_END = !HRES[0] ? 9'd320 - 9'd1 : 9'd352 - 9'd1;
-	wire [8:0] VBL_START = VBL_START_224 + (!VRES[1] || !PAL ? (!VRES[0] ? 9'd0 : 9'd16) : 9'd32);
-	wire [8:0] VS_NTSC_START  = (!VRES[1] ? (!VRES[0] ? VS_START_224 : VS_START_240) : VS_START_256);
-	wire [8:0] VS_PAL_START  = (!VRES[1] ? (!VRES[0] ? VS_START_PAL_224 : VS_START_PAL_240) : VS_START_256);
-	wire [8:0] VS_NTSC_END    = !VRES[1] ? (!VRES[0] ? VS_END_224 : VS_END_240) : VS_END_256;
-	wire [8:0] VS_PAL_END    = !VRES[1] ? (!VRES[0] ? VS_END_PAL_224 : VS_END_PAL_240) : VS_END_256;
+	wire [8:0] BREAK_DOT  = !HRES[0] ? 9'h15B - 9'd1 : 9'h177 - 9'd1;
+	wire [8:0] VBL_START = (!VRES[1] || !PAL ? (!VRES[0] ? VBL_START_224 : VBL_START_240) : VBL_START_256);
+	wire [8:0] VS_NTSC_START  = (!VRES[1] ? (!VRES[0] ? VS_START_224 : VS_START_240) : VS_START_240);
+	wire [8:0] VS_PAL_START  = (!VRES[1] ? (!VRES[0] ? VS_START_PAL_224 : VS_START_PAL_240) : VS_START_PAL_256);
+	wire [8:0] VS_NTSC_END    = !VRES[1] ? (!VRES[0] ? VS_END_224 : VS_END_240) : VS_END_240;
+	wire [8:0] VS_PAL_END    = !VRES[1] ? (!VRES[0] ? VS_END_PAL_224 : VS_END_PAL_240) : VS_END_PAL_256;
 	wire [8:0] VS_START  = PAL ? VS_PAL_START : VS_NTSC_START;
 	wire [8:0] VS_END    = PAL ? VS_PAL_END : VS_NTSC_END;
 	wire [8:0] VSYNC_HSTART = REGS.TVMD.LSMD[1] && ODD ? HS_MID : HS_START;
 	wire [8:0] VBORD_START  = !VRES[1] ? (!VRES[0] ? 9'd263-9'd12 : 9'd263-9'd4) : 9'd313-9'd0;
 	wire [8:0] VBORD_END  = !VRES[1] ? (!VRES[0] ? 9'd224+9'd12 : 9'd240+9'd4) : 9'd256+9'd0;
-	wire [8:0] BREAK_LINE  = (!PAL ? (VRES_NTSC - 9'd3) : (VRES_PAL - 9'd3)) - (REGS.TVMD.LSMD[1] && ODD ? 9'd1 : 9'd0);
-	wire [8:0] NEXT_TO_LAST_LINE  = 9'h1FE;
-	wire [8:0] LAST_LINE  = 9'h1FF;
+	wire [8:0] BREAK_LINE  = (!PAL ? 9'h0F5 : 9'h127);
+	wire [8:0] NEXT_TO_LAST_LINE  = 9'h1FE - (REGS.TVMD.LSMD[1] && ODD ? 9'd1 : 9'd0);
+	wire [8:0] LAST_LINE  = 9'h1FF - (REGS.TVMD.LSMD[1] && ODD ? 9'd1 : 9'd0);
 	wire IS_LAST_LINE = (V_CNT == LAST_LINE);
 	
 	bit  [ 8: 0] HDISP_CNT;
@@ -250,6 +248,8 @@ module VDP2 (
 		if (!RST_N) begin
 			H_CNT <= '0;
 			V_CNT <= '0;
+			HCT <= '0;
+			VCT <= '0;
 			HSYNC <= 0;
 			VSYNC <= 0;
 			HBLANK <= 0;
@@ -259,14 +259,29 @@ module VDP2 (
 		end
 		else if (DOT_CE_R) begin
 			H_CNT <= H_CNT + 9'd1;
-			if (LAST_DOT) begin
+			if (H_CNT == BREAK_DOT) begin
+				HCT <= 9'h1B0;
+			end else if (LAST_DOT) begin
 				H_CNT <= '0;
 				V_CNT <= V_CNT + 9'd1;
-				if (V_CNT == BREAK_LINE) begin
-					V_CNT <= 9'h1FE;
+				if (V_CNT == BREAK_LINE - 1) begin
+					V_CNT <= 9'h1EE;
 				end else if (V_CNT == LAST_LINE) begin
 					V_CNT <= '0;
 				end
+			end
+			
+			HCT <= HCT + 9'd1;
+			if (HCT == BREAK_DOT) begin
+				HCT <= 9'h1B0;
+				VCT <= VCT + 9'd1;
+				if (VCT == BREAK_LINE - 1) begin
+					VCT <= 9'h1EE;
+				end else if (VCT == LAST_LINE) begin
+					VCT <= '0;
+				end
+			end else if (LAST_DOT) begin
+				HCT <= '0;
 			end
 			
 			if (H_CNT == HS_START - 1) begin
@@ -276,7 +291,7 @@ module VDP2 (
 			end
 			
 			HDISP_CNT <= HDISP_CNT + 9'd1;
-			if (H_CNT == HBL_END - 1) begin
+			if (H_CNT == HBL_END) begin
 				HBLANK <= 0;
 				HDISP_CNT <= '0;
 			end else if (HDISP_CNT == HDISP_END) begin
@@ -407,10 +422,12 @@ module VDP2 (
 	wire [ 8: 0] BS_FETCH_START = !HRES[0] ? 9'h18A : 9'h1A6;
 	wire [ 8: 0] REFRESH_START = !HRES[0] ? 9'h190 : 9'h1AC;
 	wire [ 8: 0] REFRESH_END = !HRES[0] ? 9'h194 : 9'h1B0;
-	wire [ 8: 0] NOACCESS_START = !HRES[0] ? 9'h0 : 9'h1A9;
-	wire [ 8: 0] NOACCESS_END = !HRES[0] ? 9'h1FF : 9'h1AB;
-	wire [ 8: 0] NOACCESS2_START = !HRES[0] ? 9'h0 : 9'h162;
-	wire [ 8: 0] NOACCESS2_END = !HRES[0] ? 9'h1FF : 9'h165;
+	wire [ 8: 0] NOACCESS_START = !HRES[0] ? 9'h136 : 9'h1A9;
+	wire [ 8: 0] NOACCESS_END = !HRES[0] ? 9'h13D : 9'h1AB;
+	wire [ 8: 0] NOACCESS2_START = !HRES[0] ? 9'h13F : 9'h162;
+	wire [ 8: 0] NOACCESS2_END = !HRES[0] ? 9'h145 : 9'h165;
+	wire [ 8: 0] NOACCESS3_START = !HRES[0] ? 9'h18E : 9'h0;
+	wire [ 8: 0] NOACCESS3_END = !HRES[0] ? 9'h18F : 9'h1FF;
 	wire [ 8: 0] NBG_SCREEN_START = !HRES[0] ? 9'h19D : 9'h1B9;
 	
 	bit  [ 2: 0] CELLX;
@@ -551,9 +568,9 @@ module VDP2 (
 				REFRESH <= 0;
 			end
 			
-			if (H_CNT == NOACCESS_START - 1) begin
+			if (H_CNT == NOACCESS_START - 1 || H_CNT == NOACCESS2_START - 1 || H_CNT == NOACCESS3_START - 1) begin
 				NOACCESS <= 1;
-			end else if (H_CNT == NOACCESS_END) begin
+			end else if (H_CNT == NOACCESS_END || H_CNT == NOACCESS2_END || H_CNT == NOACCESS3_END) begin
 				NOACCESS <= 0;
 			end
 		end
@@ -562,7 +579,6 @@ module VDP2 (
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
 			SCRNX0 <= 0;
-			VCT <= '0;
 		end
 		else if (DOT_CE_F) begin
 			SCRNX0 <= 1;
@@ -578,16 +594,6 @@ module VDP2 (
 				SCRNY <= SCRNY + 1'd1;
 				if (V_CNT == LAST_LINE) begin
 					SCRNY <= '0;
-				end
-			end
-			
-			
-			if (H_CNT == RPB_FETCH_START - 1) begin
-				VCT <= VCT + 9'd1;
-				if (VCT == BREAK_LINE) begin
-					VCT <= 9'h1FE;
-				end else if (VCT == LAST_LINE) begin
-					VCT <= '0;
 				end
 			end
 		end
@@ -1024,7 +1030,7 @@ module VDP2 (
 					VRAMA1_RD <= ~RxRP_ADDR[18];
 					VRAMB0_RD <=  RxRP_ADDR[18];
 					VRAMB1_RD <=  RxRP_ADDR[18];
-				end else if (RCTA_FETCH) begin
+				end else if ((RCTA_FETCH && REGS.BGON.R0ON) || (RCTA_FETCH && REGS.BGON.R1ON)) begin
 					VRAMA0_A <= {1'b0,RxCTA_ADDR[16:1]};
 					VRAMA1_A <= {     RxCTA_ADDR[16:1]};
 					VRAMB0_A <= {1'b0,RxCTA_ADDR[16:1]};
@@ -1033,7 +1039,7 @@ module VDP2 (
 					VRAMA1_RD <= ~RxCTA_ADDR[18];
 					VRAMB0_RD <=  RxCTA_ADDR[18];
 					VRAMB1_RD <=  RxCTA_ADDR[18];
-				end else if (RCTB_FETCH) begin
+				end else if ((RCTB_FETCH && REGS.BGON.R0ON) || (RCTB_FETCH && REGS.BGON.R1ON)) begin
 					VRAMA0_A <= {1'b0,RxCTB_ADDR[16:1]};
 					VRAMA1_A <= {     RxCTB_ADDR[16:1]};
 					VRAMB0_A <= {1'b0,RxCTB_ADDR[16:1]};
@@ -1142,7 +1148,7 @@ module VDP2 (
 					VRAMA_ALLOW <= 0;
 					if (!NBG_A0VA.PN && !RBG_A0VA.PN && !NBG_A0VA.CH && !RBG_A0VA.CH && !RBG_A0VA.CT && !NBG_A0VA.VS &&
 						 !NBG_A1VA.PN && !RBG_A1VA.PN && !NBG_A1VA.CH && !RBG_A1VA.CH && !RBG_A1VA.CT && !NBG_A1VA.VS && !VA_PIPE[0].AxNA) begin
-						if ((VRAM_READ_PEND && (VRAMA0_READ || VRAMA1_READ)) || (VRAM_WRITE_PEND && !VRAM_WA[18]) && (VRAMA_ALLOW || !REGS.RAMCTL.VRAMD)) begin
+						if ((VRAM_READ_PEND && (VRAMA0_READ || VRAMA1_READ)) || (VRAM_WRITE_PEND && !VRAM_WA[18]) && (VRAMA_ALLOW || !REGS.RAMCTL.VRAMD || VA_PIPE[1].AxNA)) begin
 							if (VRAM_WRITE_PEND) begin
 								VRAMA0_A <= {VRAM_WA[17:2],1'b0};
 								VRAMA_D <= VRAM_D;
@@ -1215,7 +1221,7 @@ module VDP2 (
 					VRAMB_ALLOW <= 0;
 					if (!NBG_B0VA.PN && !RBG_B0VA.PN && !NBG_B0VA.CH && !RBG_B0VA.CH && !RBG_B0VA.CT && !NBG_B0VA.VS &&
 						 !NBG_B1VA.PN && !RBG_B1VA.PN && !NBG_B1VA.CH && !RBG_B1VA.CH && !RBG_B1VA.CT && !NBG_B1VA.VS && !VA_PIPE[0].BxNA) begin
-						if ((VRAM_READ_PEND && (VRAMB0_READ || VRAMB1_READ)) || (VRAM_WRITE_PEND && VRAM_WA[18]) && (VRAMB_ALLOW || !REGS.RAMCTL.VRBMD)) begin
+						if ((VRAM_READ_PEND && (VRAMB0_READ || VRAMB1_READ)) || (VRAM_WRITE_PEND && VRAM_WA[18]) && (VRAMB_ALLOW || !REGS.RAMCTL.VRBMD || VA_PIPE[1].BxNA)) begin
 							if (VRAM_WRITE_PEND) begin
 								VRAMB0_A <= {VRAM_WA[17:2],1'b0};
 								VRAMA_D <= VRAM_D;//////////////////////
@@ -3552,9 +3558,9 @@ module VDP2 (
 	//Color RAM
 	wire         PAL_SEL = (A[20:19] == 2'b10) && !CS_N && !AD_N;	//100000-17FFFF
 	wire         PAL_WE = PAL_SEL && !WE_N && !DTEN_N && !REQ_N;
-	wire [10: 1] IO_PAL_A   = REGS.RAMCTL.CRMD == 2'b10 ? A[11:2] : A[10:1];
-	wire         IO_PAL0_WE = (REGS.RAMCTL.CRMD == 2'b01 ? ~A[11] : REGS.RAMCTL.CRMD == 2'b10 ? ~A[1] : 1'b1) & PAL_WE;
-	wire         IO_PAL1_WE = (REGS.RAMCTL.CRMD == 2'b01 ?  A[11] : REGS.RAMCTL.CRMD == 2'b10 ?  A[1] : 1'b1) & PAL_WE;
+	wire [10: 1] IO_PAL_A   = REGS.RAMCTL.CRMD >= 2'b10 ? A[11:2] : A[10:1];
+	wire         IO_PAL0_WE = (REGS.RAMCTL.CRMD == 2'b01 ? ~A[11] : REGS.RAMCTL.CRMD >= 2'b10 ? ~A[1] : 1'b1) & PAL_WE;
+	wire         IO_PAL1_WE = (REGS.RAMCTL.CRMD == 2'b01 ?  A[11] : REGS.RAMCTL.CRMD >= 2'b10 ?  A[1] : 1'b1) & PAL_WE;
 	wire [10: 1] PAL_A = PAL_N[9:0];
 	
 	bit          IO_PAL_RD;
@@ -3565,7 +3571,7 @@ module VDP2 (
 			// synopsys translate_on
 		end else begin
 			if (PAL_SEL && WE_N && DTEN_N && !REQ_N) begin
-				IO_PAL_RD <= REGS.RAMCTL.CRMD == 2'b10 ? A[1] : A[11];
+				IO_PAL_RD <= REGS.RAMCTL.CRMD >= 2'b10 ? A[1] : A[11];
 			end
 		end
 	end
@@ -3581,7 +3587,7 @@ module VDP2 (
 		
 		.ADDR_B(IO_PAL_A),
 		.DATA_B(DI),
-		.WREN_B({2{IO_PAL0_WE}} & ~DQM),
+		.WREN_B({2{IO_PAL0_WE}}),
 		.Q_B(PAL0_DO)
 	);
 	
@@ -3596,7 +3602,7 @@ module VDP2 (
 		
 		.ADDR_B(IO_PAL_A),
 		.DATA_B(DI),
-		.WREN_B({2{IO_PAL1_WE}} & ~DQM),
+		.WREN_B({2{IO_PAL1_WE}}),
 		.Q_B(PAL1_DO)
 	);
 	wire [15:0] PAL_DO = !IO_PAL_RD ? PAL0_DO : PAL1_DO;
@@ -3633,13 +3639,17 @@ module VDP2 (
 	wire VRAM_REQ = VRAM_SEL & ~REQ_N;
 	wire REG_SEL = (A[20:18] == 3'b110) & ~CS_N & ~AD_N;
 	
-	bit [20:1] A;
-	bit        WE_N;
-	bit  [1:0] DQM;
-	bit        BURST;
-	bit [15:0] REG_DO;
+	bit [20: 1] A;
+	bit         WE_N;
+	bit [ 1: 0] DQM;
+	bit         BURST;
+	bit [15: 0] REG_DO;
+	bit         REG_RRDY;
+	bit [ 8: 1] REG_RA;
 	always @(posedge CLK or negedge RST_N) begin
-		bit        EXLAT_N_OLD;
+		bit         EXLAT_N_OLD;
+		bit [ 3: 0] REG_RD_DELAY;
+		bit         REG_RD_DELAY2,REG_RD_DELAY3;
 		
 		if (!RST_N) begin
 			// synopsys translate_off
@@ -3789,6 +3799,7 @@ module VDP2 (
 			REGS.COBB <= '0;
 
 			REG_DO <= '0;
+			REG_RRDY <= 0;
 			// synopsys translate_on
 		end else if (!RES_N) begin
 			REGS.TVMD <= '0;
@@ -3936,185 +3947,201 @@ module VDP2 (
 			REGS.COBG <= '0;
 			REGS.COBB <= '0;
 		end else begin
-			if (REG_SEL && !REQ_N) begin
-				if (!WE_N && !DTEN_N) begin
-					case ({A[8:1],1'b0})
-						9'h000: begin if (!DQM[1]) REGS.TVMD[15:8]   <= DI[15:8] & TVMD_MASK[15:8];   if (!DQM[0]) REGS.TVMD[7:0]   <= DI[7:0] & TVMD_MASK[7:0];   end
-						9'h002: begin if (!DQM[1]) REGS.EXTEN[15:8]  <= DI[15:8] & EXTEN_MASK[15:8];  if (!DQM[0]) REGS.EXTEN[7:0]  <= DI[7:0] & EXTEN_MASK[7:0];  end
-						9'h006: begin if (!DQM[1]) REGS.VRSIZE[15:8] <= DI[15:8] & VRSIZE_MASK[15:8]; if (!DQM[0]) REGS.VRSIZE[7:0] <= DI[7:0] & VRSIZE_MASK[7:0]; end
-						9'h00C: begin if (!DQM[1]) REGS.RSRV0[15:8]  <= DI[15:8] & RSRV_MASK[15:8];   if (!DQM[0]) REGS.RSRV0[7:0]  <= DI[7:0] & RSRV_MASK[7:0];   end
-						9'h00E: begin if (!DQM[1]) REGS.RAMCTL[15:8] <= DI[15:8] & RAMCTL_MASK[15:8]; if (!DQM[0]) REGS.RAMCTL[7:0] <= DI[7:0] & RAMCTL_MASK[7:0]; end
-						9'h010: begin if (!DQM[1]) REGS.CYCA0L[15:8] <= DI[15:8] & CYCx0L_MASK[15:8]; if (!DQM[0]) REGS.CYCA0L[7:0] <= DI[7:0] & CYCx0L_MASK[7:0]; end
-						9'h012: begin if (!DQM[1]) REGS.CYCA0U[15:8] <= DI[15:8] & CYCx0U_MASK[15:8]; if (!DQM[0]) REGS.CYCA0U[7:0] <= DI[7:0] & CYCx0U_MASK[7:0]; end
-						9'h014: begin if (!DQM[1]) REGS.CYCA1L[15:8] <= DI[15:8] & CYCx1L_MASK[15:8]; if (!DQM[0]) REGS.CYCA1L[7:0] <= DI[7:0] & CYCx1L_MASK[7:0]; end
-						9'h016: begin if (!DQM[1]) REGS.CYCA1U[15:8] <= DI[15:8] & CYCx1U_MASK[15:8]; if (!DQM[0]) REGS.CYCA1U[7:0] <= DI[7:0] & CYCx1U_MASK[7:0]; end
-						9'h018: begin if (!DQM[1]) REGS.CYCB0L[15:8] <= DI[15:8] & CYCx0L_MASK[15:8]; if (!DQM[0]) REGS.CYCB0L[7:0] <= DI[7:0] & CYCx0L_MASK[7:0]; end
-						9'h01A: begin if (!DQM[1]) REGS.CYCB0U[15:8] <= DI[15:8] & CYCx0U_MASK[15:8]; if (!DQM[0]) REGS.CYCB0U[7:0] <= DI[7:0] & CYCx0U_MASK[7:0]; end
-						9'h01C: begin if (!DQM[1]) REGS.CYCB1L[15:8] <= DI[15:8] & CYCx1L_MASK[15:8]; if (!DQM[0]) REGS.CYCB1L[7:0] <= DI[7:0] & CYCx1L_MASK[7:0]; end
-						9'h01E: begin if (!DQM[1]) REGS.CYCB1U[15:8] <= DI[15:8] & CYCx1U_MASK[15:8]; if (!DQM[0]) REGS.CYCB1U[7:0] <= DI[7:0] & CYCx1U_MASK[7:0]; end
-						9'h020: begin if (!DQM[1]) REGS.BGON[15:8]   <= DI[15:8] & BGON_MASK[15:8];   if (!DQM[0]) REGS.BGON[7:0]   <= DI[7:0] & BGON_MASK[7:0];   end
-						9'h022: begin if (!DQM[1]) REGS.MZCTL[15:8]  <= DI[15:8] & MZCTL_MASK[15:8];  if (!DQM[0]) REGS.MZCTL[7:0]  <= DI[7:0] & MZCTL_MASK[7:0];  end
-						9'h024: begin if (!DQM[1]) REGS.SFSEL[15:8]  <= DI[15:8] & SFSEL_MASK[15:8];  if (!DQM[0]) REGS.SFSEL[7:0]  <= DI[7:0] & SFSEL_MASK[7:0];  end
-						9'h026: begin if (!DQM[1]) REGS.SFCODE[15:8] <= DI[15:8] & SFCODE_MASK[15:8]; if (!DQM[0]) REGS.SFCODE[7:0] <= DI[7:0] & SFCODE_MASK[7:0]; end
-						9'h028: begin if (!DQM[1]) REGS.CHCTLA[15:8] <= DI[15:8] & CHCTLA_MASK[15:8]; if (!DQM[0]) REGS.CHCTLA[7:0] <= DI[7:0] & CHCTLA_MASK[7:0]; end
-						9'h02A: begin if (!DQM[1]) REGS.CHCTLB[15:8] <= DI[15:8] & CHCTLB_MASK[15:8]; if (!DQM[0]) REGS.CHCTLB[7:0] <= DI[7:0] & CHCTLB_MASK[7:0]; end
-						9'h02C: begin if (!DQM[1]) REGS.BMPNA[15:8]  <= DI[15:8] & BMPNA_MASK[15:8];  if (!DQM[0]) REGS.BMPNA[7:0]  <= DI[7:0] & BMPNA_MASK[7:0];  end
-						9'h02E: begin if (!DQM[1]) REGS.BMPNB[15:8]  <= DI[15:8] & BMPNB_MASK[15:8];  if (!DQM[0]) REGS.BMPNB[7:0]  <= DI[7:0] & BMPNB_MASK[7:0];  end
-						9'h030: begin if (!DQM[1]) REGS.PNCN0[15:8]  <= DI[15:8] & PNCNx_MASK[15:8];  if (!DQM[0]) REGS.PNCN0[7:0]  <= DI[7:0] & PNCNx_MASK[7:0];  end
-						9'h032: begin if (!DQM[1]) REGS.PNCN1[15:8]  <= DI[15:8] & PNCNx_MASK[15:8];  if (!DQM[0]) REGS.PNCN1[7:0]  <= DI[7:0] & PNCNx_MASK[7:0];  end
-						9'h034: begin if (!DQM[1]) REGS.PNCN2[15:8]  <= DI[15:8] & PNCNx_MASK[15:8];  if (!DQM[0]) REGS.PNCN2[7:0]  <= DI[7:0] & PNCNx_MASK[7:0];  end
-						9'h036: begin if (!DQM[1]) REGS.PNCN3[15:8]  <= DI[15:8] & PNCNx_MASK[15:8];  if (!DQM[0]) REGS.PNCN3[7:0]  <= DI[7:0] & PNCNx_MASK[7:0];  end
-						9'h038: begin if (!DQM[1]) REGS.PNCR[15:8]   <= DI[15:8] & PNCR_MASK[15:8];   if (!DQM[0]) REGS.PNCR[7:0]   <= DI[7:0] & PNCR_MASK[7:0];   end
-						9'h03A: begin if (!DQM[1]) REGS.PLSZ[15:8]   <= DI[15:8] & PLSZ_MASK[15:8];   if (!DQM[0]) REGS.PLSZ[7:0]   <= DI[7:0] & PLSZ_MASK[7:0];   end
-						9'h03C: begin if (!DQM[1]) REGS.MPOFN[15:8]  <= DI[15:8] & MPOFN_MASK[15:8];  if (!DQM[0]) REGS.MPOFN[7:0]  <= DI[7:0] & MPOFN_MASK[7:0];  end
-						9'h03E: begin if (!DQM[1]) REGS.MPOFR[15:8]  <= DI[15:8] & MPOFR_MASK[15:8];  if (!DQM[0]) REGS.MPOFR[7:0]  <= DI[7:0] & MPOFR_MASK[7:0];  end
-						9'h040: begin if (!DQM[1]) REGS.MPABN0[15:8] <= DI[15:8] & MPABNx_MASK[15:8]; if (!DQM[0]) REGS.MPABN0[7:0] <= DI[7:0] & MPABNx_MASK[7:0]; end
-						9'h042: begin if (!DQM[1]) REGS.MPCDN0[15:8] <= DI[15:8] & MPCDNx_MASK[15:8]; if (!DQM[0]) REGS.MPCDN0[7:0] <= DI[7:0] & MPCDNx_MASK[7:0]; end
-						9'h044: begin if (!DQM[1]) REGS.MPABN1[15:8] <= DI[15:8] & MPABNx_MASK[15:8]; if (!DQM[0]) REGS.MPABN1[7:0] <= DI[7:0] & MPABNx_MASK[7:0]; end
-						9'h046: begin if (!DQM[1]) REGS.MPCDN1[15:8] <= DI[15:8] & MPCDNx_MASK[15:8]; if (!DQM[0]) REGS.MPCDN1[7:0] <= DI[7:0] & MPCDNx_MASK[7:0]; end
-						9'h048: begin if (!DQM[1]) REGS.MPABN2[15:8] <= DI[15:8] & MPABNx_MASK[15:8]; if (!DQM[0]) REGS.MPABN2[7:0] <= DI[7:0] & MPABNx_MASK[7:0]; end
-						9'h04A: begin if (!DQM[1]) REGS.MPCDN2[15:8] <= DI[15:8] & MPCDNx_MASK[15:8]; if (!DQM[0]) REGS.MPCDN2[7:0] <= DI[7:0] & MPCDNx_MASK[7:0]; end
-						9'h04C: begin if (!DQM[1]) REGS.MPABN3[15:8] <= DI[15:8] & MPABNx_MASK[15:8]; if (!DQM[0]) REGS.MPABN3[7:0] <= DI[7:0] & MPABNx_MASK[7:0]; end
-						9'h04E: begin if (!DQM[1]) REGS.MPCDN3[15:8] <= DI[15:8] & MPCDNx_MASK[15:8]; if (!DQM[0]) REGS.MPCDN3[7:0] <= DI[7:0] & MPCDNx_MASK[7:0]; end
-						9'h050: begin if (!DQM[1]) REGS.MPABRA[15:8] <= DI[15:8] & MPABRx_MASK[15:8]; if (!DQM[0]) REGS.MPABRA[7:0] <= DI[7:0] & MPABRx_MASK[7:0]; end
-						9'h052: begin if (!DQM[1]) REGS.MPCDRA[15:8] <= DI[15:8] & MPCDRx_MASK[15:8]; if (!DQM[0]) REGS.MPCDRA[7:0] <= DI[7:0] & MPCDRx_MASK[7:0]; end
-						9'h054: begin if (!DQM[1]) REGS.MPEFRA[15:8] <= DI[15:8] & MPEFRx_MASK[15:8]; if (!DQM[0]) REGS.MPEFRA[7:0] <= DI[7:0] & MPEFRx_MASK[7:0]; end
-						9'h056: begin if (!DQM[1]) REGS.MPGHRA[15:8] <= DI[15:8] & MPGHRx_MASK[15:8]; if (!DQM[0]) REGS.MPGHRA[7:0] <= DI[7:0] & MPGHRx_MASK[7:0]; end
-						9'h058: begin if (!DQM[1]) REGS.MPIJRA[15:8] <= DI[15:8] & MPIJRx_MASK[15:8]; if (!DQM[0]) REGS.MPIJRA[7:0] <= DI[7:0] & MPIJRx_MASK[7:0]; end
-						9'h05A: begin if (!DQM[1]) REGS.MPKLRA[15:8] <= DI[15:8] & MPKLRx_MASK[15:8]; if (!DQM[0]) REGS.MPKLRA[7:0] <= DI[7:0] & MPKLRx_MASK[7:0]; end
-						9'h05C: begin if (!DQM[1]) REGS.MPMNRA[15:8] <= DI[15:8] & MPMNRx_MASK[15:8]; if (!DQM[0]) REGS.MPMNRA[7:0] <= DI[7:0] & MPMNRx_MASK[7:0]; end
-						9'h05E: begin if (!DQM[1]) REGS.MPOPRA[15:8] <= DI[15:8] & MPOPRx_MASK[15:8]; if (!DQM[0]) REGS.MPOPRA[7:0] <= DI[7:0] & MPOPRx_MASK[7:0]; end
-						9'h060: begin if (!DQM[1]) REGS.MPABRB[15:8] <= DI[15:8] & MPABRx_MASK[15:8]; if (!DQM[0]) REGS.MPABRB[7:0] <= DI[7:0] & MPABRx_MASK[7:0]; end
-						9'h062: begin if (!DQM[1]) REGS.MPCDRB[15:8] <= DI[15:8] & MPCDRx_MASK[15:8]; if (!DQM[0]) REGS.MPCDRB[7:0] <= DI[7:0] & MPCDRx_MASK[7:0]; end
-						9'h064: begin if (!DQM[1]) REGS.MPEFRB[15:8] <= DI[15:8] & MPEFRx_MASK[15:8]; if (!DQM[0]) REGS.MPEFRB[7:0] <= DI[7:0] & MPEFRx_MASK[7:0]; end
-						9'h066: begin if (!DQM[1]) REGS.MPGHRB[15:8] <= DI[15:8] & MPGHRx_MASK[15:8]; if (!DQM[0]) REGS.MPGHRB[7:0] <= DI[7:0] & MPGHRx_MASK[7:0]; end
-						9'h068: begin if (!DQM[1]) REGS.MPIJRB[15:8] <= DI[15:8] & MPIJRx_MASK[15:8]; if (!DQM[0]) REGS.MPIJRB[7:0] <= DI[7:0] & MPIJRx_MASK[7:0]; end
-						9'h06A: begin if (!DQM[1]) REGS.MPKLRB[15:8] <= DI[15:8] & MPKLRx_MASK[15:8]; if (!DQM[0]) REGS.MPKLRB[7:0] <= DI[7:0] & MPKLRx_MASK[7:0]; end
-						9'h06C: begin if (!DQM[1]) REGS.MPMNRB[15:8] <= DI[15:8] & MPMNRx_MASK[15:8]; if (!DQM[0]) REGS.MPMNRB[7:0] <= DI[7:0] & MPMNRx_MASK[7:0]; end
-						9'h06E: begin if (!DQM[1]) REGS.MPOPRB[15:8] <= DI[15:8] & MPOPRx_MASK[15:8]; if (!DQM[0]) REGS.MPOPRB[7:0] <= DI[7:0] & MPOPRx_MASK[7:0]; end
-						9'h070: begin if (!DQM[1]) REGS.SCXIN0[15:8] <= DI[15:8] & SCXINx_MASK[15:8]; if (!DQM[0]) REGS.SCXIN0[7:0] <= DI[7:0] & SCXINx_MASK[7:0]; end
-						9'h072: begin if (!DQM[1]) REGS.SCXDN0[15:8] <= DI[15:8] & SCXDNx_MASK[15:8]; if (!DQM[0]) REGS.SCXDN0[7:0] <= DI[7:0] & SCXDNx_MASK[7:0]; end
-						9'h074: begin if (!DQM[1]) REGS.SCYIN0[15:8] <= DI[15:8] & SCYINx_MASK[15:8]; if (!DQM[0]) REGS.SCYIN0[7:0] <= DI[7:0] & SCYINx_MASK[7:0]; end
-						9'h076: begin if (!DQM[1]) REGS.SCYDN0[15:8] <= DI[15:8] & SCYDNx_MASK[15:8]; if (!DQM[0]) REGS.SCYDN0[7:0] <= DI[7:0] & SCYDNx_MASK[7:0]; end
-						9'h078: begin if (!DQM[1]) REGS.ZMXIN0[15:8] <= DI[15:8] & ZMXINx_MASK[15:8]; if (!DQM[0]) REGS.ZMXIN0[7:0] <= DI[7:0] & ZMXINx_MASK[7:0]; end
-						9'h07A: begin if (!DQM[1]) REGS.ZMXDN0[15:8] <= DI[15:8] & ZMXDNx_MASK[15:8]; if (!DQM[0]) REGS.ZMXDN0[7:0] <= DI[7:0] & ZMXDNx_MASK[7:0]; end
-						9'h07C: begin if (!DQM[1]) REGS.ZMYIN0[15:8] <= DI[15:8] & ZMYINx_MASK[15:8]; if (!DQM[0]) REGS.ZMYIN0[7:0] <= DI[7:0] & ZMYINx_MASK[7:0]; end
-						9'h07E: begin if (!DQM[1]) REGS.ZMYDN0[15:8] <= DI[15:8] & ZMYDNx_MASK[15:8]; if (!DQM[0]) REGS.ZMYDN0[7:0] <= DI[7:0] & ZMYDNx_MASK[7:0]; end
-						9'h080: begin if (!DQM[1]) REGS.SCXIN1[15:8] <= DI[15:8] & SCXINx_MASK[15:8]; if (!DQM[0]) REGS.SCXIN1[7:0] <= DI[7:0] & SCXINx_MASK[7:0]; end
-						9'h082: begin if (!DQM[1]) REGS.SCXDN1[15:8] <= DI[15:8] & SCXDNx_MASK[15:8]; if (!DQM[0]) REGS.SCXDN1[7:0] <= DI[7:0] & SCXDNx_MASK[7:0]; end
-						9'h084: begin if (!DQM[1]) REGS.SCYIN1[15:8] <= DI[15:8] & SCYINx_MASK[15:8]; if (!DQM[0]) REGS.SCYIN1[7:0] <= DI[7:0] & SCYINx_MASK[7:0]; end
-						9'h086: begin if (!DQM[1]) REGS.SCYDN1[15:8] <= DI[15:8] & SCYDNx_MASK[15:8]; if (!DQM[0]) REGS.SCYDN1[7:0] <= DI[7:0] & SCYDNx_MASK[7:0]; end
-						9'h088: begin if (!DQM[1]) REGS.ZMXIN1[15:8] <= DI[15:8] & ZMXINx_MASK[15:8]; if (!DQM[0]) REGS.ZMXIN1[7:0] <= DI[7:0] & ZMXINx_MASK[7:0]; end
-						9'h08A: begin if (!DQM[1]) REGS.ZMXDN1[15:8] <= DI[15:8] & ZMXDNx_MASK[15:8]; if (!DQM[0]) REGS.ZMXDN1[7:0] <= DI[7:0] & ZMXDNx_MASK[7:0]; end
-						9'h08C: begin if (!DQM[1]) REGS.ZMYIN1[15:8] <= DI[15:8] & ZMYINx_MASK[15:8]; if (!DQM[0]) REGS.ZMYIN1[7:0] <= DI[7:0] & ZMYINx_MASK[7:0]; end
-						9'h08E: begin if (!DQM[1]) REGS.ZMYDN1[15:8] <= DI[15:8] & ZMYDNx_MASK[15:8]; if (!DQM[0]) REGS.ZMYDN1[7:0] <= DI[7:0] & ZMYDNx_MASK[7:0]; end
-						9'h090: begin if (!DQM[1]) REGS.SCXN2[15:8]  <= DI[15:8] & SCXNx_MASK[15:8];  if (!DQM[0]) REGS.SCXN2[7:0]  <= DI[7:0] & SCXNx_MASK[7:0];  end
-						9'h092: begin if (!DQM[1]) REGS.SCYN2[15:8]  <= DI[15:8] & SCYNx_MASK[15:8];  if (!DQM[0]) REGS.SCYN2[7:0]  <= DI[7:0] & SCYNx_MASK[7:0];  end
-						9'h094: begin if (!DQM[1]) REGS.SCXN3[15:8]  <= DI[15:8] & SCXNx_MASK[15:8];  if (!DQM[0]) REGS.SCXN3[7:0]  <= DI[7:0] & SCXNx_MASK[7:0];  end
-						9'h096: begin if (!DQM[1]) REGS.SCYN3[15:8]  <= DI[15:8] & SCYNx_MASK[15:8];  if (!DQM[0]) REGS.SCYN3[7:0]  <= DI[7:0] & SCYNx_MASK[7:0];  end
-						9'h098: begin if (!DQM[1]) REGS.ZMCTL[15:8]  <= DI[15:8] & ZMCTL_MASK[15:8];  if (!DQM[0]) REGS.ZMCTL[7:0]  <= DI[7:0] & ZMCTL_MASK[7:0];  end
-						9'h09A: begin if (!DQM[1]) REGS.SCRCTL[15:8] <= DI[15:8] & SCRCTL_MASK[15:8]; if (!DQM[0]) REGS.SCRCTL[7:0] <= DI[7:0] & SCRCTL_MASK[7:0]; end
-						9'h09C: begin if (!DQM[1]) REGS.VCSTAU[15:8] <= DI[15:8] & VCSTAU_MASK[15:8]; if (!DQM[0]) REGS.VCSTAU[7:0] <= DI[7:0] & VCSTAU_MASK[7:0]; end
-						9'h09E: begin if (!DQM[1]) REGS.VCSTAL[15:8] <= DI[15:8] & VCSTAL_MASK[15:8]; if (!DQM[0]) REGS.VCSTAL[7:0] <= DI[7:0] & VCSTAL_MASK[7:0]; end
-						9'h0A0: begin if (!DQM[1]) REGS.LSTA0U[15:8] <= DI[15:8] & LSTAxU_MASK[15:8]; if (!DQM[0]) REGS.LSTA0U[7:0] <= DI[7:0] & LSTAxU_MASK[7:0]; end
-						9'h0A2: begin if (!DQM[1]) REGS.LSTA0L[15:8] <= DI[15:8] & LSTAxL_MASK[15:8]; if (!DQM[0]) REGS.LSTA0L[7:0] <= DI[7:0] & LSTAxL_MASK[7:0]; end
-						9'h0A4: begin if (!DQM[1]) REGS.LSTA1U[15:8] <= DI[15:8] & LSTAxU_MASK[15:8]; if (!DQM[0]) REGS.LSTA1U[7:0] <= DI[7:0] & LSTAxU_MASK[7:0]; end
-						9'h0A6: begin if (!DQM[1]) REGS.LSTA1L[15:8] <= DI[15:8] & LSTAxL_MASK[15:8]; if (!DQM[0]) REGS.LSTA1L[7:0] <= DI[7:0] & LSTAxL_MASK[7:0]; end
-						9'h0A8: begin if (!DQM[1]) REGS.LCTAU[15:8]  <= DI[15:8] & LCTAU_MASK[15:8];  if (!DQM[0]) REGS.LCTAU[7:0]  <= DI[7:0] & LCTAU_MASK[7:0];  end
-						9'h0AA: begin if (!DQM[1]) REGS.LCTAL[15:8]  <= DI[15:8] & LCTAL_MASK[15:8];  if (!DQM[0]) REGS.LCTAL[7:0]  <= DI[7:0] & LCTAL_MASK[7:0];  end
-						9'h0AC: begin if (!DQM[1]) REGS.BKTAU[15:8]  <= DI[15:8] & BKTAU_MASK[15:8];  if (!DQM[0]) REGS.BKTAU[7:0]  <= DI[7:0] & BKTAU_MASK[7:0];  end
-						9'h0AE: begin if (!DQM[1]) REGS.BKTAL[15:8]  <= DI[15:8] & BKTAL_MASK[15:8];  if (!DQM[0]) REGS.BKTAL[7:0]  <= DI[7:0] & BKTAL_MASK[7:0];  end
-						9'h0B0: begin if (!DQM[1]) REGS.RPMD[15:8]   <= DI[15:8] & RPMD_MASK[15:8];   if (!DQM[0]) REGS.RPMD[7:0]   <= DI[7:0] & RPMD_MASK[7:0];   end
-						9'h0B2: begin if (!DQM[1]) REGS.RPRCTL[15:8] <= DI[15:8] & RPRCTL_MASK[15:8]; if (!DQM[0]) REGS.RPRCTL[7:0] <= DI[7:0] & RPRCTL_MASK[7:0]; end
-						9'h0B4: begin if (!DQM[1]) REGS.KTCTL[15:8]  <= DI[15:8] & KTCTL_MASK[15:8];  if (!DQM[0]) REGS.KTCTL[7:0]  <= DI[7:0] & KTCTL_MASK[7:0];  end
-						9'h0B6: begin if (!DQM[1]) REGS.KTAOF[15:8]  <= DI[15:8] & KTAOF_MASK[15:8];  if (!DQM[0]) REGS.KTAOF[7:0]  <= DI[7:0] & KTAOF_MASK[7:0];  end
-						9'h0B8: begin if (!DQM[1]) REGS.OVPNRA[15:8] <= DI[15:8] & OVPNRx_MASK[15:8]; if (!DQM[0]) REGS.OVPNRA[7:0] <= DI[7:0] & OVPNRx_MASK[7:0]; end
-						9'h0BA: begin if (!DQM[1]) REGS.OVPNRB[15:8] <= DI[15:8] & OVPNRx_MASK[15:8]; if (!DQM[0]) REGS.OVPNRB[7:0] <= DI[7:0] & OVPNRx_MASK[7:0]; end
-						9'h0BC: begin if (!DQM[1]) REGS.RPTAU[15:8]  <= DI[15:8] & RPTAU_MASK[15:8];  if (!DQM[0]) REGS.RPTAU[7:0]  <= DI[7:0] & RPTAU_MASK[7:0];  end
-						9'h0BE: begin if (!DQM[1]) REGS.RPTAL[15:8]  <= DI[15:8] & RPTAL_MASK[15:8];  if (!DQM[0]) REGS.RPTAL[7:0]  <= DI[7:0] & RPTAL_MASK[7:0];  end
-						9'h0C0: begin if (!DQM[1]) REGS.WPSX0[15:8]  <= DI[15:8] & WPSXx_MASK[15:8];  if (!DQM[0]) REGS.WPSX0[7:0]  <= DI[7:0] & WPSXx_MASK[7:0];  end
-						9'h0C2: begin if (!DQM[1]) REGS.WPSY0[15:8]  <= DI[15:8] & WPSYx_MASK[15:8];  if (!DQM[0]) REGS.WPSY0[7:0]  <= DI[7:0] & WPSYx_MASK[7:0];  end
-						9'h0C4: begin if (!DQM[1]) REGS.WPEX0[15:8]  <= DI[15:8] & WPEXx_MASK[15:8];  if (!DQM[0]) REGS.WPEX0[7:0]  <= DI[7:0] & WPEXx_MASK[7:0];  end
-						9'h0C6: begin if (!DQM[1]) REGS.WPEY0[15:8]  <= DI[15:8] & WPEYx_MASK[15:8];  if (!DQM[0]) REGS.WPEY0[7:0]  <= DI[7:0] & WPEYx_MASK[7:0];  end
-						9'h0C8: begin if (!DQM[1]) REGS.WPSX1[15:8]  <= DI[15:8] & WPSXx_MASK[15:8];  if (!DQM[0]) REGS.WPSX1[7:0]  <= DI[7:0] & WPSXx_MASK[7:0];  end
-						9'h0CA: begin if (!DQM[1]) REGS.WPSY1[15:8]  <= DI[15:8] & WPSYx_MASK[15:8];  if (!DQM[0]) REGS.WPSY1[7:0]  <= DI[7:0] & WPSYx_MASK[7:0];  end
-						9'h0CC: begin if (!DQM[1]) REGS.WPEX1[15:8]  <= DI[15:8] & WPEXx_MASK[15:8];  if (!DQM[0]) REGS.WPEX1[7:0]  <= DI[7:0] & WPEXx_MASK[7:0];  end
-						9'h0CE: begin if (!DQM[1]) REGS.WPEY1[15:8]  <= DI[15:8] & WPEYx_MASK[15:8];  if (!DQM[0]) REGS.WPEY1[7:0]  <= DI[7:0] & WPEYx_MASK[7:0];  end
-						9'h0D0: begin if (!DQM[1]) REGS.WCTLA[15:8]  <= DI[15:8] & WCTLA_MASK[15:8];  if (!DQM[0]) REGS.WCTLA[7:0]  <= DI[7:0] & WCTLA_MASK[7:0];  end
-						9'h0D2: begin if (!DQM[1]) REGS.WCTLB[15:8]  <= DI[15:8] & WCTLB_MASK[15:8];  if (!DQM[0]) REGS.WCTLB[7:0]  <= DI[7:0] & WCTLB_MASK[7:0];  end
-						9'h0D4: begin if (!DQM[1]) REGS.WCTLC[15:8]  <= DI[15:8] & WCTLC_MASK[15:8];  if (!DQM[0]) REGS.WCTLC[7:0]  <= DI[7:0] & WCTLC_MASK[7:0];  end
-						9'h0D6: begin if (!DQM[1]) REGS.WCTLD[15:8]  <= DI[15:8] & WCTLD_MASK[15:8];  if (!DQM[0]) REGS.WCTLD[7:0]  <= DI[7:0] & WCTLD_MASK[7:0];  end
-						9'h0D8: begin if (!DQM[1]) REGS.LWTA0U[15:8] <= DI[15:8] & LWTAxU_MASK[15:8]; if (!DQM[0]) REGS.LWTA0U[7:0] <= DI[7:0] & LWTAxU_MASK[7:0]; end
-						9'h0DA: begin if (!DQM[1]) REGS.LWTA0L[15:8] <= DI[15:8] & LWTAxL_MASK[15:8]; if (!DQM[0]) REGS.LWTA0L[7:0] <= DI[7:0] & LWTAxL_MASK[7:0]; end
-						9'h0DC: begin if (!DQM[1]) REGS.LWTA1U[15:8] <= DI[15:8] & LWTAxU_MASK[15:8]; if (!DQM[0]) REGS.LWTA1U[7:0] <= DI[7:0] & LWTAxU_MASK[7:0]; end
-						9'h0DE: begin if (!DQM[1]) REGS.LWTA1L[15:8] <= DI[15:8] & LWTAxL_MASK[15:8]; if (!DQM[0]) REGS.LWTA1L[7:0] <= DI[7:0] & LWTAxL_MASK[7:0]; end
-						9'h0E0: begin if (!DQM[1]) REGS.SPCTL[15:8]  <= DI[15:8] & SPCTL_MASK[15:8];  if (!DQM[0]) REGS.SPCTL[7:0]  <= DI[7:0] & SPCTL_MASK[7:0];  end
-						9'h0E2: begin if (!DQM[1]) REGS.SDCTL[15:8]  <= DI[15:8] & SDCTL_MASK[15:8];  if (!DQM[0]) REGS.SDCTL[7:0]  <= DI[7:0] & SDCTL_MASK[7:0];  end
-						9'h0E4: begin if (!DQM[1]) REGS.CRAOFA[15:8] <= DI[15:8] & CRAOFA_MASK[15:8]; if (!DQM[0]) REGS.CRAOFA[7:0] <= DI[7:0] & CRAOFA_MASK[7:0]; end
-						9'h0E6: begin if (!DQM[1]) REGS.CRAOFB[15:8] <= DI[15:8] & CRAOFB_MASK[15:8]; if (!DQM[0]) REGS.CRAOFB[7:0] <= DI[7:0] & CRAOFB_MASK[7:0]; end
-						9'h0E8: begin if (!DQM[1]) REGS.LNCLEN[15:8] <= DI[15:8] & LNCLEN_MASK[15:8]; if (!DQM[0]) REGS.LNCLEN[7:0] <= DI[7:0] & LNCLEN_MASK[7:0]; end
-						9'h0EA: begin if (!DQM[1]) REGS.SFPRMD[15:8] <= DI[15:8] & SFPRMD_MASK[15:8]; if (!DQM[0]) REGS.SFPRMD[7:0] <= DI[7:0] & SFPRMD_MASK[7:0]; end
-						9'h0EC: begin if (!DQM[1]) REGS.CCCTL[15:8]  <= DI[15:8] & CCCTL_MASK[15:8];  if (!DQM[0]) REGS.CCCTL[7:0]  <= DI[7:0] & CCCTL_MASK[7:0];  end
-						9'h0EE: begin if (!DQM[1]) REGS.SFCCMD[15:8] <= DI[15:8] & SFCCMD_MASK[15:8]; if (!DQM[0]) REGS.SFCCMD[7:0] <= DI[7:0] & SFCCMD_MASK[7:0]; end
-						9'h0F0: begin if (!DQM[1]) REGS.PRISA[15:8]  <= DI[15:8] & PRISA_MASK[15:8];  if (!DQM[0]) REGS.PRISA[7:0]  <= DI[7:0] & PRISA_MASK[7:0];  end
-						9'h0F2: begin if (!DQM[1]) REGS.PRISB[15:8]  <= DI[15:8] & PRISB_MASK[15:8];  if (!DQM[0]) REGS.PRISB[7:0]  <= DI[7:0] & PRISB_MASK[7:0];  end
-						9'h0F4: begin if (!DQM[1]) REGS.PRISC[15:8]  <= DI[15:8] & PRISC_MASK[15:8];  if (!DQM[0]) REGS.PRISC[7:0]  <= DI[7:0] & PRISC_MASK[7:0];  end
-						9'h0F6: begin if (!DQM[1]) REGS.PRISD[15:8]  <= DI[15:8] & PRISD_MASK[15:8];  if (!DQM[0]) REGS.PRISD[7:0]  <= DI[7:0] & PRISD_MASK[7:0];  end
-						9'h0F8: begin if (!DQM[1]) REGS.PRINA[15:8]  <= DI[15:8] & PRINA_MASK[15:8];  if (!DQM[0]) REGS.PRINA[7:0]  <= DI[7:0] & PRINA_MASK[7:0];  end
-						9'h0FA: begin if (!DQM[1]) REGS.PRINB[15:8]  <= DI[15:8] & PRINB_MASK[15:8];  if (!DQM[0]) REGS.PRINB[7:0]  <= DI[7:0] & PRINB_MASK[7:0];  end
-						9'h0FC: begin if (!DQM[1]) REGS.PRIR[15:8]   <= DI[15:8] & PRIR_MASK[15:8];   if (!DQM[0]) REGS.PRIR[7:0]   <= DI[7:0] & PRIR_MASK[7:0];   end
-						9'h0FE: begin if (!DQM[1]) REGS.RSRV1[15:8]  <= DI[15:8] & RSRV_MASK[15:8];   if (!DQM[0]) REGS.RSRV1[7:0]  <= DI[7:0] & RSRV_MASK[7:0];   end
-						9'h100: begin if (!DQM[1]) REGS.CCRSA[15:8]  <= DI[15:8] & CCRSA_MASK[15:8];  if (!DQM[0]) REGS.CCRSA[7:0]  <= DI[7:0] & CCRSA_MASK[7:0];  end
-						9'h102: begin if (!DQM[1]) REGS.CCRSB[15:8]  <= DI[15:8] & CCRSB_MASK[15:8];  if (!DQM[0]) REGS.CCRSB[7:0]  <= DI[7:0] & CCRSB_MASK[7:0];  end
-						9'h104: begin if (!DQM[1]) REGS.CCRSC[15:8]  <= DI[15:8] & CCRSC_MASK[15:8];  if (!DQM[0]) REGS.CCRSC[7:0]  <= DI[7:0] & CCRSC_MASK[7:0];  end
-						9'h106: begin if (!DQM[1]) REGS.CCRSD[15:8]  <= DI[15:8] & CCRSD_MASK[15:8];  if (!DQM[0]) REGS.CCRSD[7:0]  <= DI[7:0] & CCRSD_MASK[7:0];  end
-						9'h108: begin if (!DQM[1]) REGS.CCRNA[15:8]  <= DI[15:8] & CCRNA_MASK[15:8];  if (!DQM[0]) REGS.CCRNA[7:0]  <= DI[7:0] & CCRNA_MASK[7:0];  end
-						9'h10A: begin if (!DQM[1]) REGS.CCRNB[15:8]  <= DI[15:8] & CCRNA_MASK[15:8];  if (!DQM[0]) REGS.CCRNB[7:0]  <= DI[7:0] & CCRNA_MASK[7:0];  end
-						9'h10C: begin if (!DQM[1]) REGS.CCRR[15:8]   <= DI[15:8] & CCRR_MASK[15:8];   if (!DQM[0]) REGS.CCRR[7:0]   <= DI[7:0] & CCRR_MASK[7:0];   end
-						9'h10E: begin if (!DQM[1]) REGS.CCRLB[15:8]  <= DI[15:8] & CCRLB_MASK[15:8];  if (!DQM[0]) REGS.CCRLB[7:0]  <= DI[7:0] & CCRLB_MASK[7:0];  end
-						9'h110: begin if (!DQM[1]) REGS.CLOFEN[15:8] <= DI[15:8] & CLOFEN_MASK[15:8]; if (!DQM[0]) REGS.CLOFEN[7:0] <= DI[7:0] & CLOFEN_MASK[7:0]; end
-						9'h112: begin if (!DQM[1]) REGS.CLOFSL[15:8] <= DI[15:8] & CLOFSL_MASK[15:8]; if (!DQM[0]) REGS.CLOFSL[7:0] <= DI[7:0] & CLOFSL_MASK[7:0]; end
-						9'h114: begin if (!DQM[1]) REGS.COAR[15:8]   <= DI[15:8] & COxR_MASK[15:8];   if (!DQM[0]) REGS.COAR[7:0]   <= DI[7:0] & COxR_MASK[7:0];   end
-						9'h116: begin if (!DQM[1]) REGS.COAG[15:8]   <= DI[15:8] & COxG_MASK[15:8];   if (!DQM[0]) REGS.COAG[7:0]   <= DI[7:0] & COxG_MASK[7:0];   end
-						9'h118: begin if (!DQM[1]) REGS.COAB[15:8]   <= DI[15:8] & COxB_MASK[15:8];   if (!DQM[0]) REGS.COAB[7:0]   <= DI[7:0] & COxB_MASK[7:0];   end
-						9'h11A: begin if (!DQM[1]) REGS.COBR[15:8]   <= DI[15:8] & COxR_MASK[15:8];   if (!DQM[0]) REGS.COBR[7:0]   <= DI[7:0] & COxR_MASK[7:0];   end
-						9'h11C: begin if (!DQM[1]) REGS.COBG[15:8]   <= DI[15:8] & COxG_MASK[15:8];   if (!DQM[0]) REGS.COBG[7:0]   <= DI[7:0] & COxG_MASK[7:0];   end
-						9'h11E: begin if (!DQM[1]) REGS.COBB[15:8]   <= DI[15:8] & COxB_MASK[15:8];   if (!DQM[0]) REGS.COBB[7:0]   <= DI[7:0] & COxB_MASK[7:0];   end
-						default:;
-					endcase
-				end else begin
-					case ({A[8:1],1'b0})
-						9'h000: REG_DO <= REGS.TVMD & TVMD_MASK;
-						9'h002: REG_DO <= REGS.EXTEN & EXTEN_MASK;
-						9'h004: REG_DO <= {REGS.TVSTAT[15:8], 4'h0, VBLANK|~DISP, HBLANK, ODD, PAL} & TVSTAT_MASK;
-						9'h006: REG_DO <= REGS.VRSIZE & VRSIZE_MASK;
-						9'h008: REG_DO <= REGS.HCNT & HCNT_MASK;
-						9'h00A: REG_DO <= REGS.VCNT & VCNT_MASK;
-						9'h00E: REG_DO <= REGS.RAMCTL & RAMCTL_MASK;
-						default: REG_DO <= '0;
-					endcase
-					if ({A[8:1],1'b0} == 9'h002 && !REGS.EXTEN.EXLTEN) begin	//EXTEN
-						REGS.HCNT.HCT = {H_CNT,DOTCLK_DIV[1]};
-						REGS.VCNT.VCT = LSMD == 2'b11 ? {VCT,~ODD} : {1'b0,VCT};
-						REGS.TVSTAT.EXLTFG <= 1;
-					end
-					if ({A[8:1],1'b0} == 9'h004) begin								//TVSTAT
-						REGS.TVSTAT.EXLTFG <= 0;
-						REGS.TVSTAT.EXSYFG <= 0;
-					end
+			if (REG_SEL && !WE_N && !DTEN_N && !REQ_N) begin
+				case ({A[8:1],1'b0})
+					9'h000: REGS.TVMD <= DI & TVMD_MASK;
+					9'h002: REGS.EXTEN <= DI & EXTEN_MASK;
+					9'h006: REGS.VRSIZE <= DI & VRSIZE_MASK;
+					9'h00C: REGS.RSRV0 <= DI & RSRV_MASK;
+					9'h00E: REGS.RAMCTL <= DI & RAMCTL_MASK;
+					9'h010: REGS.CYCA0L <= DI & CYCx0L_MASK;
+					9'h012: REGS.CYCA0U <= DI & CYCx0U_MASK;
+					9'h014: REGS.CYCA1L <= DI & CYCx1L_MASK;
+					9'h016: REGS.CYCA1U <= DI & CYCx1U_MASK;
+					9'h018: REGS.CYCB0L <= DI & CYCx0L_MASK;
+					9'h01A: REGS.CYCB0U <= DI & CYCx0U_MASK;
+					9'h01C: REGS.CYCB1L <= DI & CYCx1L_MASK;
+					9'h01E: REGS.CYCB1U <= DI & CYCx1U_MASK;
+					9'h020: REGS.BGON <= DI & BGON_MASK;
+					9'h022: REGS.MZCTL <= DI & MZCTL_MASK;
+					9'h024: REGS.SFSEL <= DI & SFSEL_MASK;
+					9'h026: REGS.SFCODE <= DI & SFCODE_MASK;
+					9'h028: REGS.CHCTLA <= DI & CHCTLA_MASK;
+					9'h02A: REGS.CHCTLB <= DI & CHCTLB_MASK;
+					9'h02C: REGS.BMPNA <= DI & BMPNA_MASK;
+					9'h02E: REGS.BMPNB <= DI & BMPNB_MASK;
+					9'h030: REGS.PNCN0 <= DI & PNCNx_MASK;
+					9'h032: REGS.PNCN1 <= DI & PNCNx_MASK;
+					9'h034: REGS.PNCN2 <= DI & PNCNx_MASK;
+					9'h036: REGS.PNCN3 <= DI & PNCNx_MASK;
+					9'h038: REGS.PNCR <= DI & PNCR_MASK;
+					9'h03A: REGS.PLSZ <= DI & PLSZ_MASK;
+					9'h03C: REGS.MPOFN <= DI & MPOFN_MASK;
+					9'h03E: REGS.MPOFR <= DI & MPOFR_MASK;
+					9'h040: REGS.MPABN0 <= DI & MPABNx_MASK;
+					9'h042: REGS.MPCDN0 <= DI & MPCDNx_MASK;
+					9'h044: REGS.MPABN1 <= DI & MPABNx_MASK;
+					9'h046: REGS.MPCDN1 <= DI & MPCDNx_MASK;
+					9'h048: REGS.MPABN2 <= DI & MPABNx_MASK;
+					9'h04A: REGS.MPCDN2 <= DI & MPCDNx_MASK;
+					9'h04C: REGS.MPABN3 <= DI & MPABNx_MASK;
+					9'h04E: REGS.MPCDN3 <= DI & MPCDNx_MASK;
+					9'h050: REGS.MPABRA <= DI & MPABRx_MASK;
+					9'h052: REGS.MPCDRA <= DI & MPCDRx_MASK;
+					9'h054: REGS.MPEFRA <= DI & MPEFRx_MASK;
+					9'h056: REGS.MPGHRA <= DI & MPGHRx_MASK;
+					9'h058: REGS.MPIJRA <= DI & MPIJRx_MASK;
+					9'h05A: REGS.MPKLRA <= DI & MPKLRx_MASK;
+					9'h05C: REGS.MPMNRA <= DI & MPMNRx_MASK;
+					9'h05E: REGS.MPOPRA <= DI & MPOPRx_MASK;
+					9'h060: REGS.MPABRB <= DI & MPABRx_MASK;
+					9'h062: REGS.MPCDRB <= DI & MPCDRx_MASK;
+					9'h064: REGS.MPEFRB <= DI & MPEFRx_MASK;
+					9'h066: REGS.MPGHRB <= DI & MPGHRx_MASK;
+					9'h068: REGS.MPIJRB <= DI & MPIJRx_MASK;
+					9'h06A: REGS.MPKLRB <= DI & MPKLRx_MASK;
+					9'h06C: REGS.MPMNRB <= DI & MPMNRx_MASK;
+					9'h06E: REGS.MPOPRB <= DI & MPOPRx_MASK;
+					9'h070: REGS.SCXIN0 <= DI & SCXINx_MASK;
+					9'h072: REGS.SCXDN0 <= DI & SCXDNx_MASK;
+					9'h074: REGS.SCYIN0 <= DI & SCYINx_MASK;
+					9'h076: REGS.SCYDN0 <= DI & SCYDNx_MASK;
+					9'h078: REGS.ZMXIN0 <= DI & ZMXINx_MASK;
+					9'h07A: REGS.ZMXDN0 <= DI & ZMXDNx_MASK;
+					9'h07C: REGS.ZMYIN0 <= DI & ZMYINx_MASK;
+					9'h07E: REGS.ZMYDN0 <= DI & ZMYDNx_MASK;
+					9'h080: REGS.SCXIN1 <= DI & SCXINx_MASK;
+					9'h082: REGS.SCXDN1 <= DI & SCXDNx_MASK;
+					9'h084: REGS.SCYIN1 <= DI & SCYINx_MASK;
+					9'h086: REGS.SCYDN1 <= DI & SCYDNx_MASK;
+					9'h088: REGS.ZMXIN1 <= DI & ZMXINx_MASK;
+					9'h08A: REGS.ZMXDN1 <= DI & ZMXDNx_MASK;
+					9'h08C: REGS.ZMYIN1 <= DI & ZMYINx_MASK;
+					9'h08E: REGS.ZMYDN1 <= DI & ZMYDNx_MASK;
+					9'h090: REGS.SCXN2 <= DI & SCXNx_MASK;
+					9'h092: REGS.SCYN2 <= DI & SCYNx_MASK;
+					9'h094: REGS.SCXN3 <= DI & SCXNx_MASK;
+					9'h096: REGS.SCYN3 <= DI & SCYNx_MASK;
+					9'h098: REGS.ZMCTL <= DI & ZMCTL_MASK;
+					9'h09A: REGS.SCRCTL <= DI & SCRCTL_MASK;
+					9'h09C: REGS.VCSTAU <= DI & VCSTAU_MASK;
+					9'h09E: REGS.VCSTAL <= DI & VCSTAL_MASK;
+					9'h0A0: REGS.LSTA0U <= DI & LSTAxU_MASK;
+					9'h0A2: REGS.LSTA0L <= DI & LSTAxL_MASK;
+					9'h0A4: REGS.LSTA1U <= DI & LSTAxU_MASK;
+					9'h0A6: REGS.LSTA1L <= DI & LSTAxL_MASK;
+					9'h0A8: REGS.LCTAU <= DI & LCTAU_MASK;
+					9'h0AA: REGS.LCTAL <= DI & LCTAL_MASK;
+					9'h0AC: REGS.BKTAU <= DI & BKTAU_MASK;
+					9'h0AE: REGS.BKTAL <= DI & BKTAL_MASK;
+					9'h0B0: REGS.RPMD <= DI & RPMD_MASK;
+					9'h0B2: REGS.RPRCTL <= DI & RPRCTL_MASK;
+					9'h0B4: REGS.KTCTL <= DI & KTCTL_MASK;
+					9'h0B6: REGS.KTAOF <= DI & KTAOF_MASK;
+					9'h0B8: REGS.OVPNRA <= DI & OVPNRx_MASK;
+					9'h0BA: REGS.OVPNRB <= DI & OVPNRx_MASK;
+					9'h0BC: REGS.RPTAU <= DI & RPTAU_MASK;
+					9'h0BE: REGS.RPTAL <= DI & RPTAL_MASK;
+					9'h0C0: REGS.WPSX0 <= DI & WPSXx_MASK;
+					9'h0C2: REGS.WPSY0 <= DI & WPSYx_MASK;
+					9'h0C4: REGS.WPEX0 <= DI & WPEXx_MASK;
+					9'h0C6: REGS.WPEY0 <= DI & WPEYx_MASK;
+					9'h0C8: REGS.WPSX1 <= DI & WPSXx_MASK;
+					9'h0CA: REGS.WPSY1 <= DI & WPSYx_MASK;
+					9'h0CC: REGS.WPEX1 <= DI & WPEXx_MASK;
+					9'h0CE: REGS.WPEY1 <= DI & WPEYx_MASK;
+					9'h0D0: REGS.WCTLA <= DI & WCTLA_MASK;
+					9'h0D2: REGS.WCTLB <= DI & WCTLB_MASK;
+					9'h0D4: REGS.WCTLC <= DI & WCTLC_MASK;
+					9'h0D6: REGS.WCTLD <= DI & WCTLD_MASK;
+					9'h0D8: REGS.LWTA0U <= DI & LWTAxU_MASK;
+					9'h0DA: REGS.LWTA0L <= DI & LWTAxL_MASK;
+					9'h0DC: REGS.LWTA1U <= DI & LWTAxU_MASK;
+					9'h0DE: REGS.LWTA1L <= DI & LWTAxL_MASK;
+					9'h0E0: REGS.SPCTL <= DI & SPCTL_MASK;
+					9'h0E2: REGS.SDCTL <= DI & SDCTL_MASK;
+					9'h0E4: REGS.CRAOFA <= DI & CRAOFA_MASK;
+					9'h0E6: REGS.CRAOFB <= DI & CRAOFB_MASK;
+					9'h0E8: REGS.LNCLEN <= DI & LNCLEN_MASK;
+					9'h0EA: REGS.SFPRMD <= DI & SFPRMD_MASK;
+					9'h0EC: REGS.CCCTL <= DI & CCCTL_MASK;
+					9'h0EE: REGS.SFCCMD <= DI & SFCCMD_MASK;
+					9'h0F0: REGS.PRISA <= DI & PRISA_MASK;
+					9'h0F2: REGS.PRISB <= DI & PRISB_MASK;
+					9'h0F4: REGS.PRISC <= DI & PRISC_MASK;
+					9'h0F6: REGS.PRISD <= DI & PRISD_MASK;
+					9'h0F8: REGS.PRINA <= DI & PRINA_MASK;
+					9'h0FA: REGS.PRINB <= DI & PRINB_MASK;
+					9'h0FC: REGS.PRIR <= DI & PRIR_MASK;
+					9'h0FE: REGS.RSRV1 <= DI & RSRV_MASK;
+					9'h100: REGS.CCRSA <= DI & CCRSA_MASK;
+					9'h102: REGS.CCRSB <= DI & CCRSB_MASK;
+					9'h104: REGS.CCRSC <= DI & CCRSC_MASK;
+					9'h106: REGS.CCRSD <= DI & CCRSD_MASK;
+					9'h108: REGS.CCRNA <= DI & CCRNA_MASK;
+					9'h10A: REGS.CCRNB <= DI & CCRNA_MASK;
+					9'h10C: REGS.CCRR <= DI & CCRR_MASK;
+					9'h10E: REGS.CCRLB <= DI & CCRLB_MASK;
+					9'h110: REGS.CLOFEN <= DI & CLOFEN_MASK;
+					9'h112: REGS.CLOFSL <= DI & CLOFSL_MASK;
+					9'h114: REGS.COAR <= DI & COxR_MASK;
+					9'h116: REGS.COAG <= DI & COxG_MASK;
+					9'h118: REGS.COAB <= DI & COxB_MASK;
+					9'h11A: REGS.COBR <= DI & COxR_MASK;
+					9'h11C: REGS.COBG <= DI & COxG_MASK;
+					9'h11E: REGS.COBB <= DI & COxB_MASK; 
+					default:;
+				endcase
+			end
+			if (REG_SEL && WE_N && !REG_RD_DELAY && !REG_RRDY && CE_R) begin
+				case ({REG_RA,1'b0})
+					9'h000: REG_DO <= REGS.TVMD & TVMD_MASK;
+					9'h002: REG_DO <= REGS.EXTEN & EXTEN_MASK;
+					9'h004: REG_DO <= {REGS.TVSTAT[15:8], 4'h0, VBLANK|~DISP, HBLANK3, ODD, PAL} & TVSTAT_MASK;
+					9'h006: REG_DO <= REGS.VRSIZE & VRSIZE_MASK;
+					9'h008: REG_DO <= REGS.HCNT & HCNT_MASK;
+					9'h00A: REG_DO <= REGS.VCNT & VCNT_MASK;
+					9'h00E: REG_DO <= REGS.RAMCTL & RAMCTL_MASK;
+					default: REG_DO <= '0;
+				endcase
+				if ({REG_RA,1'b0} == 9'h002 && !REGS.EXTEN.EXLTEN) begin	//EXTEN
+					REGS.HCNT.HCT = {HCT,DOTCLK_DIV[1]};
+					REGS.VCNT.VCT = LSMD == 2'b11 ? {VCT,~ODD} : {1'b0,VCT};
+					REGS.TVSTAT.EXLTFG <= 1;
+				end
+				if ({REG_RA,1'b0} == 9'h004) begin								//TVSTAT
+					REGS.TVSTAT.EXLTFG <= 0;
+					REGS.TVSTAT.EXSYFG <= 0;
 				end
 			end
 				
 			EXLAT_N_OLD <= EXLAT_N;
 			if (!EXLAT_N && EXLAT_N_OLD && REGS.EXTEN.EXLTEN) begin	//EXTEN
-				REGS.HCNT.HCT = {H_CNT,DOTCLK_DIV[1]};
+				REGS.HCNT.HCT = {HCT,DOTCLK_DIV[1]};
 				REGS.VCNT.VCT = LSMD == 2'b11 ? {VCT,~ODD} : {1'b0,VCT};
 				REGS.TVSTAT.EXLTFG <= 1;
+			end
+			
+			if (CE_F) begin
+				if (REG_SEL && WE_N && !REQ_N) begin
+					REG_RA <= A[8:1];
+					REG_RRDY <= 0;
+					REG_RD_DELAY <= 4'd8 + (REG_RD_DELAY2 ? 4'd1 : 4'd0) + (REG_RD_DELAY3 && A[8:1] == 8'h01 ? 4'd2 : 4'd0);
+					REG_RD_DELAY2 <= ~REG_RD_DELAY2;
+					REG_RD_DELAY3 <= A[8:1] == 8'h04 || A[8:1] == 8'h05;
+				end
+			end
+			if (CE_R) begin
+				 if (REG_RD_DELAY) begin
+					REG_RD_DELAY <= REG_RD_DELAY - 4'd1;
+				end
+				if (!REG_RD_DELAY && !REG_RRDY) REG_RRDY <= 1;
 			end
 		end
 	end
 	
 	
+	bit         REG_RD,PAL_RD;
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
 			// synopsys translate_off
@@ -4128,6 +4155,8 @@ module VDP2 (
 			WE_N <= 1;
 			DQM <= '1;
 			BURST <= 0;
+			REG_RD <= 0;
+			PAL_RD <= 0;
 		end else begin
 			if (!CS_N && DTEN_N && AD_N && CE_R) begin
 				if (!DI[15]) begin
@@ -4141,15 +4170,17 @@ module VDP2 (
 			end
 			if ((VRAM_SEL || REG_SEL || PAL_SEL) && !REQ_N) begin
 				A <= A + 20'd1;
+				REG_RD <= REG_SEL;
+				PAL_RD <= PAL_SEL;
 			end
 		end
 	end
 	
 	
-	assign RDY_N = ~VRAM_RRDY | ~VRAM_WRDY | VRAM_WLOCK | (FIFO_FULL & BURST);
+	assign RDY_N = ~REG_RRDY | ~VRAM_RRDY | ~VRAM_WRDY | VRAM_WLOCK | (FIFO_FULL & BURST);
 	
-	assign DO = REG_SEL ? REG_DO : 
-	            PAL_SEL ? PAL_DO : 
+	assign DO = REG_RD ? REG_DO : 
+	            PAL_RD ? PAL_DO : 
 					VRAM_DO;
 	
 	//debug

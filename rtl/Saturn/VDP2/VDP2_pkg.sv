@@ -2090,12 +2090,6 @@ package VDP2_PKG;
 		return temp[47:16];
 	endfunction
 	
-	function bit [29:0] MultFI(input bit [29:0] a, input bit [29:16] b);
-		bit [43:0] temp;
-		temp = $signed(a) * $signed(b);
-		return {temp[43],temp[28:0]};
-	endfunction
-	
 	function bit [19:1] RxPNAddr(input bit [11:0] RxOFFX, input bit [11:0] RxOFFY,
 	                             input bit [8:6] RxMP, input bit [5:0] RxMPn[16], 
 										  input bit [1:0] RxPLSZ, input bit RxCHSZ, input bit RxPNB);
@@ -2470,7 +2464,7 @@ package VDP2_PKG;
 		return LOG ? log_and : log_or;
 	endfunction
 	
-	function bit [19:1] LWAddr(input bit [18:1] WxLWTA, input bit [9:2] LW_OFFS);
+	function bit [19:1] LWAddr(input bit [18:1] WxLWTA, input bit [10:2] LW_OFFS);
 		return {WxLWTA,1'b0} + {LW_OFFS,1'b0};
 	endfunction
 	
