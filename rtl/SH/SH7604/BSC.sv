@@ -198,7 +198,7 @@ module SH7604_BSC
 		BusState_t  STATE_NEXT;
 		bit         DBUS_SKIP;
 		bit         CBUS_LOCK_INT,DBUS_LOCK_INT;
-		bit [ 1: 0] CBUS_CNT;
+		bit         CBUS_REQ_PREV;
 		bit [ 2: 0] WAIT_CNT;
 		bit [ 1: 0] RCD_WAIT_CNT;
 		bit [ 1: 0] NOP_WAIT_CNT;
@@ -230,7 +230,7 @@ module SH7604_BSC
 			BUSY <= 0;
 			{CBUSY,CBUSY2,DBUSY,VBUSY} <= '0;
 			{CBUS_ACTIVE,DBUS_ACTIVE,VBUS_ACTIVE,REFRESH_ACTIVE} <= '0;
-			CBUS_CNT <= '0;
+			CBUS_REQ_PREV <= 0;
 			BUS_STATE <= T0;
 			WAIT_CNT <= '0;
 			NEXT_BA <= '0;
@@ -737,14 +737,11 @@ module SH7604_BSC
 						else if ((CBUS_EXT_REQ && !(SDRAM_PRECHARGE_PEND && BUS_STATE != TRFS2 && BRLS && MASTER)) || (CBUS_EXT_REQ && CBUS_LOCK_INT)) begin
 							IS_SDRAM = IsSDRAMArea(CBUS_A[26:25],BCR1);
 							IS_SAME_BANK_SDRAM = (SDRAMBank(A,MCR) == SDRAMBank(CBUS_A[26:0],MCR));
-							if (INSERT_WAIT && ((A[26:25] != CBUS_A[26:25] && !CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && BUS_STATE == T0 && !IS_SDRAM) || (CBUS_WE && REFRESH_ACTIVE && !IS_SDRAM) || (CBUS_WE && CBUS_CNT == 2'd2 && !IS_SDRAM))) begin
+							if (INSERT_WAIT && ((A[26:25] != CBUS_A[26:25] && !CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && BUS_STATE == T0 && !IS_SDRAM) || (CBUS_WE && REFRESH_ACTIVE && !IS_SDRAM) || (A[26:25] == CBUS_A[26:25] && CBUS_WE && CBUS_REQ_PREV))) begin
 								A <= CBUS_A[26:0];
-								CBUS_CNT <= 2'd0;
 								INSERT_WAIT <= 0;
 							end else if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
 								CBUS_ACTIVE <= 1;
-								if (A[26:25] == CBUS_A[26:25] && CBUS_WE) CBUS_CNT <= CBUS_CNT + 2'd1;
-								else CBUS_CNT <= 2'd0;
 								DBUS_SKIP <= 0;
 								CBUS_LOCK_INT <= CBUS_LOCK;
 								case (GetAreaSZ(CBUS_A[26:25],BCR1,BCR2,A0_SZ,DRAM_SZ))
@@ -854,6 +851,7 @@ module SH7604_BSC
 			end
 			if (CE_F) begin
 				if (!CBUS_EXT_REQ && CBUS_PREREQ && BUS_STATE == T0 && !BUS_RLS) DBUS_SKIP <= 1;
+				CBUS_REQ_PREV <= CBUS_EXT_REQ;
 			end
 			BUS_STATE <= STATE_NEXT;
 		end
