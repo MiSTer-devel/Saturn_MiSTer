@@ -1,51 +1,51 @@
 module DCC 
 (
-	input             CLK,
-	input             RST_N,
-	input             CE_R,
-	input             CE_F,
+	input              CLK,
+	input              RST_N,
+	input              CE_R,
+	input              CE_F,
 	
-	input             RES_N,
+	input              RES_N,
 	
-	input      [24:1] A,
-	input             BS_N,
-	input             CS0_N,
-	input             CS1_N,
-	input             CS2_N,
-	input             RD_WR_N,
-	input       [1:0] WE_N,
-	input             RD_N,
-	output            WAIT_N,
+	input      [24: 1] A,
+	input              BS_N,
+	input              CS0_N,
+	input              CS1_N,
+	input              CS2_N,
+	input              RD_WR_N,
+	input      [ 1: 0] WE_N,
+	input              RD_N,
+	output             WAIT_N,
 	
-	output            BRLS_N,
-	input             BGR_N,
-	input             BREQ_N,
-	output            BACK_N,
-	input             EXBREQ_N,
-	output            EXBACK_N,
+	output             BRLS_N,
+	input              BGR_N,
+	input              BREQ_N,
+	output             BACK_N,
+	input              EXBREQ_N,
+	output             EXBACK_N,
 	
-	input             WTIN_N,
-	input             IVECF_N,
+	input              WTIN_N,
+	input              IVECF_N,
 	
-	input             HINT_N,
-	input             VINT_N,
-	output      [2:1] IREQ_N,
+	input              HINT_N,
+	input              VINT_N,
+	output reg [ 2: 1] IREQ_N,
 	
-	output reg        MFTI,
-	output reg        SFTI,
+	output reg         MFTI,
+	output reg         SFTI,
 	
-	output            DCE_N,
-	output            DOE_N,
-	output      [1:0] DWE_N,
-	input             DWAIT_N,//not present in original
+	output             DCE_N,
+	output             DOE_N,
+	output     [ 1: 0] DWE_N,
+	input              DWAIT_N,//not present in original
 	
-	output            ROMCE_N,
-	output            SRAMCE_N,
-	output            SMPCCE_N,
-	output            MOE_N,
-	output            MWR_N,
+	output             ROMCE_N,
+	output             SRAMCE_N,
+	output             SMPCCE_N,
+	output             MOE_N,
+	output             MWR_N,
 	
-	input             FAST
+	input              FAST
 );
 
 	const bit [3:0] DRAM_CYC = 4'd7;
@@ -151,6 +151,37 @@ module DCC
 	
 	assign WAIT_N = WTIN_N & ~MEM_WAIT;
 	
-	assign IREQ_N = {VINT_N,VINT_N&HINT_N};
+	always @(posedge CLK or negedge RST_N) begin
+		bit HINT_N_OLD,VINT_N_OLD;
+		bit HINT_ACTIVE;
+		
+		if (!RST_N) begin
+			IREQ_N = '1;
+			HINT_ACTIVE <= 0;
+		end else if (!RES_N) begin
+			IREQ_N = '1;
+			HINT_ACTIVE <= 0;
+		end else if (CE_R) begin
+			HINT_N_OLD <= HINT_N;
+			if (!HINT_N && HINT_N_OLD && VINT_N) begin
+				IREQ_N <= 2'b10;
+				HINT_ACTIVE <= 1;
+			end
+			if (HINT_N && !HINT_N_OLD && VINT_N && HINT_ACTIVE) begin
+				IREQ_N <= 2'b11;
+				HINT_ACTIVE <= 0;
+			end
+			
+			VINT_N_OLD <= VINT_N;
+			if (!VINT_N && VINT_N_OLD) begin
+				IREQ_N <= 2'b00;
+				HINT_ACTIVE <= 0;
+			end
+			if (VINT_N && !VINT_N_OLD) begin
+				IREQ_N <= 2'b01;
+				HINT_ACTIVE <= 0;
+			end
+		end
+	end
 
 endmodule
