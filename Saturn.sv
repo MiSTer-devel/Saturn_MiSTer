@@ -1806,7 +1806,7 @@ module emu
 /////////////////////////  BRAM SAVE/LOAD  /////////////////////////////
 `ifndef STV_BUILD
 	wire downloading = save_download;
-	wire bk_cart    = cart_type == 3'h4;
+	wire bk_cart    = cart_type == 3'h5;
 	wire bk_change  = (~SRAM_CS_N & ~MEM_DQM_N[0]) | (CART_MEM_WE[0] & bk_cart);
 	wire bk_load    = status[24];
 	wire bk_save    = status[25];
