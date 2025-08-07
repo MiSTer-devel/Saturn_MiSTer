@@ -37,18 +37,21 @@ module SH7604_DIVU (
 	
 	
 	bit  [ 5: 0] STEP;
+	bit          DIV64;
 	bit  [64: 0] R;
 	bit  [64: 0] D;
 	bit  [31: 0] Q;
+	bit  [63: 0] R64,D64;
 	bit          R_SIGN,D_SIGN;
+	bit          T64;
 	bit          OVF;
 	wire [64: 0] SUM = $signed(R) - $signed(D);
+	wire [64: 0] SUM64 = T64 ? $signed({R64[63],R64}) - $unsigned(D64) : $signed({R64[63],R64}) + $unsigned(D64);
 	always @(posedge CLK or negedge RST_N) begin
 		bit  [64: 0] VAL;
 		bit          NEG;
 		bit  [64: 0] NRES;
-		bit          DIV64;
-		bit          OVF0;
+		bit          OVF0,OVF64_33;
 		
 		if (!RST_N) begin
 			STEP <= 6'h3F;
@@ -94,27 +97,30 @@ module SH7604_DIVU (
 			if (STEP == 6'd1) begin
 				R <= NRES;
 				R_SIGN <= NEG;
+				R64 <= VAL[63:0];
 			end
 			if (STEP == 6'd2) begin
 				D <= NRES;
 				D_SIGN <= NEG;
+				D64 <= VAL[63:0];
+				T64 <= ~(R_SIGN^NEG);
 				
-				if (!DVSR) OVF0 <= 1;
+				if (VAL[63:32] == 32'h00000000) OVF0 <= 1;
 			end
 			if (STEP >= 6'd3 && STEP <= 6'd35) begin
 				R <= !SUM[64] ? SUM : R;
 				Q <= {Q[30:0],~SUM[64]};
 				D <= {D[64],D[64:1]};
 				
-				if (STEP == 6'd3 && !SUM[64] && DIV64) begin
-					OVF0 <= 1; 
-					R <= SUM;
+				if (STEP >= 6'd3 && STEP <= 6'd5) begin
+				R64 <= {SUM64[62:0],~(SUM64[63]^D_SIGN)};
+				T64 <= ~(SUM64[63]^D_SIGN);
 				end
-				if (STEP == 6'd4 && !SUM[64] && DIV64) begin
-					OVF0 <= 1; 
-					R <= SUM;
+				
+				if (STEP == 6'd4) begin
+					OVF64_33 <= T64; 
 				end
-				if (STEP == 6'd5 && OVF0) begin
+				if (STEP == 6'd5 && (OVF0 || ((OVF64_33 != T64 || (OVF64_33 != (R_SIGN^D_SIGN) && T64 != (R_SIGN^D_SIGN))) && DIV64))) begin
 					OVF <= 1; 
 					R <= SUM;
 					STEP <= 6'd38;
@@ -137,6 +143,8 @@ module SH7604_DIVU (
 	
 	//Registers
 	always @(posedge CLK or negedge RST_N) begin
+		bit          SND_UPD;
+		
 		if (!RST_N) begin
 			DVSR <= DVSR_INIT;
 			DVDNTL <= DVDNT_INIT;
@@ -178,6 +186,7 @@ module SH7604_DIVU (
 				endcase
 			end
 			
+			SND_UPD <= 0;
 			if (STEP >= 6'd3 && STEP <= 6'd35) begin
 				{DVDNTH,DVDNTL} <= {DVDNTH[30:0],DVDNTL,~SUM[64]^R_SIGN};
 			end
@@ -185,18 +194,23 @@ module SH7604_DIVU (
 				DVDNTH <= R[31:0];
 			end
 			if (STEP == 6'd38) begin
-				if (!OVF) begin
-					DVDNTL <= Q;
-					DVDNTL2 <= Q;
-				end else begin
+				if (OVF) begin
 					if (!DVCR.OVFIE) begin
 						DVDNTL <= {R_SIGN^D_SIGN,{31{~(R_SIGN^D_SIGN)}}};
-						DVDNTL2 <= {R_SIGN^D_SIGN,{31{~(R_SIGN^D_SIGN)}}};
-					end else begin
-						DVDNTL2 <= DVDNTL;
+						if (DIV64) DVDNTH <= R64[63:32];
+					end else  begin
+						if (DIV64) DVDNTL <= R64[31:0];
+						if (DIV64) DVDNTH <= R64[63:32];
 					end
 					DVCR.OVF <= 1;
+				end else begin
+					DVDNTL <= Q;
 				end
+				SND_UPD <= 1;
+			end
+			
+			if (SND_UPD) begin
+				DVDNTL2 <= DVDNTL;
 				DVDNTH2 <= DVDNTH;
 			end
 		end

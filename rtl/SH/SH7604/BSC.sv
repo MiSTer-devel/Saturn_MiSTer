@@ -71,6 +71,7 @@ module SH7604_BSC
 	output            BUS_RLS,
 	
 	input             FAST
+	
 );
 
 	import SH7604_PKG::*;
@@ -194,14 +195,15 @@ module SH7604_BSC
 	bit  [31: 0] DAT_BUF;
 	bit  [ 7: 0] VEC_BUF;
 		bit [ 1: 0] RFS_WAIT_CNT;
+		bit [ 1: 0] NOP_WAIT_CNT;
 	always @(posedge CLK or negedge RST_N) begin
 		BusState_t  STATE_NEXT;
 		bit         DBUS_SKIP;
 		bit         CBUS_LOCK_INT,DBUS_LOCK_INT;
-		bit         CBUS_REQ_PREV;
+		bit         CBUS_RLS_PEND;
+		bit [ 1: 0] CBUS_REQ_CNT;
 		bit [ 2: 0] WAIT_CNT;
 		bit [ 1: 0] RCD_WAIT_CNT;
-		bit [ 1: 0] NOP_WAIT_CNT;
 		bit [31: 0] BUS_DI_LATCH;
 		bit         BUS_WE_LATCH;
 		bit [ 3: 0] NEXT_BA;
@@ -230,7 +232,8 @@ module SH7604_BSC
 			BUSY <= 0;
 			{CBUSY,CBUSY2,DBUSY,VBUSY} <= '0;
 			{CBUS_ACTIVE,DBUS_ACTIVE,VBUS_ACTIVE,REFRESH_ACTIVE} <= '0;
-			CBUS_REQ_PREV <= 0;
+			CBUS_RLS_PEND <= 0;
+			CBUS_REQ_CNT <= '0;
 			BUS_STATE <= T0;
 			WAIT_CNT <= '0;
 			NEXT_BA <= '0;
@@ -737,12 +740,17 @@ module SH7604_BSC
 						else if ((CBUS_EXT_REQ && !(SDRAM_PRECHARGE_PEND && BUS_STATE != TRFS2 && BRLS && MASTER)) || (CBUS_EXT_REQ && CBUS_LOCK_INT)) begin
 							IS_SDRAM = IsSDRAMArea(CBUS_A[26:25],BCR1);
 							IS_SAME_BANK_SDRAM = (SDRAMBank(A,MCR) == SDRAMBank(CBUS_A[26:0],MCR));
-							if (INSERT_WAIT && ((A[26:25] != CBUS_A[26:25] && !CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && BUS_STATE == T0 && !IS_SDRAM) || (CBUS_WE && REFRESH_ACTIVE && !IS_SDRAM) || (A[26:25] == CBUS_A[26:25] && CBUS_WE && CBUS_REQ_PREV))) begin
+							if (INSERT_WAIT && ((A[26:25] != CBUS_A[26:25] && !CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && BUS_STATE == T0 && !IS_SDRAM) || (CBUS_WE && REFRESH_ACTIVE && !IS_SDRAM) || 
+							                    (CBUS_RLS_PEND && IS_SDRAM) || (CBUS_WE && CBUS_REQ_CNT == 2'd3 && !IS_SDRAM))) begin
 								A <= CBUS_A[26:0];
 								INSERT_WAIT <= 0;
+								CBUS_RLS_PEND <= 0;
+								CBUS_REQ_CNT <= 2'd0;
 							end else if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
 								CBUS_ACTIVE <= 1;
 								DBUS_SKIP <= 0;
+								if (A[26:25] == CBUS_A[26:25] && CBUS_WE) CBUS_REQ_CNT <= CBUS_REQ_CNT + 2'd1;
+								else CBUS_REQ_CNT <= 2'd0;
 								CBUS_LOCK_INT <= CBUS_LOCK;
 								case (GetAreaSZ(CBUS_A[26:25],BCR1,BCR2,A0_SZ,DRAM_SZ))
 									2'b01: if (!SIZE_BYTE_DISABLE) begin 
@@ -847,11 +855,13 @@ module SH7604_BSC
 						CBUSY2 <= 1;
 					end
 				end
-				if (BUS_RLS) INSERT_WAIT <= 0;
+				if ((BUS_STATE == T2 || BUS_STATE == TWCAS) && !BUSY && !RD_WR_N && !BUS_RLS) begin
+					if (!CBUS_EXT_REQ) CBUS_RLS_PEND <= ~MASTER;
+				end
+				if (BUS_RLS) begin INSERT_WAIT <= 0; CBUS_RLS_PEND <= 0; CBUS_REQ_CNT <= '0; end
 			end
 			if (CE_F) begin
 				if (!CBUS_EXT_REQ && CBUS_PREREQ && BUS_STATE == T0 && !BUS_RLS) DBUS_SKIP <= 1;
-				CBUS_REQ_PREV <= CBUS_EXT_REQ;
 			end
 			BUS_STATE <= STATE_NEXT;
 		end
@@ -891,7 +901,7 @@ module SH7604_BSC
 				else if (BREQ && BACK && SLV_BUS_RLS) begin
 					SLV_BUS_RLS <= 0;
 				end
-				else if ((BREQ && !CBUS_PREREQ && BUS_STATE == T0 && BUS_END && !SLV_BUS_RLS) ||
+				else if ((BREQ && !CBUS_PREREQ && BUS_STATE == T0 && !NOP_WAIT_CNT && BUS_END && !SLV_BUS_RLS) ||
 			            (BREQ && BUS_STATE == T0 && !RES_N && !SLV_BUS_RLS)) begin
 					BREQ <= 0;
 				end

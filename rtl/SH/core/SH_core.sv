@@ -102,7 +102,7 @@ module SH_core
 `endif
 	assign REGS_RBN = ID_DECI.RB.N;
 	
-	SH2_regfile regfile (CLK, RST_N, CE, EN && !SLP, REGS_WAN, REGS_WAD, REGS_WAE, REGS_WBN, REGS_WBD, REGS_WBE, 
+	SH2_regfile regfile (CLK, RST_N, CE, EN, REGS_WAN, REGS_WAD, REGS_WAE, REGS_WBN, REGS_WBD, REGS_WBE, 
 								REGS_RAN, REGS_RAQ, REGS_RBN, REGS_RBQ, REGS_R0Q);
 
 	
@@ -118,10 +118,10 @@ module SH_core
 		else if (!RES_N) begin
 			NPC <= '0;
 		end
-		else if (EN && !SLP && CE) begin
+		else if (EN && CE) begin
 			if (PIPE.EX.DI.PCW && !EX_STALL) begin
 				NPC <= ALU_RES;
-			end else if (!PC_STALL) begin
+			end else if (!PC_STALL && !ID_DECI.SLP && !SLP) begin
 				NPC <= PC + 2;
 			end
 		end
@@ -132,7 +132,7 @@ module SH_core
 	wire LOAD_ISSUE = (PIPE.EX.DI.MEM.R | PIPE.EX.DI.MAC.R) & ((PIPE.EX.DI.RA.N == ID_DECI.RA.N & ID_DECI.RA.R) |
 	                                                           (PIPE.EX.DI.RA.N == ID_DECI.RB.N & ID_DECI.RB.R) |
 	                                                           (PIPE.EX.DI.RA.N ==         5'd0 & ID_DECI.R0R));
-	wire INST_ISSUE = ((IFID_STALL & ~PC[1]) | ~PIPE.ID.PC[1]) & (PIPE.EX.DI.MEM.R | PIPE.EX.DI.MEM.W | PIPE.EX.DI.MAC.R | PIPE.EX.DI.MAC.W);
+	wire INST_ISSUE = ((IFID_STALL & ~PC[1]) | ~PIPE.ID.PC[1]) & (PIPE.EX.DI.MEM.R | PIPE.EX.DI.MEM.W | PIPE.EX.DI.MAC.R | PIPE.EX.DI.MAC.W) & ~(ID_DECI.BR.BI & ID_DECI.BR.BT == UCB & ID_DECI.IMMT == SIMM12);
 	
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
@@ -151,7 +151,7 @@ module SH_core
 			INST_SPLIT <= 0;
 			MAWB_STALL <= 0;
 		end
-		else if (EN && !SLP && CE) begin
+		else if (EN && CE) begin
 			// synopsys translate_off
 			if (LOAD_ISSUE && !INST_SPLIT && (!MA_ACTIVE || !BUS_WAIT) && !EX_STALL) begin
 				LOAD_SPLIT <= 1;
@@ -220,12 +220,16 @@ module SH_core
 			INT_REQ_LATCH <= 0;
 			INT_LVL_LATCH <= '0;
 		end
-		else if (EN && !SLP && CE) begin
+		else if (EN && CE) begin
 			if (!PC[1] || PIPE.MA.BC) begin
 				NEW_IR = PC[1] ? BUS_DI[15:0] : BUS_DI[31:16];
 			end
 			else begin
 				NEW_IR = SAVE_IR;
+			end
+			
+			if (ID_DECI.SLP || SLP) begin
+				NEW_IR = 16'h0009;
 			end
 				
 			if (!IF_STALL) begin
@@ -313,24 +317,20 @@ module SH_core
 			IFID_STALL <= 0;
 			SLP <= 0;
 		end
-		else begin
-			if (EN && !SLP && CE) begin
-				if (!ID_STALL) begin
-					PIPE.EX.IR <= DEC_IR;
-					PIPE.EX.PC <= PIPE.ID.PC;
-					PIPE.EX.DI <= ID_DECI;
-					PIPE.EX.RA <= REGS_RAQ;
-					PIPE.EX.RB <= REGS_RBQ;
-					PIPE.EX.R0 <= REGS_R0Q;
-					PIPE.EX.BC <= BR_COND;
-					STATE <= NEXT_STATE;
-					IFID_STALL <= |NEXT_STATE;
-					
-					if (ID_DECI.SLP) SLP <= 1;
-				end
-			end
-			if (EN && SLP && CE) begin
-				if (INT_REQ) SLP <= 0;
+		else if (EN && CE) begin
+			if (!ID_STALL) begin
+				PIPE.EX.IR <= DEC_IR;
+				PIPE.EX.PC <= PIPE.ID.PC;
+				PIPE.EX.DI <= ID_DECI;
+				PIPE.EX.RA <= REGS_RAQ;
+				PIPE.EX.RB <= REGS_RBQ;
+				PIPE.EX.R0 <= REGS_R0Q;
+				PIPE.EX.BC <= BR_COND;
+				STATE <= NEXT_STATE;
+				IFID_STALL <= |NEXT_STATE;
+				
+				if (ID_DECI.SLP) SLP <= 1;
+				if (SLP && INT_REQ) SLP <= 0;
 			end
 		end
 	end
@@ -519,7 +519,7 @@ module SH_core
 		endcase
 		
 		adder_a = PIPE.EX.DI.ALU.OP == DIV ? {ALU_A[30:0],SR.T} : ALU_A;
-		adder_code = PIPE.EX.DI.ALU.OP == DIV ? {3'b000,~(SR.M^SR.Q)} : PIPE.EX.DI.ALU.CD;
+		adder_code = PIPE.EX.DI.ALU.OP == DIV ? {1'b0,SR.M~^SR.Q} : PIPE.EX.DI.ALU.CD;
 		adder_cmp = PIPE.EX.DI.ALU.CMP;
 		{ADDER_C,ADDER_RES} = Adder(adder_a,ALU_B,SR.T,adder_code);
 		ADDER_V = ~((ALU_A[31] ^ ALU_B[31]) ^ adder_code[0]) & (ALU_A[31] ^ ADDER_RES[31]);
@@ -601,7 +601,7 @@ module SH_core
 			PIPE.MA.ADDR <= '0;
 			PIPE.MA.WD <= '0;
 		end
-		else if (EN && !SLP && CE) begin
+		else if (EN && CE) begin
 			if (!EX_STALL) begin
 				PIPE.MA.IR <= PIPE.EX.IR;
 				PIPE.MA.DI <= PIPE.EX.DI;
@@ -654,7 +654,7 @@ module SH_core
 			GBR <= '0;
 			VBR <= '0;
 		end
-		else if (EN && !SLP && CE) begin
+		else if (EN && CE) begin
 			if (!EX_STALL) begin
 				if (PIPE.EX.DI.CTRL.W) begin
 					case (PIPE.EX.DI.CTRL.S)
@@ -706,7 +706,7 @@ module SH_core
 			PIPE.WB.RES <= '0;
 			PIPE.WB.RD <= '0;
 		end
-		else if (EN && !SLP && CE) begin
+		else if (EN && CE) begin
 			if (!MA_STALL && !INST_SPLIT) begin
 				PIPE.WB.IR <= PIPE.MA.IR;
 				PIPE.WB.DI <= PIPE.MA.DI;
@@ -765,7 +765,7 @@ module SH_core
 			PIPE.WB2.RESA <= '0;
 			PIPE.WB2.RESB <= '0;
 		end
-		else if (EN && !SLP && CE) begin
+		else if (EN && CE) begin
 			if (!WB_STALL && !INST_SPLIT) begin
 				PIPE.WB2.IR <= PIPE.WB.IR;
 				PIPE.WB2.DI <= PIPE.WB.DI;
