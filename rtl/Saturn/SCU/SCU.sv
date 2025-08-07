@@ -2253,140 +2253,138 @@ module SCU
 				DEN[0].GO <= 0;
 				DEN[1].GO <= 0;
 				DEN[2].GO <= 0;
-			end
-			if (CE_R) begin
-				if (REG_WR) begin
-					case ({CA[7:2],2'b00})
+				if (REG_WWAIT) begin
+					case ({REG_A,2'b00})
 						8'h00: begin
-							if (!CDQM_N[3]) DR[0][31:24] <= CDI[31:24] & DxR_WMASK[31:24];
-							if (!CDQM_N[2]) DR[0][23:16] <= CDI[23:16] & DxR_WMASK[23:16];
-							if (!CDQM_N[1]) DR[0][15: 8] <= CDI[15: 8] & DxR_WMASK[15: 8];
-							if (!CDQM_N[0]) DR[0][ 7: 0] <= CDI[ 7: 0] & DxR_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DR[0][31:24] <= REG_WDI[31:24] & DxR_WMASK[31:24];
+							if (!CDQM_N[2]) DR[0][23:16] <= REG_WDI[23:16] & DxR_WMASK[23:16];
+							if (!CDQM_N[1]) DR[0][15: 8] <= REG_WDI[15: 8] & DxR_WMASK[15: 8];
+							if (!CDQM_N[0]) DR[0][ 7: 0] <= REG_WDI[ 7: 0] & DxR_WMASK[ 7: 0];
 `ifdef DEBUG
-							DR_ERR <= CDI[26:24] <= 3'h1 || CDI[26:24] >= 3'h7;
+							DR_ERR <= REG_WDI[26:24] <= 3'h1 || REG_WDI[26:24] >= 3'h7;
 `endif
 						end
 						8'h04: begin
-							if (!CDQM_N[3]) DW[0][31:24] <= CDI[31:24] & DxW_WMASK[31:24];
-							if (!CDQM_N[2]) DW[0][23:16] <= CDI[23:16] & DxW_WMASK[23:16];
-							if (!CDQM_N[1]) DW[0][15: 8] <= CDI[15: 8] & DxW_WMASK[15: 8];
-							if (!CDQM_N[0]) DW[0][ 7: 0] <= CDI[ 7: 0] & DxW_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DW[0][31:24] <= REG_WDI[31:24] & DxW_WMASK[31:24];
+							if (!CDQM_N[2]) DW[0][23:16] <= REG_WDI[23:16] & DxW_WMASK[23:16];
+							if (!CDQM_N[1]) DW[0][15: 8] <= REG_WDI[15: 8] & DxW_WMASK[15: 8];
+							if (!CDQM_N[0]) DW[0][ 7: 0] <= REG_WDI[ 7: 0] & DxW_WMASK[ 7: 0];
 `ifdef DEBUG
-							DW_ERR <= CDI[26:24] <= 3'h1 || CDI[26:24] >= 3'h7;
+							DW_ERR <= REG_WDI[26:24] <= 3'h1 || REG_WDI[26:24] >= 3'h7;
 `endif
 						end
 						8'h08: begin
-							if (!CDQM_N[3]) DC[0][31:24] <= CDI[31:24] & D0C_WMASK[31:24];
-							if (!CDQM_N[2]) DC[0][23:16] <= CDI[23:16] & D0C_WMASK[23:16];
-							if (!CDQM_N[1]) DC[0][15: 8] <= CDI[15: 8] & D0C_WMASK[15: 8];
-							if (!CDQM_N[0]) DC[0][ 7: 0] <= CDI[ 7: 0] & D0C_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DC[0][31:24] <= REG_WDI[31:24] & D0C_WMASK[31:24];
+							if (!CDQM_N[2]) DC[0][23:16] <= REG_WDI[23:16] & D0C_WMASK[23:16];
+							if (!CDQM_N[1]) DC[0][15: 8] <= REG_WDI[15: 8] & D0C_WMASK[15: 8];
+							if (!CDQM_N[0]) DC[0][ 7: 0] <= REG_WDI[ 7: 0] & D0C_WMASK[ 7: 0];
 						end
 						8'h0C: if (!DMA_RUN[0]) begin
-							if (!CDQM_N[3]) DAD[0][31:24] <= CDI[31:24] & DxAD_WMASK[31:24];
-							if (!CDQM_N[2]) DAD[0][23:16] <= CDI[23:16] & DxAD_WMASK[23:16];
-							if (!CDQM_N[1]) DAD[0][15: 8] <= CDI[15: 8] & DxAD_WMASK[15: 8];
-							if (!CDQM_N[0]) DAD[0][ 7: 0] <= CDI[ 7: 0] & DxAD_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DAD[0][31:24] <= REG_WDI[31:24] & DxAD_WMASK[31:24];
+							if (!CDQM_N[2]) DAD[0][23:16] <= REG_WDI[23:16] & DxAD_WMASK[23:16];
+							if (!CDQM_N[1]) DAD[0][15: 8] <= REG_WDI[15: 8] & DxAD_WMASK[15: 8];
+							if (!CDQM_N[0]) DAD[0][ 7: 0] <= REG_WDI[ 7: 0] & DxAD_WMASK[ 7: 0];
 						end
 						8'h10: begin
-							if (!CDQM_N[3]) DEN[0][31:24] <= CDI[31:24] & DxEN_WMASK[31:24];
-							if (!CDQM_N[2]) DEN[0][23:16] <= CDI[23:16] & DxEN_WMASK[23:16];
-							if (!CDQM_N[1]) DEN[0][15: 8] <= CDI[15: 8] & DxEN_WMASK[15: 8];
-							if (!CDQM_N[0]) DEN[0][ 7: 0] <= CDI[ 7: 0] & DxEN_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DEN[0][31:24] <= REG_WDI[31:24] & DxEN_WMASK[31:24];
+							if (!CDQM_N[2]) DEN[0][23:16] <= REG_WDI[23:16] & DxEN_WMASK[23:16];
+							if (!CDQM_N[1]) DEN[0][15: 8] <= REG_WDI[15: 8] & DxEN_WMASK[15: 8];
+							if (!CDQM_N[0]) DEN[0][ 7: 0] <= REG_WDI[ 7: 0] & DxEN_WMASK[ 7: 0];
 						end
 						8'h14: if (!DMA_RUN[0]) begin
-							if (!CDQM_N[3]) DMD[0][31:24] <= CDI[31:24] & DxMD_WMASK[31:24];
-							if (!CDQM_N[2]) DMD[0][23:16] <= CDI[23:16] & DxMD_WMASK[23:16];
-							if (!CDQM_N[1]) DMD[0][15: 8] <= CDI[15: 8] & DxMD_WMASK[15: 8];
-							if (!CDQM_N[0]) DMD[0][ 7: 0] <= CDI[ 7: 0] & DxMD_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DMD[0][31:24] <= REG_WDI[31:24] & DxMD_WMASK[31:24];
+							if (!CDQM_N[2]) DMD[0][23:16] <= REG_WDI[23:16] & DxMD_WMASK[23:16];
+							if (!CDQM_N[1]) DMD[0][15: 8] <= REG_WDI[15: 8] & DxMD_WMASK[15: 8];
+							if (!CDQM_N[0]) DMD[0][ 7: 0] <= REG_WDI[ 7: 0] & DxMD_WMASK[ 7: 0];
 						end
 						8'h20: begin
-							if (!CDQM_N[3]) DR[1][31:24] <= CDI[31:24] & DxR_WMASK[31:24];
-							if (!CDQM_N[2]) DR[1][23:16] <= CDI[23:16] & DxR_WMASK[23:16];
-							if (!CDQM_N[1]) DR[1][15: 8] <= CDI[15: 8] & DxR_WMASK[15: 8];
-							if (!CDQM_N[0]) DR[1][ 7: 0] <= CDI[ 7: 0] & DxR_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DR[1][31:24] <= REG_WDI[31:24] & DxR_WMASK[31:24];
+							if (!CDQM_N[2]) DR[1][23:16] <= REG_WDI[23:16] & DxR_WMASK[23:16];
+							if (!CDQM_N[1]) DR[1][15: 8] <= REG_WDI[15: 8] & DxR_WMASK[15: 8];
+							if (!CDQM_N[0]) DR[1][ 7: 0] <= REG_WDI[ 7: 0] & DxR_WMASK[ 7: 0];
 `ifdef DEBUG
-							DR_ERR <= CDI[26:24] <= 3'h1 || CDI[26:24] >= 3'h7;
+							DR_ERR <= REG_WDI[26:24] <= 3'h1 || REG_WDI[26:24] >= 3'h7;
 `endif
 						end
 						8'h24: begin
-							if (!CDQM_N[3]) DW[1][31:24] <= CDI[31:24] & DxW_WMASK[31:24];
-							if (!CDQM_N[2]) DW[1][23:16] <= CDI[23:16] & DxW_WMASK[23:16];
-							if (!CDQM_N[1]) DW[1][15: 8] <= CDI[15: 8] & DxW_WMASK[15: 8];
-							if (!CDQM_N[0]) DW[1][ 7: 0] <= CDI[ 7: 0] & DxW_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DW[1][31:24] <= REG_WDI[31:24] & DxW_WMASK[31:24];
+							if (!CDQM_N[2]) DW[1][23:16] <= REG_WDI[23:16] & DxW_WMASK[23:16];
+							if (!CDQM_N[1]) DW[1][15: 8] <= REG_WDI[15: 8] & DxW_WMASK[15: 8];
+							if (!CDQM_N[0]) DW[1][ 7: 0] <= REG_WDI[ 7: 0] & DxW_WMASK[ 7: 0];
 `ifdef DEBUG
-							DW_ERR <= CDI[26:24] <= 3'h1 || CDI[26:24] >= 3'h7;
+							DW_ERR <= REG_WDI[26:24] <= 3'h1 || REG_WDI[26:24] >= 3'h7;
 `endif
 						end
 						8'h28: begin
-							if (!CDQM_N[3]) DC[1][31:24] <= CDI[31:24] & D0C_WMASK[31:24];
-							if (!CDQM_N[2]) DC[1][23:16] <= CDI[23:16] & D0C_WMASK[23:16];
-							if (!CDQM_N[1]) DC[1][15: 8] <= CDI[15: 8] & D0C_WMASK[15: 8];
-							if (!CDQM_N[0]) DC[1][ 7: 0] <= CDI[ 7: 0] & D0C_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DC[1][31:24] <= REG_WDI[31:24] & D0C_WMASK[31:24];
+							if (!CDQM_N[2]) DC[1][23:16] <= REG_WDI[23:16] & D0C_WMASK[23:16];
+							if (!CDQM_N[1]) DC[1][15: 8] <= REG_WDI[15: 8] & D0C_WMASK[15: 8];
+							if (!CDQM_N[0]) DC[1][ 7: 0] <= REG_WDI[ 7: 0] & D0C_WMASK[ 7: 0];
 						end
 						8'h2C: if (!DMA_RUN[1]) begin
-							if (!CDQM_N[3]) DAD[1][31:24] <= CDI[31:24] & DxAD_WMASK[31:24];
-							if (!CDQM_N[2]) DAD[1][23:16] <= CDI[23:16] & DxAD_WMASK[23:16];
-							if (!CDQM_N[1]) DAD[1][15: 8] <= CDI[15: 8] & DxAD_WMASK[15: 8];
-							if (!CDQM_N[0]) DAD[1][ 7: 0] <= CDI[ 7: 0] & DxAD_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DAD[1][31:24] <= REG_WDI[31:24] & DxAD_WMASK[31:24];
+							if (!CDQM_N[2]) DAD[1][23:16] <= REG_WDI[23:16] & DxAD_WMASK[23:16];
+							if (!CDQM_N[1]) DAD[1][15: 8] <= REG_WDI[15: 8] & DxAD_WMASK[15: 8];
+							if (!CDQM_N[0]) DAD[1][ 7: 0] <= REG_WDI[ 7: 0] & DxAD_WMASK[ 7: 0];
 						end
 						8'h30: begin
-							if (!CDQM_N[3]) DEN[1][31:24] <= CDI[31:24] & DxEN_WMASK[31:24];
-							if (!CDQM_N[2]) DEN[1][23:16] <= CDI[23:16] & DxEN_WMASK[23:16];
-							if (!CDQM_N[1]) DEN[1][15: 8] <= CDI[15: 8] & DxEN_WMASK[15: 8];
-							if (!CDQM_N[0]) DEN[1][ 7: 0] <= CDI[ 7: 0] & DxEN_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DEN[1][31:24] <= REG_WDI[31:24] & DxEN_WMASK[31:24];
+							if (!CDQM_N[2]) DEN[1][23:16] <= REG_WDI[23:16] & DxEN_WMASK[23:16];
+							if (!CDQM_N[1]) DEN[1][15: 8] <= REG_WDI[15: 8] & DxEN_WMASK[15: 8];
+							if (!CDQM_N[0]) DEN[1][ 7: 0] <= REG_WDI[ 7: 0] & DxEN_WMASK[ 7: 0];
 						end
 						8'h34: if (!DMA_RUN[1]) begin
-							if (!CDQM_N[3]) DMD[1][31:24] <= CDI[31:24] & DxMD_WMASK[31:24];
-							if (!CDQM_N[2]) DMD[1][23:16] <= CDI[23:16] & DxMD_WMASK[23:16];
-							if (!CDQM_N[1]) DMD[1][15: 8] <= CDI[15: 8] & DxMD_WMASK[15: 8];
-							if (!CDQM_N[0]) DMD[1][ 7: 0] <= CDI[ 7: 0] & DxMD_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DMD[1][31:24] <= REG_WDI[31:24] & DxMD_WMASK[31:24];
+							if (!CDQM_N[2]) DMD[1][23:16] <= REG_WDI[23:16] & DxMD_WMASK[23:16];
+							if (!CDQM_N[1]) DMD[1][15: 8] <= REG_WDI[15: 8] & DxMD_WMASK[15: 8];
+							if (!CDQM_N[0]) DMD[1][ 7: 0] <= REG_WDI[ 7: 0] & DxMD_WMASK[ 7: 0];
 						end
 						8'h40: begin
-							if (!CDQM_N[3]) DR[2][31:24] <= CDI[31:24] & DxR_WMASK[31:24];
-							if (!CDQM_N[2]) DR[2][23:16] <= CDI[23:16] & DxR_WMASK[23:16];
-							if (!CDQM_N[1]) DR[2][15: 8] <= CDI[15: 8] & DxR_WMASK[15: 8];
-							if (!CDQM_N[0]) DR[2][ 7: 0] <= CDI[ 7: 0] & DxR_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DR[2][31:24] <= REG_WDI[31:24] & DxR_WMASK[31:24];
+							if (!CDQM_N[2]) DR[2][23:16] <= REG_WDI[23:16] & DxR_WMASK[23:16];
+							if (!CDQM_N[1]) DR[2][15: 8] <= REG_WDI[15: 8] & DxR_WMASK[15: 8];
+							if (!CDQM_N[0]) DR[2][ 7: 0] <= REG_WDI[ 7: 0] & DxR_WMASK[ 7: 0];
 `ifdef DEBUG
-							DR_ERR <= CDI[26:24] <= 3'h1 || CDI[26:24] >= 3'h7;
+							DR_ERR <= REG_WDI[26:24] <= 3'h1 || REG_WDI[26:24] >= 3'h7;
 `endif
 						end
 						8'h44: begin
-							if (!CDQM_N[3]) DW[2][31:24] <= CDI[31:24] & DxW_WMASK[31:24];
-							if (!CDQM_N[2]) DW[2][23:16] <= CDI[23:16] & DxW_WMASK[23:16];
-							if (!CDQM_N[1]) DW[2][15: 8] <= CDI[15: 8] & DxW_WMASK[15: 8];
-							if (!CDQM_N[0]) DW[2][ 7: 0] <= CDI[ 7: 0] & DxW_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DW[2][31:24] <= REG_WDI[31:24] & DxW_WMASK[31:24];
+							if (!CDQM_N[2]) DW[2][23:16] <= REG_WDI[23:16] & DxW_WMASK[23:16];
+							if (!CDQM_N[1]) DW[2][15: 8] <= REG_WDI[15: 8] & DxW_WMASK[15: 8];
+							if (!CDQM_N[0]) DW[2][ 7: 0] <= REG_WDI[ 7: 0] & DxW_WMASK[ 7: 0];
 `ifdef DEBUG
-							DW_ERR <= CDI[26:24] <= 3'h1 || CDI[26:24] >= 3'h7;
+							DW_ERR <= REG_WDI[26:24] <= 3'h1 || REG_WDI[26:24] >= 3'h7;
 `endif
 						end
 						8'h48: begin
-							if (!CDQM_N[3]) DC[2][31:24] <= CDI[31:24] & D0C_WMASK[31:24];
-							if (!CDQM_N[2]) DC[2][23:16] <= CDI[23:16] & D0C_WMASK[23:16];
-							if (!CDQM_N[1]) DC[2][15: 8] <= CDI[15: 8] & D0C_WMASK[15: 8];
-							if (!CDQM_N[0]) DC[2][ 7: 0] <= CDI[ 7: 0] & D0C_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DC[2][31:24] <= REG_WDI[31:24] & D0C_WMASK[31:24];
+							if (!CDQM_N[2]) DC[2][23:16] <= REG_WDI[23:16] & D0C_WMASK[23:16];
+							if (!CDQM_N[1]) DC[2][15: 8] <= REG_WDI[15: 8] & D0C_WMASK[15: 8];
+							if (!CDQM_N[0]) DC[2][ 7: 0] <= REG_WDI[ 7: 0] & D0C_WMASK[ 7: 0];
 						end
 						8'h4C: if (!DMA_RUN[2]) begin
-							if (!CDQM_N[3]) DAD[2][31:24] <= CDI[31:24] & DxAD_WMASK[31:24];
-							if (!CDQM_N[2]) DAD[2][23:16] <= CDI[23:16] & DxAD_WMASK[23:16];
-							if (!CDQM_N[1]) DAD[2][15: 8] <= CDI[15: 8] & DxAD_WMASK[15: 8];
-							if (!CDQM_N[0]) DAD[2][ 7: 0] <= CDI[ 7: 0] & DxAD_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DAD[2][31:24] <= REG_WDI[31:24] & DxAD_WMASK[31:24];
+							if (!CDQM_N[2]) DAD[2][23:16] <= REG_WDI[23:16] & DxAD_WMASK[23:16];
+							if (!CDQM_N[1]) DAD[2][15: 8] <= REG_WDI[15: 8] & DxAD_WMASK[15: 8];
+							if (!CDQM_N[0]) DAD[2][ 7: 0] <= REG_WDI[ 7: 0] & DxAD_WMASK[ 7: 0];
 						end
 						8'h50: begin
-							if (!CDQM_N[3]) DEN[2][31:24] <= CDI[31:24] & DxEN_WMASK[31:24];
-							if (!CDQM_N[2]) DEN[2][23:16] <= CDI[23:16] & DxEN_WMASK[23:16];
-							if (!CDQM_N[1]) DEN[2][15: 8] <= CDI[15: 8] & DxEN_WMASK[15: 8];
-							if (!CDQM_N[0]) DEN[2][ 7: 0] <= CDI[ 7: 0] & DxEN_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DEN[2][31:24] <= REG_WDI[31:24] & DxEN_WMASK[31:24];
+							if (!CDQM_N[2]) DEN[2][23:16] <= REG_WDI[23:16] & DxEN_WMASK[23:16];
+							if (!CDQM_N[1]) DEN[2][15: 8] <= REG_WDI[15: 8] & DxEN_WMASK[15: 8];
+							if (!CDQM_N[0]) DEN[2][ 7: 0] <= REG_WDI[ 7: 0] & DxEN_WMASK[ 7: 0];
 						end
 						8'h54: if (!DMA_RUN[2]) begin
-							if (!CDQM_N[3]) DMD[2][31:24] <= CDI[31:24] & DxMD_WMASK[31:24];
-							if (!CDQM_N[2]) DMD[2][23:16] <= CDI[23:16] & DxMD_WMASK[23:16];
-							if (!CDQM_N[1]) DMD[2][15: 8] <= CDI[15: 8] & DxMD_WMASK[15: 8];
-							if (!CDQM_N[0]) DMD[2][ 7: 0] <= CDI[ 7: 0] & DxMD_WMASK[ 7: 0];
+							if (!CDQM_N[3]) DMD[2][31:24] <= REG_WDI[31:24] & DxMD_WMASK[31:24];
+							if (!CDQM_N[2]) DMD[2][23:16] <= REG_WDI[23:16] & DxMD_WMASK[23:16];
+							if (!CDQM_N[1]) DMD[2][15: 8] <= REG_WDI[15: 8] & DxMD_WMASK[15: 8];
+							if (!CDQM_N[0]) DMD[2][ 7: 0] <= REG_WDI[ 7: 0] & DxMD_WMASK[ 7: 0];
 						end
 					
 						8'h60: begin
-//							DSTP <= CDI & DSTP_WMASK;
-							if (CDI[0]) begin
+//							DSTP <= REG_WDI & DSTP_WMASK;
+							if (REG_WDI[0]) begin
 								DMA_RUN[0] <= 0;
 								DMA_RUN[1] <= 0;
 								DMA_RUN[2] <= 0;
@@ -2461,7 +2459,7 @@ module SCU
 	bit DSP_CE;
 	always @(posedge CLK) if (CE_R) DSP_CE <= ~DSP_CE;
 	
-	wire DSP_SEL = ~CCS2_N & CA[24:0] >= 25'h1FE0080 & CA[24:0] <= 25'h1FE008F;	//25FE0080-25FE008F
+	wire DSP_SEL = REG_SEL && CA[7:0] >= 8'h80 && CA[7:0] <= 8'h8F;	//25FE0080-25FE008F
 	
 	bit [31:0] DSP_DSO;
 	bit        DSP_RA0_SET;
@@ -2477,11 +2475,11 @@ module SCU
 		
 		.CE_R(CE_R),
 		.CE_F(CE_F),
-		.A(CA[3:2]),
-		.DI(CDI),
+		.A(REG_A[3:2]),
+		.DI(REG_WDI),
 		.DO(DSP_DO),
-		.WE(DSP_SEL & CWE),
-		.RE(DSP_SEL & CRE),
+		.WE(DSP_SEL & REG_WWAIT & CE_R),
+		.RE(DSP_SEL & REG_RWAIT & REG_WAIT_DELAY == 3'd2 & CE_F),
 		
 		.DSO(DSP_DSO),
 		.RA0W(DSP_RA0_SET),
@@ -2611,6 +2609,7 @@ module SCU
 	bit [15:0] EXT_INT;
 	bit        INT_SET; 
 	always @(posedge CLK or negedge RST_N) begin
+		bit        REG_WWAIT1,REG_WWAIT2;
 		bit        TM1_SYNC_ALLOW;
 		
 		if (!RST_N) begin
@@ -2658,21 +2657,23 @@ module SCU
 				TM1_SYNC_ALLOW <= 1;
 			end
 			
-			if (REG_WR && CA[7:2] == 8'hA4>>2) begin	//IST
-				if (!CDI[0]  && IST.VBII ) IST.VBII <= 0;
-				if (!CDI[1]  && IST.VBOI ) IST.VBOI <= 0;
-				if (!CDI[2]  && IST.HBII ) IST.HBII <= 0;
-				if (!CDI[3]  && IST.T0I  ) IST.T0I <= 0;
-				if (!CDI[4]  && IST.T1I  ) IST.T1I <= 0;
-				if (!CDI[5]  && IST.DSPEI) IST.DSPEI <= 0;
-				if (!CDI[6]  && IST.SRI  ) IST.SRI <= 0;
-				if (!CDI[7]  && IST.SMI  ) IST.SMI <= 0;
-				if (!CDI[8]  && IST.PADI ) IST.PADI <= 0;
-				if (!CDI[9]  && IST.D2EI ) IST.D2EI <= 0;
-				if (!CDI[10] && IST.D1EI ) IST.D1EI <= 0;
-				if (!CDI[11] && IST.D0EI ) IST.D0EI <= 0;
-				if (!CDI[12] && IST.DII  ) IST.DII <= 0;
-				if (!CDI[13] && IST.SDEI ) IST.SDEI <= 0;
+			REG_WWAIT1 <= REG_WWAIT;
+			REG_WWAIT2 <= REG_WWAIT1;
+			if (REG_WWAIT2 && REG_A == 8'hA4>>2) begin	//IST
+				if (!REG_WDI[0]  && IST.VBII ) IST.VBII <= 0;
+				if (!REG_WDI[1]  && IST.VBOI ) IST.VBOI <= 0;
+				if (!REG_WDI[2]  && IST.HBII ) IST.HBII <= 0;
+				if (!REG_WDI[3]  && IST.T0I  ) IST.T0I <= 0;
+				if (!REG_WDI[4]  && IST.T1I  ) IST.T1I <= 0;
+				if (!REG_WDI[5]  && IST.DSPEI) IST.DSPEI <= 0;
+				if (!REG_WDI[6]  && IST.SRI  ) IST.SRI <= 0;
+				if (!REG_WDI[7]  && IST.SMI  ) IST.SMI <= 0;
+				if (!REG_WDI[8]  && IST.PADI ) IST.PADI <= 0;
+				if (!REG_WDI[9]  && IST.D2EI ) IST.D2EI <= 0;
+				if (!REG_WDI[10] && IST.D1EI ) IST.D1EI <= 0;
+				if (!REG_WDI[11] && IST.D0EI ) IST.D0EI <= 0;
+				if (!REG_WDI[12] && IST.DII  ) IST.DII <= 0;
+				if (!REG_WDI[13] && IST.SDEI ) IST.SDEI <= 0;
 			end 
 			
 			if      (IST.VBII  && !IMS.MS0  && !INT_SET) begin VBIN_INT <= 1;   IST.VBII <= 0;  INT_SET <= 1; end
@@ -2824,8 +2825,11 @@ module SCU
 	
 	
 	//Registers
-	bit [31:0] REG_DO;
-	bit        REG_WAIT;
+	bit [ 7: 2] REG_A;
+	bit [31: 0] REG_WDI;
+	bit [31: 0] REG_DO;
+	bit         REG_WWAIT,REG_RWAIT;
+	bit [ 2: 0] REG_WAIT_DELAY;
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
 			T0C <= RSEL_INIT;
@@ -2835,7 +2839,7 @@ module SCU
 			RSEL <= RSEL_INIT;
 			
 			REG_DO <= '0;
-			REG_WAIT <= 0;
+			{REG_WWAIT,REG_RWAIT} <= '0;
 		end
 		else if (!RES_N) begin
 			T0C <= RSEL_INIT;
@@ -2844,16 +2848,26 @@ module SCU
 			IMS <= IMS_INIT;
 			RSEL <= RSEL_INIT;
 		end else begin
-		if (CE_R) begin
 			if (REG_WR) begin
-				case ({CA[7:2],2'b00})
-					8'h90: T0C <= CDI & T0C_WMASK;
-					8'h94: T1S <= CDI & T1S_WMASK;
-					8'h98: T1MD <= CDI & T1MD_WMASK;
-					8'hA0: IMS <= CDI & IMS_WMASK;
-					8'hB0: ASR0 <= CDI & ASR0_WMASK;
-					8'hB4: ASR1 <= CDI & ASR1_WMASK;
-					8'hC4: RSEL <= CDI[0] & RSEL_WMASK[0];
+				REG_A <= CA[7:2];
+				REG_WDI <= CDI;
+				REG_WWAIT <= 1;
+			end
+			if (REG_RD) begin
+				REG_A <= CA[7:2];
+				REG_WAIT_DELAY <= FAST ? 3'd2 : 3'd4;
+				REG_RWAIT <= 1;
+			end
+			
+			if (REG_WWAIT && CE_R) begin
+				case ({REG_A,2'b00})
+					8'h90: T0C <= REG_WDI & T0C_WMASK;
+					8'h94: T1S <= REG_WDI & T1S_WMASK;
+					8'h98: T1MD <= REG_WDI & T1MD_WMASK;
+					8'hA0: IMS <= REG_WDI & IMS_WMASK;
+					8'hB0: ASR0 <= REG_WDI & ASR0_WMASK;
+					8'hB4: ASR1 <= REG_WDI & ASR1_WMASK;
+					8'hC4: RSEL <= REG_WDI[0] & RSEL_WMASK[0];
 					default:;
 				endcase
 			end
@@ -2861,12 +2875,9 @@ module SCU
 				IMS <= IMS_INIT;
 			end
 			
-			REG_WAIT <= 0;
-			if (REG_WR || REG_RD) REG_WAIT <= ~FAST;
-		end
-		/*if (CE_F)*/ begin
-			if (REG_RD) begin
-				case ({CA[7:2],2'b00})
+			
+			if (REG_RWAIT && REG_WAIT_DELAY == 3'd2 && CE_F) begin
+				case ({REG_A,2'b00})
 					8'h00: REG_DO <= DR[0] & DxR_RMASK;
 					8'h04: REG_DO <= DW[0] & DxW_RMASK;
 					8'h08: REG_DO <= DC[0] & D0C_RMASK;
@@ -2889,15 +2900,21 @@ module SCU
 					default: REG_DO <= '0;
 				endcase
 			end
-		end
+			
+			if (CE_R) begin
+				if (REG_WAIT_DELAY) REG_WAIT_DELAY <= REG_WAIT_DELAY - 3'd1;
+				else if (REG_RWAIT) REG_RWAIT <= 0;
+				
+				if (REG_WWAIT) REG_WWAIT <= 0;
+			end
 		end
 	end
 	
-	assign CDO = ABUS_SEL ? ABUS_BUF : 
-	             BBUS_SEL ? BBUS_BUF :
+	assign CDO = ABUS_SEL  ? ABUS_BUF : 
+	             BBUS_SEL  ? BBUS_BUF :
 	             !CIVECF_N ? {24'h000000,IVEC_DO} :
 					 DSP_SEL   ? DSP_DO : 
-					 REG_DO;
-	assign CWAIT_N = ~(CBUS_WAIT | IVEC_WAIT | REG_WAIT);
+					             REG_DO;
+	assign CWAIT_N = ~(CBUS_WAIT | IVEC_WAIT | REG_RWAIT | REG_WWAIT);
 	
 endmodule

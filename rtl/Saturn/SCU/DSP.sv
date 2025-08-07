@@ -333,10 +333,6 @@ module SCU_DSP (
 		end else begin
 			if (RUN && CE) begin
 				PC <= PC + 8'd1;
-				if (DECI.D1BUS.PCW) begin
-					PC <= D1BUS[7:0];
-					TOP <= PC;
-				end
 				if (DECI.CTL.LPS && LOP) begin
 					LPS_EXE <= 1;
 					PC <= PC;
@@ -369,6 +365,10 @@ module SCU_DSP (
 					LOP <= D1BUS[11:0];
 				end
 
+				if (DECI.D1BUS.PCW) begin
+					PC <= D1BUS[7:0];
+					TOP <= PC;
+				end
 				if (DECI.JPCW) begin
 					PC <= IC[7:0];
 				end
@@ -517,7 +517,7 @@ module SCU_DSP (
 	DSP_DATA_RAM #(6,32) DATA_RAM3(CLK, DATA_RAM_ADDR[3], DATA_RAM_D[3], DATA_RAM_WE[3], DATA_RAM_Q[3]);
 	
 	//Control port
-	always @(posedge CLK or negedge RST_N) begin		
+	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
 			EX <= 0;
 			EP <= 0; 
