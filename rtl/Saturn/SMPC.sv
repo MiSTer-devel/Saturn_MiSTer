@@ -469,9 +469,35 @@ module SMPC (
 							8'h10: begin		//INTBACK
 								if (IREG[2] == 8'hF0 && (IREG[0][0] || IREG[1][3])) begin
 									if (IREG[0][0]) begin
-										WAIT_CNT <= 16'd800;
-										NEXT_COMM_ST <= CS_EXEC;
-										COMM_ST <= CS_WAIT;
+										OREG_RAM_WA <= OREG_CNT;
+										case (OREG_CNT)
+											5'd0: OREG_RAM_D <= {STE,RESD,6'b000000};
+											5'd1: OREG_RAM_D <= YEAR[15:8];
+											5'd2: OREG_RAM_D <= YEAR[7:0];
+											5'd3: OREG_RAM_D <= {DAY,MONTH};
+											5'd4: OREG_RAM_D <= DAYS;
+											5'd5: OREG_RAM_D <= HOUR;
+											5'd6: OREG_RAM_D <= MIN;
+											5'd7: OREG_RAM_D <= SEC;
+											5'd8: OREG_RAM_D <= 8'h00;
+											5'd9: OREG_RAM_D <= {4'b0000,AC};
+											5'd10: OREG_RAM_D <= {1'b0,DOTSEL,2'b11,~MSHNMI_N,1'b1,~SYSRES_N,~SNDRES_N};
+											5'd11: OREG_RAM_D <= {1'b0,~CDRES_N,6'b000000};
+											5'd12: OREG_RAM_D <= SMEM_Q;
+											5'd13: OREG_RAM_D <= SMEM_Q;
+											5'd14: OREG_RAM_D <= SMEM_Q;
+											5'd15: OREG_RAM_D <= SMEM_Q;
+											5'd31: OREG_RAM_D <= COMREG;
+											default:OREG_RAM_D <= 8'h00;
+										endcase
+										OREG_RAM_WE <= 1;
+										
+										OREG_CNT <= OREG_CNT + 5'd1;
+										if (OREG_CNT == 5'd31) begin
+											WAIT_CNT <= 16'd800;
+											NEXT_COMM_ST <= CS_EXEC;
+											COMM_ST <= CS_WAIT;
+										end
 									end else begin
 										INTBACK_EXEC <= 1;
 										INTBACK_PERI <= 1;
@@ -612,47 +638,19 @@ module SMPC (
 							
 							8'h10: begin		//INTBACK
 								if (!INTBACK_EXEC) begin
-									OREG_RAM_WA <= OREG_CNT;
-									case (OREG_CNT)
-										5'd0: OREG_RAM_D <= {STE,RESD,6'b000000};
-										5'd1: OREG_RAM_D <= YEAR[15:8];
-										5'd2: OREG_RAM_D <= YEAR[7:0];
-										5'd3: OREG_RAM_D <= {DAY,MONTH};
-										5'd4: OREG_RAM_D <= DAYS;
-										5'd5: OREG_RAM_D <= HOUR;
-										5'd6: OREG_RAM_D <= MIN;
-										5'd7: OREG_RAM_D <= SEC;
-										5'd8: OREG_RAM_D <= 8'h00;
-										5'd9: OREG_RAM_D <= {4'b0000,AC};
-										5'd10: OREG_RAM_D <= {1'b0,DOTSEL,2'b11,~MSHNMI_N,1'b1,~SYSRES_N,~SNDRES_N};
-										5'd11: OREG_RAM_D <= {1'b0,~CDRES_N,6'b000000};
-										5'd12: OREG_RAM_D <= SMEM_Q;
-										5'd13: OREG_RAM_D <= SMEM_Q;
-										5'd14: OREG_RAM_D <= SMEM_Q;
-										5'd15: OREG_RAM_D <= SMEM_Q;
-										5'd31: OREG_RAM_D <= COMREG;
-										default:OREG_RAM_D <= 8'h00;
-									endcase
-									OREG_RAM_WE <= 1;
-									
-									if (OREG_CNT == 5'd31) begin
-										SR[7:6] <= 2'b01;
-										SR[5] <= 0;
-										SR[3:0] <= 4'b1111;
-										if (IREG[1][3]) begin
-											INTBACK_EXEC <= 1;
-											INTBACK_OPTIM_EN <= ~IREG[1][1];
-											SR[5] <= 1;
-											CHECK_CONTINUE <= 1;
-										end
-										CONT_PREV <= 0;
-										MIRQ_N <= 0; 
-										COMM_ST <= CS_END;
+									SR[7:6] <= 2'b01;
+									SR[5] <= 0;
+									SR[3:0] <= 4'b1111;
+									if (IREG[1][3]) begin
+										INTBACK_EXEC <= 1;
+										INTBACK_OPTIM_EN <= ~IREG[1][1];
+										SR[5] <= 1;
+										CHECK_CONTINUE <= 1;
 									end
-									OREG_CNT <= OREG_CNT + 5'd1;
-								end else begin
-									COMM_ST <= CS_END;
+									CONT_PREV <= 0;
+									MIRQ_N <= 0; 
 								end
+								COMM_ST <= CS_END;
 							end
 							
 							8'h16: begin		//SETTIME
