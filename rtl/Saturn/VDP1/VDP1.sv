@@ -1210,6 +1210,8 @@ module VDP1 (
 						LINE_S <= 1;
 						AA_X_INC <= (NEW_LINE_SY[12]^LINE_SWAP) ? {11{(NEW_LINE_SX[12]^LINE_SWAP)}} : {{10{1'b0}},~(NEW_LINE_SX[12]^LINE_SWAP)};
 						AA_Y_INC <= (NEW_LINE_SY[12]^LINE_SWAP) ? {{10{1'b0}},(NEW_LINE_SX[12]^LINE_SWAP)} : {11{~(NEW_LINE_SX[12]^LINE_SWAP)}};
+						
+						ROW_WIDTH <= NEW_LINE_ASY + 12'd1;
 					end else begin
 						LINE_ERROR_INC <= (NEW_LINE_ASY << 1);
 						LINE_ERROR_ADJ <= -(NEW_LINE_ASX << 1);
@@ -1217,9 +1219,10 @@ module VDP1 (
 						LINE_S <= 0;
 						AA_X_INC <= (NEW_LINE_SX[12]^LINE_SWAP) ? {{10{1'b0}},~(NEW_LINE_SY[12]^LINE_SWAP)} : {11{(NEW_LINE_SY[12]^LINE_SWAP)}};
 						AA_Y_INC <= (NEW_LINE_SX[12]^LINE_SWAP) ? {{10{1'b0}},~(NEW_LINE_SY[12]^LINE_SWAP)} : {11{(NEW_LINE_SY[12]^LINE_SWAP)}};
+						
+						ROW_WIDTH <= NEW_LINE_ASX + 12'd1;
 					end
 					
-					ROW_WIDTH <= NEW_LINE_ASX >= NEW_LINE_ASY ? NEW_LINE_ASX + 12'd1 : NEW_LINE_ASY + 12'd1;
 					
 					CMD_ST <= CMDS_LINE_CALCTX;
 				end
