@@ -2855,7 +2855,7 @@ module SCU
 			end
 			if (REG_RD) begin
 				REG_A <= CA[7:2];
-				REG_WAIT_DELAY <= FAST ? 3'd2 : 3'd4;
+				REG_WAIT_DELAY <= 3'd4;
 				REG_RWAIT <= 1;
 			end
 			
