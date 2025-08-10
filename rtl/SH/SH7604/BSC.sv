@@ -414,7 +414,7 @@ module SH7604_BSC
 							CS3_N <= 1;
 							RD_WR_N <= 1;
 							SDRAM_PRECHARGE_PEND <= 0;
-							NOP_WAIT_CNT <= 2'd2;
+							NOP_WAIT_CNT <= MASTER ? 2'd2 : 2'd0;
 							STATE_NEXT = T0;
 						end
 					end
@@ -741,7 +741,7 @@ module SH7604_BSC
 							IS_SDRAM = IsSDRAMArea(CBUS_A[26:25],BCR1);
 							IS_SAME_BANK_SDRAM = (SDRAMBank(A,MCR) == SDRAMBank(CBUS_A[26:0],MCR));
 							if (INSERT_WAIT && ((A[26:25] != CBUS_A[26:25] && !CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && BUS_STATE == T0 && !IS_SDRAM) || (CBUS_WE && REFRESH_ACTIVE && !IS_SDRAM) || 
-							                    (CBUS_RLS_PEND && IS_SDRAM) || (CBUS_WE && CBUS_REQ_CNT == 2'd3 && !IS_SDRAM))) begin
+							                    /*(CBUS_WE && CBUS_RLS_PEND && IS_SDRAM) ||*/ (CBUS_WE && CBUS_REQ_CNT == 2'd3 /*&& !IS_SDRAM*/))) begin
 								A <= CBUS_A[26:0];
 								INSERT_WAIT <= 0;
 								CBUS_RLS_PEND <= 0;
