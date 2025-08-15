@@ -236,10 +236,11 @@ module emu
 		end
 	end
 	
-	wire       vcrop_en = status[61];
+	wire [1:0] vcrop_mode = status[81:80];
 	wire [3:0] vcopt    = status[54:51];
 	reg        en216p;
 	reg  [4:0] voff;
+	reg  [9:0] crop_size;
 	always @(posedge CLK_VIDEO) begin
 `ifndef DEBUG
 		en216p <= ((HDMI_WIDTH == 1920) && (HDMI_HEIGHT == 1080) && !forced_scandoubler && !scale);
@@ -247,8 +248,14 @@ module emu
 		en216p <= 0;
 `endif		
 		voff <= (vcopt < 6) ? {vcopt,1'b0} : ({vcopt,1'b0} - 5'd24);
-	end
 
+	case (vcrop_mode)
+        2'b01: crop_size <= 10'd216;  // 216p
+        2'b10: crop_size <= 10'd224;  // 224p
+        default: crop_size <= 10'd0;  // Disabled
+    endcase
+	end
+	
 	wire vga_de;
 	video_freak video_freak
 	(
@@ -256,7 +263,7 @@ module emu
 		.VGA_DE_IN(vga_de),
 		.ARX((!ar) ? arx : (ar - 1'd1)),
 		.ARY((!ar) ? ary : 12'd0),
-		.CROP_SIZE((en216p & vcrop_en) ? 10'd216 : 10'd0),
+		.CROP_SIZE((en216p & |vcrop_mode) ? crop_size : 10'd0),
 		.CROP_OFF(voff),
 		.SCALE(status[56:55])
 	);
@@ -269,7 +276,7 @@ module emu
 	// 0         1         2         3          4         5         6   	   7         8         9
 	// 01234567890123456789012345678901 23456789012345678901234567890123 45678901234567890123456789012345
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXXXX   XX          XXXXXXXXXXXXXXXXXX XXXXXXXXXXXX
+	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXXXX   XX          XXXXXXXXXXXXXX XXX XXXXXXXXXXXX    XX
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -305,7 +312,7 @@ module emu
 		"P1o[50],Composite Blend,Off,On;",
 		"P1-;",
 		"P1o[64],Horizontal Crop,Off,On;",
-		"D8P1o[61],Vertical Crop,Disabled,216p(5x);",
+		"D8P1o[81:80],Vertical Crop,Disabled,216p(5x),224p;",
 		"D8P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
 		"P1o[56:55],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
 `ifdef STV_BUILD
@@ -455,7 +462,7 @@ module emu
 `ifndef STV_BUILD
 	assign menumask = {(status[56:55] != 2'b00), ~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
 `else
-	assign menumask = {~status[75], 1'b1, 1'b1, ~status[8], ~STV_ALTBIOS, 1'b0};
+	assign menumask = {(status[56:55] != 2'b00), 1'b1, 1'b1, ~status[75], 1'b1, 1'b1, ~status[8], ~STV_ALTBIOS, 1'b0};
 `endif
 	
 	wire bios_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] != 2'h3);
@@ -2199,3 +2206,4 @@ module emu
 
 
 endmodule
+
