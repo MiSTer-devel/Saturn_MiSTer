@@ -16,7 +16,10 @@
     Version: 1.0
     Date: 25-9-2019 */
 
-module jtframe_resync #(parameter BITS=4)(
+module jtframe_resync #(
+    parameter BITS=4,
+    parameter CNTW=10 // max 1024 pixels/lines
+)(
     input         clk,
     input         pxl_cen,
     input         hs_in,
@@ -29,8 +32,6 @@ module jtframe_resync #(parameter BITS=4)(
     output reg    hs_out,
     output reg    vs_out
 );
-
-parameter CNTW = 10; // max 1024 pixels/lines
 
 reg [CNTW-1:0]   hs_pos[0:1], vs_hpos[0:1], vs_vpos[0:1],// relative positions of the original sync pulses
                  hs_len[0:1], vs_len[0:1],               // count the length of the original sync pulses
