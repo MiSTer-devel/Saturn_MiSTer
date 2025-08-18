@@ -260,7 +260,7 @@ module YGR019 (
 						ABUS_WAIT_CNT_DBG <= 8'hFF;
 `endif
 					end
-					if (ABUS_WAIT && !ABUS_WAIT_CNT && ABUS_DATA_PORT && TRCTL[0] && !FIFO_FULL) begin
+					if (ABUS_WAIT && !ABUS_WAIT_CNT && ABUS_DATA_PORT && TRCTL[0] && (!FIFO_FULL || TRCTL[3])) begin
 						FIFO_BUF[FIFO_WR_POS] <= ADI;
 						FIFO_WR_POS <= FIFO_WR_POS + 3'd1;
 						FIFO_INC_AMOUNT <= 1;
@@ -360,15 +360,15 @@ module YGR019 (
 					end
 
 					DACK1_OLD <= DACK1;
-					if (TRCTL[2] && DACK1 && !DACK1_OLD) begin
-						if (!TRCTL[0]) begin
+					if (DACK1 && !DACK1_OLD) begin
+						if (TRCTL[2] && !TRCTL[0]) begin
 							FIFO_BUF[FIFO_WR_POS] <= BDI;
 							FIFO_WR_POS <= FIFO_WR_POS + 3'd1;
 							FIFO_INC_AMOUNT <= 1;
 							if (FIFO_AMOUNT > 7'd2 && FIFO_DREQ) begin
 								FIFO_DREQ <= 0;
 							end
-						end else begin
+						end else if (TRCTL[0]) begin
 							FIFO_RD_POS <= FIFO_RD_POS + 3'd1;
 							FIFO_DEC_AMOUNT <= 1;
 							if (FIFO_AMOUNT < 7'd5 && FIFO_DREQ) begin
@@ -378,6 +378,12 @@ module YGR019 (
 					end
 				end
 				HOST_DATA <= FIFO_BUF[FIFO_RD_POS]; 
+				
+				if (FIFO_INC_AMOUNT && !FIFO_DEC_AMOUNT) begin
+					if (TRCTL[2] && TRCTL[0]) TRCTL[2] <= 0;
+				end else if (!FIFO_INC_AMOUNT && FIFO_DEC_AMOUNT) begin
+					if (FIFO_AMOUNT == 3'd1 && !TRCTL[2] && TRCTL[0]) TRCTL[2] <= 1; 
+				end
 				
 				if (FIFO_INC_AMOUNT && FIFO_DEC_AMOUNT) begin
 					FIFO_INC_AMOUNT <= 0;
