@@ -363,8 +363,8 @@ module SH7604_DMAC (
 		endcase
 	end
 	
-	assign DBUS_A = DMA_RD ? SAR[DMA_CH] : 
-	                DMA_WR ? DAR[DMA_CH] : 
+	assign DBUS_A = DMA_RD ? SAR[DMA_CH] & 32'h07FFFFFF : 
+	                DMA_WR ? DAR[DMA_CH] & 32'h07FFFFFF : 
 	                '0;
 	assign DBUS_DO = DBUS_DO_TEMP;
 	assign DBUS_BA = DMA_RD ? BAFromAddr(SAR[DMA_CH][1:0],CHCR[DMA_CH].TS) : 
