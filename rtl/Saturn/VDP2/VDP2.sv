@@ -717,8 +717,14 @@ module VDP2 (
 		VA_PIPE[0].RxCTTP[0] = RxCTTP[0];
 		VA_PIPE[0].RxCTTP[1] = RxCTTP[1];
 		
-		VA_PIPE[0].AxNA = ((VCPA0 == VCP_NA | VCPA1 == VCP_NA) & REGS.RAMCTL.VRAMD) || NOACCESS;
-		VA_PIPE[0].BxNA = ((VCPB0 == VCP_NA | VCPB1 == VCP_NA) & REGS.RAMCTL.VRBMD) || NOACCESS;
+		VA_PIPE[0].AxNA = ((VCPA0 == VCP_NA | VCPA1 == VCP_NA) & REGS.RAMCTL.VRAMD) || ((VCPA0 == VCP_N0CH | VCPA1 == VCP_N0CH) & NSxREG[0].ON & !NCH_FETCH) || 
+	                                                                                  ((VCPA0 == VCP_N1CH | VCPA1 == VCP_N1CH) & NSxREG[1].ON & !NCH_FETCH) || 
+	                                                                                  ((VCPA0 == VCP_N2CH | VCPA1 == VCP_N2CH) & NSxREG[2].ON & !NCH_FETCH) || 
+	                                                                                  ((VCPA0 == VCP_N3CH | VCPA1 == VCP_N3CH) & NSxREG[3].ON & !NCH_FETCH) || NOACCESS;
+		VA_PIPE[0].BxNA = ((VCPB0 == VCP_NA | VCPB1 == VCP_NA) & REGS.RAMCTL.VRBMD) || ((VCPB0 == VCP_N0CH | VCPB1 == VCP_N0CH) & NSxREG[0].ON & !NCH_FETCH) || 
+	                                                                                  ((VCPB0 == VCP_N1CH | VCPB1 == VCP_N1CH) & NSxREG[1].ON & !NCH_FETCH) || 
+	                                                                                  ((VCPB0 == VCP_N2CH | VCPB1 == VCP_N2CH) & NSxREG[2].ON & !NCH_FETCH) || 
+	                                                                                  ((VCPB0 == VCP_N3CH | VCPB1 == VCP_N3CH) & NSxREG[3].ON & !NCH_FETCH) || NOACCESS;
 		
 		VA_PIPE[0].LS = LS_FETCH;
 		VA_PIPE[0].LS_POS = LS_POS;
