@@ -414,7 +414,7 @@ module VDP2 (
 	wire [ 8: 0] BS_FETCH_START = !HRES[0] ? 9'h18A : 9'h1A6;
 	wire [ 8: 0] NOACCESS_START = !HRES[0] ? 9'h136 : 9'h156;
 	wire [ 8: 0] NOACCESS_END = !HRES[0] ? 9'h13D : 9'h15D;
-	wire [ 8: 0] NOACCESS2_START = !HRES[0] ? 9'h13F : 9'h15F;
+	wire [ 8: 0] NOACCESS2_START = !HRES[0] ? 9'h142 : 9'h162;
 	wire [ 8: 0] NOACCESS2_END = !HRES[0] ? 9'h145 : 9'h165;
 	wire [ 8: 0] NOACCESS3_START = !HRES[0] ? 9'h18D : 9'h1A9;
 	wire [ 8: 0] NOACCESS3_END = !HRES[0] ? 9'h18F : 9'h1AB;
@@ -567,9 +567,9 @@ module VDP2 (
 				REFRESH <= 0;
 			end
 			
-			if (H_CNT == NOACCESS_START - 1 || H_CNT == NOACCESS2_START - 1 || H_CNT == NOACCESS3_START - 1) begin
+			if (/*H_CNT == NOACCESS_START - 1 ||*/ H_CNT == NOACCESS2_START - 1 || H_CNT == NOACCESS3_START - 1) begin
 				NOACCESS <= 1;
-			end else if (H_CNT == NOACCESS_END || H_CNT == NOACCESS2_END || H_CNT == NOACCESS3_END) begin
+			end else if (/*H_CNT == NOACCESS_END ||*/ H_CNT == NOACCESS2_END || H_CNT == NOACCESS3_END) begin
 				NOACCESS <= 0;
 			end
 		end
@@ -717,14 +717,8 @@ module VDP2 (
 		VA_PIPE[0].RxCTTP[0] = RxCTTP[0];
 		VA_PIPE[0].RxCTTP[1] = RxCTTP[1];
 		
-		VA_PIPE[0].AxNA = ((VCPA0 == VCP_NA | VCPA1 == VCP_NA) & REGS.RAMCTL.VRAMD) || ((VCPA0 == VCP_N0CH | VCPA1 == VCP_N0CH) & NSxREG[0].ON & !NCH_FETCH) || 
-	                                                                                  ((VCPA0 == VCP_N1CH | VCPA1 == VCP_N1CH) & NSxREG[1].ON & !NCH_FETCH) || 
-	                                                                                  ((VCPA0 == VCP_N2CH | VCPA1 == VCP_N2CH) & NSxREG[2].ON & !NCH_FETCH) || 
-	                                                                                  ((VCPA0 == VCP_N3CH | VCPA1 == VCP_N3CH) & NSxREG[3].ON & !NCH_FETCH) || NOACCESS;
-		VA_PIPE[0].BxNA = ((VCPB0 == VCP_NA | VCPB1 == VCP_NA) & REGS.RAMCTL.VRBMD) || ((VCPB0 == VCP_N0CH | VCPB1 == VCP_N0CH) & NSxREG[0].ON & !NCH_FETCH) || 
-	                                                                                  ((VCPB0 == VCP_N1CH | VCPB1 == VCP_N1CH) & NSxREG[1].ON & !NCH_FETCH) || 
-	                                                                                  ((VCPB0 == VCP_N2CH | VCPB1 == VCP_N2CH) & NSxREG[2].ON & !NCH_FETCH) || 
-	                                                                                  ((VCPB0 == VCP_N3CH | VCPB1 == VCP_N3CH) & NSxREG[3].ON & !NCH_FETCH) || NOACCESS;
+		VA_PIPE[0].AxNA = ((VCPA0 == VCP_NA | VCPA1 == VCP_NA) & REGS.RAMCTL.VRAMD) || NOACCESS;
+		VA_PIPE[0].BxNA = ((VCPB0 == VCP_NA | VCPB1 == VCP_NA) & REGS.RAMCTL.VRBMD) || NOACCESS;
 		
 		VA_PIPE[0].LS = LS_FETCH;
 		VA_PIPE[0].LS_POS = LS_POS;
@@ -1006,7 +1000,7 @@ module VDP2 (
 				VRAMB0_RD <= 0;
 				VRAMB1_RD <= 0;
 				VRAM_READ_PIPE[0] <= 0;
-				if (LS_FETCH && (NSxREG[0].LSCX || NSxREG[1].LSCX || NSxREG[0].LSCY || NSxREG[1].LSCY || NSxREG[0].LZMX || NSxREG[1].LZMX)) begin
+				if (LS_FETCH && (((NSxREG[0].LSCX ||  NSxREG[0].LSCY || NSxREG[0].LZMX) && !LS_POS[2] && REGS.BGON.N0ON) || ((NSxREG[1].LSCX ||NSxREG[1].LSCY || NSxREG[1].LZMX) && LS_POS[2] && REGS.BGON.N1ON))) begin
 					VRAMA0_A <= {1'b0,NxLS_ADDR[LS_POS[2]][16:1]};
 					VRAMA1_A <= {     NxLS_ADDR[LS_POS[2]][16:1]};
 					VRAMB0_A <= {1'b0,NxLS_ADDR[LS_POS[2]][16:1]};
@@ -1153,7 +1147,7 @@ module VDP2 (
 					VRAMA_ALLOW <= 0;
 					if (!NBG_A0VA.PN && !RBG_A0VA.PN && !NBG_A0VA.CH && !RBG_A0VA.CH && !RBG_A0VA.CT && !NBG_A0VA.VS &&
 						 !NBG_A1VA.PN && !RBG_A1VA.PN && !NBG_A1VA.CH && !RBG_A1VA.CH && !RBG_A1VA.CT && !NBG_A1VA.VS && !VA_PIPE[0].AxNA) begin
-						if ((VRAM_READ_PEND && (VRAMA0_READ || VRAMA1_READ)) || (VRAM_WRITE_PEND && !VRAM_WA[18]) && (VRAMA_ALLOW || !REGS.RAMCTL.VRAMD || VA_PIPE[1].AxNA)) begin
+						if (((VRAM_READ_PEND && (VRAMA0_READ || VRAMA1_READ)) || (VRAM_WRITE_PEND && !VRAM_WA[18])) && (VRAMA_ALLOW || !REGS.RAMCTL.VRAMD || VA_PIPE[1].AxNA)) begin
 							if (VRAM_WRITE_PEND) begin
 								VRAMA0_A <= {VRAM_WA[17:2],1'b0};
 								VRAMA_D <= VRAM_D;
@@ -1226,7 +1220,7 @@ module VDP2 (
 					VRAMB_ALLOW <= 0;
 					if (!NBG_B0VA.PN && !RBG_B0VA.PN && !NBG_B0VA.CH && !RBG_B0VA.CH && !RBG_B0VA.CT && !NBG_B0VA.VS &&
 						 !NBG_B1VA.PN && !RBG_B1VA.PN && !NBG_B1VA.CH && !RBG_B1VA.CH && !RBG_B1VA.CT && !NBG_B1VA.VS && !VA_PIPE[0].BxNA) begin
-						if ((VRAM_READ_PEND && (VRAMB0_READ || VRAMB1_READ)) || (VRAM_WRITE_PEND && VRAM_WA[18]) && (VRAMB_ALLOW || !REGS.RAMCTL.VRBMD || VA_PIPE[1].BxNA)) begin
+						if (((VRAM_READ_PEND && (VRAMB0_READ || VRAMB1_READ)) || (VRAM_WRITE_PEND && VRAM_WA[18])) && (VRAMB_ALLOW || !REGS.RAMCTL.VRBMD || VA_PIPE[1].BxNA)) begin
 							if (VRAM_WRITE_PEND) begin
 								VRAMB0_A <= {VRAM_WA[17:2],1'b0};
 								VRAMA_D <= VRAM_D;//////////////////////
