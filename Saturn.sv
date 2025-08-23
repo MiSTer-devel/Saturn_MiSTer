@@ -295,7 +295,7 @@ module emu
 `endif
 		"-;",
 `ifndef STV_BUILD
-		"D0R[24],Load Backup RAM;",
+		"S1,SAV,Mount Backup RAM;",
 		"D0R[25],Save Backup RAM;",
 `endif
 		"D0O[26],Autosave,Off,On;", 
@@ -375,15 +375,18 @@ module emu
 	wire [  7:0] ioctl_index;
 	reg          ioctl_wait = 0;
 	
+	reg  [ 31:0] sd_lba0 = '0;
 	reg  [ 31:0] sd_lba = '0;
 	reg          sd_rd = 0;
 	reg          sd_wr = 0;
 	wire         sd_ack;
+	wire         sd_ack0;
 	wire [  7:0] sd_buff_addr;
 	wire [ 15:0] sd_buff_dout;
+	wire [ 15:0] sd_buff_din0;
 	wire [ 15:0] sd_buff_din;
 	wire         sd_buff_wr;
-	wire         img_mounted;
+	wire [  1:0] img_mounted;
 	wire         img_readonly;
 	wire [ 63:0] img_size;
 	
@@ -399,7 +402,7 @@ module emu
 	wire [ 21:0] gamma_bus;
 	wire [ 15:0] sdram_sz;
 	
-	hps_io #(.CONF_STR(CONF_STR), .WIDE(1)) hps_io
+	hps_io #(.CONF_STR(CONF_STR), .WIDE(1), .VDNUM(2)) hps_io
 	(
 		.clk_sys(clk_sys),
 		.HPS_BUS(HPS_BUS),
@@ -435,13 +438,13 @@ module emu
 		.ioctl_rd(ioctl_rd),
 		.ioctl_wait(ioctl_wait),
 	
-		.sd_lba('{sd_lba}),
-		.sd_rd(sd_rd),
-		.sd_wr(sd_wr),
-		.sd_ack(sd_ack),
+		.sd_lba('{sd_lba0, sd_lba}),
+		.sd_rd({sd_rd,1'h0}),
+		.sd_wr({sd_wr,1'h0}),
+		.sd_ack({sd_ack,sd_ack0}),
 		.sd_buff_addr(sd_buff_addr),
 		.sd_buff_dout(sd_buff_dout),
-		.sd_buff_din('{sd_buff_din}),
+		.sd_buff_din('{0,sd_buff_din}),
 		.sd_buff_wr(sd_buff_wr),
 		.img_mounted(img_mounted),
 		.img_readonly(img_readonly),
@@ -1829,7 +1832,7 @@ module emu
 		if(downloading && !old_downloading) bk_ena <= 0;
 
 		//Save file always mounted in the end of downloading state.
-		if(downloading && img_mounted && !img_readonly) bk_ena <= 1;
+		if(downloading && img_mounted[1] && !img_readonly) bk_ena <= 1;
 
 		old_change <= bk_change;
 		if (bk_change && !old_change) sav_pending <= 1;
