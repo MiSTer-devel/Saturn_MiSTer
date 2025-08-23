@@ -389,20 +389,20 @@ package SH2_PKG;
 						if (VER == 1) begin
 							case (STATE)
 								3'd0: begin
-									DECI.RB = '{RBN, 1, 1};
-									DECI.DP.RSC = RSC_IMM;
-									DECI.IMMT = ONE;
-									DECI.ALU = '{1, 0, ADD, 4'b0000, 3'b000};
-									DECI.MEM = '{ALUB, ALUB, 2'b10, 1, 0};
-									DECI.MAC = '{2'b01, 0, 1, 4'b1001};
-								end
-								3'd1: begin
 									DECI.RA = '{RAN, 1, 1};
 									DECI.DP.RSC = RSC_IMM;
 									DECI.IMMT = ONE;
 									DECI.ALU = '{0, 1, ADD, 4'b0000, 3'b000};
 									DECI.MEM = '{ALUA, ALUA, 2'b10, 1, 0};
 									DECI.MAC = '{2'b10, 0, 1, 4'b1001};
+								end
+								3'd1: begin
+									DECI.RB = '{RBN, 1, 1};
+									DECI.DP.RSC = RSC_IMM;
+									DECI.IMMT = ONE;
+									DECI.ALU = '{1, 0, ADD, 4'b0000, 3'b000};
+									DECI.MEM = '{ALUB, ALUB, 2'b10, 1, 0};
+									DECI.MAC = '{2'b01, 0, 1, 4'b1001};
 								end
 								default:;
 							endcase
@@ -766,20 +766,20 @@ package SH2_PKG;
 					8'b11111111: begin	//MAC.W @Rm+,@Rn+
 						case (STATE)
 							3'd0: begin
-								DECI.RB = '{RBN, 1, 1};
-								DECI.DP.RSC = RSC_IMM;
-								DECI.IMMT = ONE;
-								DECI.ALU = '{1, 0, ADD, 4'b0000, 3'b000};
-								DECI.MEM = '{ALUB, ALUB, 2'b01, 1, 0};
-								DECI.MAC = '{2'b01, 0, 1, 4'b1011};
-							end
-							3'd1: begin
 								DECI.RA = '{RAN, 1, 1};
 								DECI.DP.RSC = RSC_IMM;
 								DECI.IMMT = ONE;
 								DECI.ALU = '{0, 1, ADD, 4'b0000, 3'b000};
 								DECI.MEM = '{ALUA, ALUA, 2'b01, 1, 0};
 								DECI.MAC = '{2'b10, 0, 1, 4'b1011};
+							end
+							3'd1: begin
+								DECI.RB = '{RBN, 1, 1};
+								DECI.DP.RSC = RSC_IMM;
+								DECI.IMMT = ONE;
+								DECI.ALU = '{1, 0, ADD, 4'b0000, 3'b000};
+								DECI.MEM = '{ALUB, ALUB, 2'b01, 1, 0};
+								DECI.MAC = '{2'b01, 0, 1, 4'b1011};
 							end
 							default:;
 						endcase

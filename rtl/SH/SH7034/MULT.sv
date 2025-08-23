@@ -76,7 +76,7 @@ module SH7034_MULT (
 						DW = !CBUS_A[1] ? CBUS_DI[31:16] : CBUS_DI[15:0];
 						if (MAC_SEL[0]) MA <= DW;
 						if (MAC_SEL[1]) MB <= DW;
-						MACW_EXEC <= MAC_SEL[1];
+						MACW_EXEC <= MAC_SEL[0];
 						SIGNED <= MAC_OP[0];
 //						SAT <= MAC_S;
 					end

@@ -93,8 +93,8 @@ module SH7604_MULT (
 						MM_DONE <= 0;
 					end
 					4'b1001: begin		//MAC.L @Rm+,@Rn+
-						if (MAC_SEL[0]) MA <= CBUS_DI;
-						if (MAC_SEL[1]) begin
+						if (MAC_SEL[1]) MA <= CBUS_DI;
+						if (MAC_SEL[0]) begin
 							MB <= CBUS_DI;
 							MACL_EXEC <= 1;
 							SIGNED <= MAC_OP[0];
@@ -105,8 +105,8 @@ module SH7604_MULT (
 					end
 					4'b1011: begin		//MAC.W @Rm+,@Rn+
 						DW = !CBUS_A[1] ? CBUS_DI[31:16] : CBUS_DI[15:0];
-						if (MAC_SEL[0]) MA <= {{16{DW[15]&MAC_OP[0]}},DW};
-						if (MAC_SEL[1]) begin
+						if (MAC_SEL[1]) MA <= {{16{DW[15]&MAC_OP[0]}},DW};
+						if (MAC_SEL[0]) begin
 							MB <= {{16{DW[15]&MAC_OP[0]}},DW};
 							MACW_EXEC <= 1;
 							SIGNED <= MAC_OP[0];
@@ -142,7 +142,7 @@ module SH7604_MULT (
 				end else begin
 					if (ACC32[32] != ACC32[31]) begin
 						MACL <= {ACC32[32],{31{~ACC32[32]}}};
-						MACH <= 32'h00000001;
+						MACH <= ACC64[63:32] | 32'h00000001;
 					end else begin
 						MACL <= ACC32[31:0];
 //						MACH <= 32'h00000000;//??
@@ -155,7 +155,11 @@ module SH7604_MULT (
 				if (!SAT) begin
 					{MACH,MACL} <= ACC64;
 				end else begin
-					{MACH,MACL} <= {{16{ACC64[63]}},ACC64[47:0]};
+					if (ACC64[63:48] != {16{ACC64[47]}}) begin
+						{MACH,MACL} <= {{17{MA[31]^MB[31]}},{47{~(MA[31]^MB[31])}}};
+					end else begin
+						{MACH,MACL} <= ACC64;
+					end
 				end
 				MACL_EXEC <= 0;
 			end
