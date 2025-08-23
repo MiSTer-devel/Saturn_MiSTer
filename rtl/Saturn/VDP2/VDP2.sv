@@ -321,6 +321,7 @@ module VDP2 (
 				VB_INT <= 1;
 			end else if (LAST_DOT && V_CNT == NEXT_TO_LAST_LINE>>1) begin
 				VB_INT <= 0;
+				DISP <= REGS.TVMD.DISP;
 			end
 			
 			if ({HCT9,HCT} == {1'b0,VINC_DOT0} || {HCT9,HCT} == {1'b0,VINC_DOT1}) begin
@@ -331,7 +332,6 @@ module VDP2 (
 			end
 			HRES <= REGS.TVMD.HRESO[2:0];
 			VRES_LATCH0 <= REGS.TVMD.VRESO[1:0] & {PAL,1'b1}; VRES_LATCH1 <= VRES_LATCH0;	VRES <= VRES_LATCH1;
-			DISP <= REGS.TVMD.DISP;
 		end else if (DOT_CE_F) begin
 			if (ODD && H_CNT == VSYNC_HSTART - 1) begin
 				if (VCT == VS_START - 10'd1) begin
@@ -936,8 +936,6 @@ module VDP2 (
 		
 		LW_ADDR[0]   = LWAddr({REGS.LWTA0U.WxLWTA,REGS.LWTA0L.WxLWTA}, LW_OFFS);
 		LW_ADDR[1]   = LWAddr({REGS.LWTA1U.WxLWTA,REGS.LWTA1L.WxLWTA}, LW_OFFS);
-		BS_ADDR      = BSAddr({REGS.BKTAU.BKTA,REGS.BKTAL.BKTA}, BS_OFFS, REGS.BKTAU.BKCLMD);
-		LN_ADDR      = LNAddr({REGS.LCTAU.LCTA,REGS.LCTAL.LCTA}, LN_OFFS, REGS.LCTAU.LCCLMD);
 	end
 		
 	
@@ -1272,11 +1270,11 @@ module VDP2 (
 				end else if (RCTB_FETCH) begin
 					VRAM_BANK <= RxCTB_ADDR[18:17];
 				end else if (BACK_FETCH) begin
-					BS_OFFS <= BS_OFFS + 9'd1;
 					VRAM_BANK <= BS_ADDR[18:17];
+					BS_ADDR <= BS_ADDR + (REGS.BKTAU.BKCLMD ? 19'd1 : 19'd0);
 				end else if (LN_FETCH) begin
-					LN_OFFS <= LN_OFFS + 9'd1;
 					VRAM_BANK <= LN_ADDR[18:17];
+					LN_ADDR <= LN_ADDR + (REGS.LCTAU.LCCLMD ? 19'd1 : 19'd0);
 				end else if (!DISP || VB_INT || (!REGS.BGON.N0ON && !REGS.BGON.N1ON && !REGS.BGON.N2ON && !REGS.BGON.N3ON && !REGS.BGON.R0ON && !REGS.BGON.R1ON)) begin
 					
 				end else if (NPN_FETCH || NCH_FETCH || RBG_FETCH || RCH_FETCH || CT_FETCH || NVCS_FETCH) begin
@@ -1413,8 +1411,8 @@ module VDP2 (
 					NBG_PN_FETCH <= '{4{0}};
 					LW_POS <= 0;
 					LW_OFFS <= DDI && !ODD ? 9'd1 : 9'd0;
-					BS_OFFS <= '0;
-					LN_OFFS <= '0;
+					BS_ADDR <= {REGS.BKTAU.BKTA,REGS.BKTAL.BKTA};
+					LN_ADDR <= {REGS.LCTAU.LCTA,REGS.LCTAL.LCTA};
 					RP_POS <= '0;
 				end
 				
