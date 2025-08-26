@@ -471,6 +471,10 @@ module VDP1 (
 		RGBFP_t     GRD_CALC_STEP;
 		bit         GRD_CALC_DIR_R,GRD_CALC_DIR_G,GRD_CALC_DIR_B;
 		bit [12: 0] SYS_CLIP_X1,SYS_CLIP_X2,SYS_CLIP_Y1,SYS_CLIP_Y2;
+		bit [12: 0] LINE_DIFF_LEFT_CLIPX1,LINE_DIFF_LEFT_CLIPX2,LINE_DIFF_RIGHT_CLIPX1,LINE_DIFF_RIGHT_CLIPX2;
+		bit         LINE_EQ_LEFT_CLIPX1,LINE_EQ_LEFT_CLIPX2,LINE_EQ_RIGHT_CLIPX1,LINE_EQ_RIGHT_CLIPX2;
+		bit         LINE_GT_LEFT_CLIPX1,LINE_GT_LEFT_CLIPX2,LINE_GT_RIGHT_CLIPX1,LINE_GT_RIGHT_CLIPX2;
+		bit         LINE_LT_LEFT_CLIPX1,LINE_LT_LEFT_CLIPX2,LINE_LT_RIGHT_CLIPX1,LINE_LT_RIGHT_CLIPX2;
 		bit         LINE_LEFT_OVER,LINE_RIGHT_OVER,LINE_TOP_OVER,LINE_BOTTOM_OVER;
 		bit [ 3: 0] CLIP_DELAY;
 `ifdef DEBUG
@@ -525,6 +529,23 @@ module VDP1 (
 				SYS_CLIP_X2 <= $signed({{2{USR_CLIP.X2[10]}},USR_CLIP.X2}) - $signed({{2{LOC_COORD.X[10]}},LOC_COORD.X});
 				SYS_CLIP_Y2 <= $signed({{2{USR_CLIP.Y2[10]}},USR_CLIP.Y2}) - $signed({{2{LOC_COORD.Y[10]}},LOC_COORD.Y});
 			end
+			
+			LINE_DIFF_LEFT_CLIPX1 = $signed(LEFT_VERT.X) - $signed(SYS_CLIP_X1);
+			LINE_DIFF_LEFT_CLIPX2 = $signed(LEFT_VERT.X) - $signed(SYS_CLIP_X2);
+			LINE_DIFF_RIGHT_CLIPX1 = $signed(RIGHT_VERT.X) - $signed(SYS_CLIP_X1);
+			LINE_DIFF_RIGHT_CLIPX2 = $signed(RIGHT_VERT.X) - $signed(SYS_CLIP_X2);
+			LINE_EQ_LEFT_CLIPX1 = !LINE_DIFF_LEFT_CLIPX1;
+			LINE_EQ_LEFT_CLIPX2 = !LINE_DIFF_LEFT_CLIPX2;
+			LINE_EQ_RIGHT_CLIPX1 = !LINE_DIFF_RIGHT_CLIPX1;
+			LINE_EQ_RIGHT_CLIPX2 = !LINE_DIFF_RIGHT_CLIPX2;
+			LINE_GT_LEFT_CLIPX1 = ~LINE_DIFF_LEFT_CLIPX1[12];
+			LINE_GT_LEFT_CLIPX2 = ~LINE_DIFF_LEFT_CLIPX2[12];
+			LINE_GT_RIGHT_CLIPX1 = ~LINE_DIFF_RIGHT_CLIPX1[12];
+			LINE_GT_RIGHT_CLIPX2 = ~LINE_DIFF_RIGHT_CLIPX2[12];
+			LINE_LT_LEFT_CLIPX1 = LINE_DIFF_LEFT_CLIPX1[12];
+			LINE_LT_LEFT_CLIPX2 = LINE_DIFF_LEFT_CLIPX2[12];
+			LINE_LT_RIGHT_CLIPX1 = LINE_DIFF_RIGHT_CLIPX1[12];
+			LINE_LT_RIGHT_CLIPX2 = LINE_DIFF_RIGHT_CLIPX2[12];
 																							  
 			LINE_LEFT_OVER <= ($signed(LEFT_VERT.X) < $signed(SYS_CLIP_X1) && $signed(RIGHT_VERT.X) < $signed(SYS_CLIP_X1));
 			LINE_RIGHT_OVER <= ($signed(LEFT_VERT.X) > $signed(SYS_CLIP_X2) && $signed(RIGHT_VERT.X) > $signed(SYS_CLIP_X2));
@@ -1066,7 +1087,23 @@ module VDP1 (
 //					NEW_LINE_SY = RIGHT_VERT.Y - LEFT_VERT.Y;
 					NEW_LINE_ASX = Abs(NEW_LINE_SX);
 //					NEW_LINE_ASY = Abs(NEW_LINE_SY);
-					if ($signed(LEFT_VERT.X) < $signed(SYS_CLIP_X1) && $signed(RIGHT_VERT.X) <= $signed(SYS_CLIP_X2) && CLIP_H) begin
+					if (LINE_LT_LEFT_CLIPX1 && LINE_GT_RIGHT_CLIPX2 && CLIP_H) begin
+						LINE_VERTA.X <= LEFT_VERT.X[10:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTB.X <= SYS_CLIP_X2[10:0];
+						LINE_VERTB.Y <= SYS_CLIP_X2[10:0];
+						LINE_DIRX <= NEW_LINE_SX[12];
+						LINE_CLIP <= 0;
+						DIR[0] <= 0;
+					end else if (LINE_GT_LEFT_CLIPX2 && LINE_LT_RIGHT_CLIPX1 && CLIP_H) begin
+						LINE_VERTA.X <= LEFT_VERT.X[10:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTB.X <= SYS_CLIP_X1[10:0];
+						LINE_VERTB.Y <= SYS_CLIP_X1[10:0];
+						LINE_DIRX <= NEW_LINE_SX[12];
+						LINE_CLIP <= 0;
+						DIR[0] <= 0;
+					end else if (LINE_LT_LEFT_CLIPX1 && (LINE_LT_RIGHT_CLIPX2 || LINE_EQ_RIGHT_CLIPX2) && CLIP_H) begin
 						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
 						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
 						LINE_VERTB.X <= LEFT_VERT.X[10:0];
@@ -1074,7 +1111,7 @@ module VDP1 (
 						LINE_DIRX <= ~NEW_LINE_SX[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 1;
-					end else if ($signed(LEFT_VERT.X) <= $signed(SYS_CLIP_X2) && $signed(RIGHT_VERT.X) < $signed(SYS_CLIP_X1) && CLIP_H) begin
+					end else if ((LINE_LT_LEFT_CLIPX2 || LINE_EQ_LEFT_CLIPX2) && LINE_GT_RIGHT_CLIPX1 && CLIP_H) begin
 						LINE_VERTA.X <= LEFT_VERT.X[10:0];
 						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
 						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
@@ -1082,7 +1119,7 @@ module VDP1 (
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 0;
-					end else if ($signed(LEFT_VERT.X) > $signed(SYS_CLIP_X2) && $signed(RIGHT_VERT.X) >= $signed(SYS_CLIP_X1) && CLIP_H) begin
+					end else if (LINE_GT_LEFT_CLIPX2 && (LINE_GT_RIGHT_CLIPX1 || LINE_EQ_RIGHT_CLIPX1) && CLIP_H) begin
 						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
 						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
 						LINE_VERTB.X <= LEFT_VERT.X[10:0];
@@ -1090,7 +1127,7 @@ module VDP1 (
 						LINE_DIRX <= ~NEW_LINE_SX[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 1;
-					end else if ($signed(LEFT_VERT.X) >= $signed(SYS_CLIP_X1) && $signed(RIGHT_VERT.X) > $signed(SYS_CLIP_X2) && CLIP_H) begin
+					end else if ((LINE_GT_LEFT_CLIPX1 || LINE_EQ_LEFT_CLIPX1) && LINE_GT_RIGHT_CLIPX2 && CLIP_H) begin
 						LINE_VERTA.X <= LEFT_VERT.X[10:0];
 						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
 						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
@@ -1154,7 +1191,25 @@ module VDP1 (
 					NEW_LINE_ASX = Abs(NEW_LINE_SX);
 					NEW_LINE_ASY = Abs(NEW_LINE_SY);
 					LINE_SWAP = 0;
-					if ($signed(LEFT_VERT.X) < $signed(SYS_CLIP_X1) && $signed(RIGHT_VERT.X) <= $signed(SYS_CLIP_X2) && CLIP_H) begin
+					if (LINE_LT_LEFT_CLIPX1 && LINE_GT_RIGHT_CLIPX2 && CLIP_H) begin
+						LINE_VERTA.X <= LEFT_VERT.X[10:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTB.X <= SYS_CLIP_X2[10:0];
+						LINE_VERTB.Y <= SYS_CLIP_X2[10:0];
+						LINE_DIRX <= NEW_LINE_SX[12];
+						LINE_DIRY <= NEW_LINE_SY[12];
+						LINE_CLIP <= 0;
+						DIR[0] <= 0;
+					end else if (LINE_GT_LEFT_CLIPX2 && LINE_LT_RIGHT_CLIPX1 && CLIP_H) begin
+						LINE_VERTA.X <= LEFT_VERT.X[10:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTB.X <= SYS_CLIP_X1[10:0];
+						LINE_VERTB.Y <= SYS_CLIP_X1[10:0];
+						LINE_DIRX <= NEW_LINE_SX[12];
+						LINE_DIRY <= NEW_LINE_SY[12];
+						LINE_CLIP <= 0;
+						DIR[0] <= 0;
+					end else if (LINE_LT_LEFT_CLIPX1 && (LINE_LT_RIGHT_CLIPX2 || LINE_EQ_RIGHT_CLIPX2) && CLIP_H) begin
 						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
 						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
 						LINE_VERTB.X <= LEFT_VERT.X[10:0];
@@ -1164,7 +1219,7 @@ module VDP1 (
 						LINE_CLIP <= 1;
 						DIR[0] <= 1;
 						LINE_SWAP = 1;
-					end else if ($signed(LEFT_VERT.X) <= $signed(SYS_CLIP_X2) && $signed(RIGHT_VERT.X) < $signed(SYS_CLIP_X1) && CLIP_H) begin
+					end else if ((LINE_LT_LEFT_CLIPX2 || LINE_EQ_LEFT_CLIPX2) && LINE_GT_RIGHT_CLIPX1 && CLIP_H) begin
 						LINE_VERTA.X <= LEFT_VERT.X[10:0];
 						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
 						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
@@ -1173,7 +1228,7 @@ module VDP1 (
 						LINE_DIRY <= NEW_LINE_SY[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 0;
-					end else if ($signed(LEFT_VERT.X) > $signed(SYS_CLIP_X2) && $signed(RIGHT_VERT.X) >= $signed(SYS_CLIP_X1) && CLIP_H) begin
+					end else if (LINE_GT_LEFT_CLIPX2 && (LINE_GT_RIGHT_CLIPX1 || LINE_EQ_RIGHT_CLIPX1) && CLIP_H) begin
 						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
 						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
 						LINE_VERTB.X <= LEFT_VERT.X[10:0];
@@ -1183,7 +1238,7 @@ module VDP1 (
 						LINE_CLIP <= 1;
 						DIR[0] <= 1;
 						LINE_SWAP = 1;
-					end else if ($signed(LEFT_VERT.X) >= $signed(SYS_CLIP_X1) && $signed(RIGHT_VERT.X) > $signed(SYS_CLIP_X2) && CLIP_H) begin
+					end else if ((LINE_GT_LEFT_CLIPX1 || LINE_EQ_LEFT_CLIPX1) && LINE_GT_RIGHT_CLIPX2 && CLIP_H) begin
 						LINE_VERTA.X <= LEFT_VERT.X[10:0];
 						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
 						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
