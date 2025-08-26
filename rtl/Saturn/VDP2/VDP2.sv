@@ -245,6 +245,7 @@ module VDP2 (
 	
 	bit          VB_INT,VBLANK;
 	bit          HB_INT,HBLANK;
+	bit          DISP_INT;
 	bit          ODD;
 	bit          VSYNC;
 	bit          HSYNC;
@@ -321,7 +322,7 @@ module VDP2 (
 				VB_INT <= 1;
 			end else if (LAST_DOT && V_CNT == NEXT_TO_LAST_LINE>>1) begin
 				VB_INT <= 0;
-				DISP <= REGS.TVMD.DISP;
+				DISP_INT <= REGS.TVMD.DISP;
 			end
 			
 			if ({HCT9,HCT} == {1'b0,VINC_DOT0} || {HCT9,HCT} == {1'b0,VINC_DOT1}) begin
@@ -332,6 +333,7 @@ module VDP2 (
 			end
 			HRES <= REGS.TVMD.HRESO[2:0];
 			VRES_LATCH0 <= REGS.TVMD.VRESO[1:0] & {PAL,1'b1}; VRES_LATCH1 <= VRES_LATCH0;	VRES <= VRES_LATCH1;
+			DISP <= REGS.TVMD.DISP;
 		end else if (DOT_CE_F) begin
 			if (ODD && H_CNT == VSYNC_HSTART - 1) begin
 				if (VCT == VS_START - 10'd1) begin
@@ -472,23 +474,23 @@ module VDP2 (
 				CELLX <= '0;
 			end
 			
-			if (NBG_FETCH_START_EN && IS_RENDER_LINES && DISP) begin
+			if (NBG_FETCH_START_EN && IS_RENDER_LINES && DISP_INT) begin
 				NPN_FETCH <= 1;
 			end else if (H_CNT == NBG_FETCH_END) begin
 				NPN_FETCH <= 0;
 			end
-			if (H_CNT == NBG_FETCH_START + 4 - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == NBG_FETCH_START + 4 - 1 && IS_RENDER_LINES && DISP_INT) begin
 				NCH_FETCH <= 1;
 			end else if (H_CNT == NBG_FETCH_END + 4) begin
 				NCH_FETCH <= 0;
 			end
-			if (H_CNT == NBG_FETCH_START - 1 - 8 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == NBG_FETCH_START - 1 - 8 && IS_RENDER_LINES && DISP_INT) begin
 				NVCS_FETCH <= 1;
 			end else if (H_CNT == NBG_FETCH_END) begin
 				NVCS_FETCH <= 0;
 			end
 			
-			if (H_CNT == RBG_FETCH_START - 1 - 4 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == RBG_FETCH_START - 1 - 4 && IS_RENDER_LINES && DISP_INT) begin
 				CT_FETCH <= 1;
 			end else if (H_CNT == RBG_FETCH_END - 4) begin
 				CT_FETCH <= 0;
@@ -498,58 +500,58 @@ module VDP2 (
 			end else if (H_CNT == RBG_FETCH_END - 1) begin
 				RBG_CALC <= 0;
 			end
-			if (H_CNT == RBG_FETCH_START - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == RBG_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				RBG_FETCH <= 1;
 			end else if (H_CNT == RBG_FETCH_END) begin
 				RBG_FETCH <= 0;
 			end
-			if (H_CNT == RBG_FETCH_START + 4 - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == RBG_FETCH_START + 4 - 1 && IS_RENDER_LINES && DISP_INT) begin
 				RCH_FETCH <= 1;
 			end else if (H_CNT == RBG_FETCH_END /*+ 4*/) begin
 				RCH_FETCH <= 0;
 			end
 			
-			if (H_CNT == RPA_FETCH_START - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == RPA_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				RPA_FETCH <= 1;
 			end else if (H_CNT == RPA_FETCH_START + 24 - 1) begin
 				RPA_FETCH <= 0;
 			end
-			if (H_CNT == RPB_FETCH_START - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == RPB_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				RPB_FETCH <= 1;
 			end else if (H_CNT == RPB_FETCH_START + 24 - 1) begin
 				RPB_FETCH <= 0;
 			end
 			
-			if (H_CNT == RCTA_FETCH_START - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == RCTA_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				RCTA_FETCH <= 1;
 			end else if (H_CNT == RCTA_FETCH_START) begin
 				RCTA_FETCH <= 0;
 			end
-			if (H_CNT == RCTB_FETCH_START - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == RCTB_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				RCTB_FETCH <= 1;
 			end else if (H_CNT == RCTB_FETCH_START) begin
 				RCTB_FETCH <= 0;
 			end
 			
-			if (H_CNT == LS_FETCH_START - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == LS_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				LS_FETCH <= 1;
 			end else if (H_CNT == LS_FETCH_START + 6 - 1) begin
 				LS_FETCH <= 0;
 			end
 			
-			if (H_CNT == LW_FETCH_START - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == LW_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				LW_FETCH <= 1;
 			end else if (H_CNT == LW_FETCH_START + 2 - 1) begin
 				LW_FETCH <= 0;
 			end
 			
-			if (H_CNT == LN_FETCH_START - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == LN_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				LN_FETCH <= 1;
 			end else begin
 				LN_FETCH <= 0;
 			end
 			
-			if (H_CNT == BS_FETCH_START - 1 && IS_RENDER_LINES && DISP) begin
+			if (H_CNT == BS_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				BACK_FETCH <= 1;
 			end else begin
 				BACK_FETCH <= 0;
@@ -952,8 +954,6 @@ module VDP2 (
 	bit          LW_POS;
 	bit  [10: 2] LW_OFFS;
 	bit  [ 6: 0] VS_OFFS;
-	bit  [ 8: 0] BS_OFFS;
-	bit  [ 8: 0] LN_OFFS;
 	bit  [ 7: 2] RP_POS;
 	bit  [ 1: 0] VRAM_BANK;
 	bit          VRAM_WRITE_PEND_CLR;
@@ -1065,7 +1065,7 @@ module VDP2 (
 					VRAMB1_RD <=  LN_ADDR[18];
 				end else if (REFRESH) begin
 					//
-				end else if (!DISP || VB_INT || (!REGS.BGON.N0ON && !REGS.BGON.N1ON && !REGS.BGON.N2ON && !REGS.BGON.N3ON && !REGS.BGON.R0ON && !REGS.BGON.R1ON) ||
+				end else if (!DISP_INT || VB_INT || (!REGS.BGON.N0ON && !REGS.BGON.N1ON && !REGS.BGON.N2ON && !REGS.BGON.N3ON && !REGS.BGON.R0ON && !REGS.BGON.R1ON) ||
 				             !(NPN_FETCH || NCH_FETCH || NVCS_FETCH || RBG_FETCH || RCH_FETCH || CT_FETCH)) begin
 					if (VRAM_WRITE_PEND) begin
 						VRAMA0_A <= {VRAM_WA[17:2],1'b0};
@@ -1275,7 +1275,7 @@ module VDP2 (
 				end else if (LN_FETCH) begin
 					VRAM_BANK <= LN_ADDR[18:17];
 					LN_ADDR <= LN_ADDR + (REGS.LCTAU.LCCLMD ? 19'd1 : 19'd0);
-				end else if (!DISP || VB_INT || (!REGS.BGON.N0ON && !REGS.BGON.N1ON && !REGS.BGON.N2ON && !REGS.BGON.N3ON && !REGS.BGON.R0ON && !REGS.BGON.R1ON)) begin
+				end else if (!DISP_INT || VB_INT || (!REGS.BGON.N0ON && !REGS.BGON.N1ON && !REGS.BGON.N2ON && !REGS.BGON.N3ON && !REGS.BGON.R0ON && !REGS.BGON.R1ON)) begin
 					
 				end else if (NPN_FETCH || NCH_FETCH || RBG_FETCH || RCH_FETCH || CT_FETCH || NVCS_FETCH) begin
 					NBG_PN_EN <= '{4{0}};
@@ -1767,7 +1767,6 @@ module VDP2 (
 	RotCoord_t   Xst[2],Yst[2];
 	RotAddr_t    KAx[2],KAy[2];
 	always @(posedge CLK or negedge RST_N) begin
-		bit  [31: 0] CT_CRAM_BUF;
 		bit  [31: 0] RP_WD,RCT_WD;
 		bit          CT_RP;
 		CT_t         CT_D;
@@ -1797,8 +1796,6 @@ module VDP2 (
 		end
 		else begin
 			if (DOT_CE_R) begin
-				CT_CRAM_BUF <= CT_CRAM_Q;
-				
 				N = ~VA_PIPE[2].RP_POS[7];
 				case (VRAM_BANK_2)
 					2'b00: RP_WD = RA0_BUF;
@@ -1855,7 +1852,7 @@ module VDP2 (
 						else
 							RCT_WD = '0;
 					else
-						RCT_WD = CT_CRAM_BUF;
+						RCT_WD = CT_CRAM_Q;
 						
 					CT_D = CTData(RPxREG[CT_RP].KMD, RPxREG[CT_RP].KDBS, RCT_WD);
 					CTD[0] <= CT_D;
