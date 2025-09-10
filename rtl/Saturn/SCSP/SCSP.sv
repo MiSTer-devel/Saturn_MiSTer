@@ -473,7 +473,6 @@ module SCSP (
 							if (COMP && !LOOP0_DELAYED) begin
 								NEW_LOOPEND = 1;
 								EVENT = 1;
-								ALLOW = 0;
 							end
 						end
 					end
@@ -566,7 +565,7 @@ module SCSP (
 				end
 				
 				if (OP2.SLOT == CR4.MSLC) begin
-					MONITOR_CA <= NEW_SAO[15:12];
+					MONITOR_CA <= ALLOW ? NEW_SAO[15:12] : '0;
 				end
 			end
 			
