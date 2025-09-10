@@ -52,6 +52,7 @@ module SMPC (
 	bit  [6 : 0] DDR[2];
 	bit  [1 : 0] IOSEL;
 	bit  [1 : 0] EXLE;
+	bit  [1 : 0] PMD[2];
 	
 	bit          RESD;
 	bit          STE;
@@ -64,8 +65,6 @@ module SMPC (
 	bit  [ 3: 0] MONTH = 4'h1;
 	bit  [15: 0] YEAR = 16'h2024;
 	
-//	bit  [ 7: 0] SMEM[4];
-
 	parameter SR_PDE = 2;
 	parameter SR_RESB = 3;
 	
@@ -77,7 +76,8 @@ module SMPC (
 		CS_RESET_WAIT,
 		CS_INTBACK_STAT,
 		CS_EXEC,
-		CS_INTBACK_PERI,
+		CS_INTBACK_CONT,CS_INTBACK_CONT2,
+		CS_INTBACK_PERI,CS_INTBACK_PERI2,CS_INTBACK_PERI3,
 		CS_INTBACK_BREAK, 
 		CS_END
 	} CommExecState_t;
@@ -224,6 +224,7 @@ module SMPC (
 		bit         INTBACK_BREAK_PEND;
 		bit         RW_N_OLD;
 		bit         CS_N_OLD;
+		bit [ 7: 0] IO_BUF;
 		bit         IRQV_N_OLD;
 		bit [ 1: 0] FRAME_CNT;
 		bit [15: 0] WAIT_CNT;
@@ -232,11 +233,11 @@ module SMPC (
 		bit         INTBACK_EXEC;
 		bit         INTBACK_PERI;
 		bit         INTBACK_OPTIM_EN;
-		bit         INTBACK_OPTIM_COND;
+		bit         INTBACK_OPTIM_TIME,INTBACK_NOT_OPTIM_TIME;
 		bit         CHECK_CONTINUE;
 		bit         BREAK,CONT,CONT_PREV;
 		
-		bit [15: 0] PORT_DELAY;
+		bit [ 8: 0] PORT_DELAY;
 		bit         JOY_START;
 		bit [15: 0] JOY_DATA;
 		bit         PORT_NUM;
@@ -299,7 +300,7 @@ module SMPC (
 			COMM_ST <= CS_IDLE;
 			INTBACK_EXEC <= 0;
 			INTBACK_PERI <= 0;
-			INTBACK_OPTIM_COND <= 0;
+			{INTBACK_OPTIM_TIME,INTBACK_NOT_OPTIM_TIME} <= '0;
 			BREAK <= 0;
 			CONT <= 0;
 			CONT_PREV <= 0;
@@ -327,34 +328,39 @@ module SMPC (
 				end
 				
 				TIME_CNT <= TIME_CNT + 17'd1;
-				if (!IRQV_N && IRQV_N_OLD) begin
-					INTBACK_TIME <= TIME_CNT - 17'd4120;//~1ms prior to vblank
+				if (IRQV_N && !IRQV_N_OLD) begin
 					TIME_CNT <= '0;
+				end
+				if (!IRQV_N && IRQV_N_OLD) begin
+					INTBACK_TIME <= TIME_CNT - 17'd6020;//~1ms prior to vblank
 				end
 				
 				if (!IRQV_N) begin
-					INTBACK_OPTIM_COND <= 0;
+					INTBACK_OPTIM_TIME <= 0;
+					INTBACK_NOT_OPTIM_TIME <= 0;
+				end else begin
+					if (TIME_CNT == 17'd296) begin
+						INTBACK_NOT_OPTIM_TIME <= 1;
+					end
+					if (TIME_CNT == INTBACK_TIME) begin
+						INTBACK_OPTIM_TIME <= 1;
+					end
 				end
-				else if (TIME_CNT == INTBACK_TIME) begin
-					INTBACK_OPTIM_COND <= 1;
-				end
-				
-				SR[4:0] <= {~SRES_N,IREG[1][7:4]};
-				
+								
 				JOY_START <= 0;
+				MIRQ_N <= 1;
 				case (COMM_ST)
 					CS_IDLE: begin
 						if (INTBACK_EXEC && (INTBACK_BREAK_PEND || VBLANK_PEND)) begin
 							INTBACK_BREAK_PEND <= 0;
-							WAIT_CNT <= 16'd70;
+							WAIT_CNT <= 16'd158-16'd3;
 							NEXT_COMM_ST <= CS_INTBACK_BREAK;
 							COMM_ST <= CS_WAIT;
 						end 
-						else if (INTBACK_PERI && ((INTBACK_OPTIM_EN && INTBACK_OPTIM_COND) || !INTBACK_OPTIM_EN) && IRQV_N && !SRES_EXEC) begin
+						else if (INTBACK_PERI && ((INTBACK_OPTIM_EN && INTBACK_OPTIM_TIME) || (!INTBACK_OPTIM_EN && INTBACK_NOT_OPTIM_TIME)) && IRQV_N && !SRES_EXEC) begin
 							OREG_CNT <= '0;
-							WAIT_CNT <= INTBACK_OPTIM_EN ? 16'd0 : 16'd2000;
-							NEXT_COMM_ST <= CS_INTBACK_PERI;
-							COMM_ST <= CS_WAIT;
+							JOY_START <= 1;
+							COMM_ST <= CS_INTBACK_PERI;
 						end 
 						else if (COMREG_SET && !SRES_EXEC) begin
 							COMREG_SET <= 0;
@@ -364,14 +370,12 @@ module SMPC (
 							COMM_ST <= CS_WAIT;
 						end
 						VBLANK_PEND <= 0;
-						MIRQ_N <= 1;
 						
 						if (CHECK_CONTINUE) begin
 							if (CONT != CONT_PREV && INTBACK_EXEC) begin
-								INTBACK_PERI <= 1;
-								SF <= 1;
-								CONT_PREV <= CONT;
-								CHECK_CONTINUE <= 0;
+								WAIT_CNT <= 16'd100-16'd2;
+								NEXT_COMM_ST <= CS_INTBACK_CONT;
+								COMM_ST <= CS_WAIT;
 							end
 							else if (BREAK) begin
 								INTBACK_BREAK_PEND <= 1;
@@ -383,7 +387,6 @@ module SMPC (
 					
 					CS_WAIT: begin
 						if (!WAIT_CNT) begin
-							if (NEXT_COMM_ST == CS_INTBACK_PERI) JOY_START <= 1;
 							COMM_ST <= NEXT_COMM_ST;
 						end
 					end
@@ -468,16 +471,19 @@ module SMPC (
 							end
 							
 							8'h10: begin		//INTBACK
-								if (IREG[2] == 8'hF0 && (IREG[0][0] || IREG[1][3])) begin
-									if (IREG[0][0]) begin
+								if (IREG[2][7:4] && (IREG[0][3:0] || IREG[1][3])) begin
+									INTBACK_OPTIM_EN <= ~IREG[1][1] & IREG[1][3];
+									if (IREG[0][3:0]) begin
+										WAIT_CNT <= 16'd1023;
 										COMM_ST <= CS_INTBACK_STAT;
 									end else begin
 										INTBACK_EXEC <= 1;
 										INTBACK_PERI <= 1;
-										INTBACK_OPTIM_EN <= ~IREG[1][1];
 										CONT_PREV <= 0;
 										COMM_ST <= CS_IDLE;
 									end
+									PMD[0] <= IREG[1][5:4];
+									PMD[1] <= IREG[1][7:6];
 								end else begin
 									COMM_ST <= CS_END;
 								end
@@ -553,42 +559,48 @@ module SMPC (
 					end
 					
 					CS_INTBACK_STAT: begin
-						OREG_RAM_WA <= OREG_CNT;
-						case (OREG_CNT)
-							5'd0: OREG_RAM_D <= {STE,RESD,6'b000000};
-							5'd1: OREG_RAM_D <= YEAR[15:8];
-							5'd2: OREG_RAM_D <= YEAR[7:0];
-							5'd3: OREG_RAM_D <= {DAY,MONTH};
-							5'd4: OREG_RAM_D <= DAYS;
-							5'd5: OREG_RAM_D <= HOUR;
-							5'd6: OREG_RAM_D <= MIN;
-							5'd7: OREG_RAM_D <= SEC;
-							5'd8: OREG_RAM_D <= 8'h00;
-							5'd9: OREG_RAM_D <= {4'b0000,AC};
-							5'd10: OREG_RAM_D <= {1'b0,DOTSEL,2'b11,~MSHNMI_N,1'b1,~SYSRES_N,~SNDRES_N};
-							5'd11: OREG_RAM_D <= {1'b0,~CDRES_N,6'b000000};
-							5'd12: OREG_RAM_D <= SMEM_Q;
-							5'd13: OREG_RAM_D <= SMEM_Q;
-							5'd14: OREG_RAM_D <= SMEM_Q;
-							5'd15: OREG_RAM_D <= SMEM_Q;
-							5'd31: OREG_RAM_D <= 8'h10;
-							default:OREG_RAM_D <= 8'h00;
+						case (WAIT_CNT)
+							16'd1002: begin OREG_RAM_WA <= 5'h1F; OREG_RAM_D <= 8'h10;                                               OREG_RAM_WE <= 1; if (INTBACK_OPTIM_EN) WAIT_CNT <= WAIT_CNT - 16'd30; end
+							16'd0934: begin OREG_RAM_WA <= 5'h00; OREG_RAM_D <= {STE,RESD,6'b000000};                                OREG_RAM_WE <= 1; end
+							16'd0911: begin OREG_RAM_WA <= 5'h01; OREG_RAM_D <= YEAR[15:8];                                          OREG_RAM_WE <= 1; end
+							16'd0862: begin OREG_RAM_WA <= 5'h02; OREG_RAM_D <= YEAR[7:0];                                           OREG_RAM_WE <= 1; end
+							16'd0814: begin OREG_RAM_WA <= 5'h03; OREG_RAM_D <= {DAY,MONTH};                                         OREG_RAM_WE <= 1; end
+							16'd0766: begin OREG_RAM_WA <= 5'h04; OREG_RAM_D <= DAYS;                                                OREG_RAM_WE <= 1; end
+							16'd0718: begin OREG_RAM_WA <= 5'h05; OREG_RAM_D <= HOUR;                                                OREG_RAM_WE <= 1; end
+							16'd0669: begin OREG_RAM_WA <= 5'h06; OREG_RAM_D <= MIN;                                                 OREG_RAM_WE <= 1; end
+							16'd0621: begin OREG_RAM_WA <= 5'h07; OREG_RAM_D <= SEC;                                                 OREG_RAM_WE <= 1; end
+							16'd0571: begin OREG_RAM_WA <= 5'h08; OREG_RAM_D <= 8'h00;                                               OREG_RAM_WE <= 1; end
+							16'd0521: begin OREG_RAM_WA <= 5'h09; OREG_RAM_D <= {4'b0000,AC};                                        OREG_RAM_WE <= 1; end
+							16'd0471: begin OREG_RAM_WA <= 5'h0A; OREG_RAM_D <= {1'b0,DOTSEL,2'b10,MSHNMI_N,1'b1,SYSRES_N,SNDRES_N}; OREG_RAM_WE <= 1; end
+							16'd0421: begin OREG_RAM_WA <= 5'h0B; OREG_RAM_D <= {1'b0,CDRES_N,6'b000000};                            OREG_RAM_WE <= 1; end
+							16'd0371: begin OREG_RAM_WA <= 5'h0C; OREG_RAM_D <= SMEM_Q;                                              OREG_RAM_WE <= 1; end
+							16'd0316: begin OREG_RAM_WA <= 5'h0D; OREG_RAM_D <= SMEM_Q;                                              OREG_RAM_WE <= 1; end
+							16'd0260: begin OREG_RAM_WA <= 5'h0E; OREG_RAM_D <= SMEM_Q;                                              OREG_RAM_WE <= 1; end
+							16'd0205: begin OREG_RAM_WA <= 5'h0F; OREG_RAM_D <= SMEM_Q;                                              OREG_RAM_WE <= 1; end
+							16'd0091: if (!IREG[1][3]) WAIT_CNT <= WAIT_CNT - 16'd25;
+							16'd0066: begin
+								SR[7:4] <= {1'b0,1'b1,1'b0,~SRES_N};
+								SR[3:0] <= 4'b1111;
+								if (IREG[1][3]) begin
+									INTBACK_EXEC <= 1;
+									INTBACK_OPTIM_EN <= ~IREG[1][1];
+									SR[5] <= 1;
+								end
+								CONT_PREV <= 0;
+							end
+							16'd0038: begin 
+								MIRQ_N <= 0; 
+								CHECK_CONTINUE <= 1;
+								if (IREG[1][3]) begin
+									WAIT_CNT <= '0;
+									COMM_ST <= CS_IDLE;
+								end
+							end
+							16'd0000: begin 
+								COMM_ST <= CS_END;
+							end
+							default:;
 						endcase
-						OREG_RAM_WE <= 1;
-						
-						OREG_CNT <= OREG_CNT + 5'd1;
-						if (OREG_CNT == 5'd15) begin
-							OREG_CNT <= 5'd31;
-						end
-						if (OREG_CNT == 5'd31) begin
-							WAIT_CNT <= 16'd50;
-							NEXT_COMM_ST <= CS_EXEC;
-							COMM_ST <= CS_WAIT;
-						end else begin
-							WAIT_CNT <= 16'd50;
-							NEXT_COMM_ST <= CS_INTBACK_STAT;
-							COMM_ST <= CS_WAIT;
-						end
 					end
 					
 					CS_EXEC: begin
@@ -649,19 +661,6 @@ module SMPC (
 							end
 							
 							8'h10: begin		//INTBACK
-								if (!INTBACK_EXEC) begin
-									SR[7:6] <= 2'b01;
-									SR[5] <= 0;
-									SR[3:0] <= 4'b1111;
-									if (IREG[1][3]) begin
-										INTBACK_EXEC <= 1;
-										INTBACK_OPTIM_EN <= ~IREG[1][1];
-										SR[5] <= 1;
-										CHECK_CONTINUE <= 1;
-									end
-									CONT_PREV <= 0;
-									MIRQ_N <= 0; 
-								end
 								COMM_ST <= CS_END;
 							end
 							
@@ -698,6 +697,23 @@ module SMPC (
 						endcase
 					end
 					
+					CS_INTBACK_CONT: begin
+						if (CONT != CONT_PREV) begin
+							CONT_PREV <= CONT;
+							CHECK_CONTINUE <= 0;
+							WAIT_CNT <= 16'd383-16'd2;
+							NEXT_COMM_ST <= CS_INTBACK_CONT2;
+							COMM_ST <= CS_WAIT;
+						end else begin
+							COMM_ST <= CS_IDLE;
+						end
+					end
+					
+					CS_INTBACK_CONT2: begin
+						INTBACK_PERI <= 1;
+						COMM_ST <= CS_IDLE;
+					end
+					
 					CS_INTBACK_PERI: begin
 						if (OREG_WRITE) begin
 							OREG_CNT <= OREG_CNT + 5'd1;
@@ -709,16 +725,36 @@ module SMPC (
 							OREG_RAM_WA <= 5'd31;
 							OREG_RAM_D <= COMREG;
 							OREG_RAM_WE <= 1;
-							SR[7:5] <= {1'b1,1'b1,1'b0};
-							//CHECK_CONTINUE <= 1;//TODO: multiple requests for large peripheral data
-							MIRQ_N <= 0; 
-							COMM_ST <= CS_INTBACK_BREAK;
+							
+							COMM_ST <= CS_INTBACK_PERI2;
 						end
+						if (INTBACK_OPTIM_EN && !IRQV_N) begin
+							COMM_ST <= CS_IDLE;
+						end
+					end
+					
+					CS_INTBACK_PERI2: begin
+						SR[7:4] <= {1'b1,1'b1,1'b0,~SRES_N};
+						SR[3:0] <= IREG[1][7:4];
+						//CHECK_CONTINUE <= 1;//TODO: multiple requests for large peripheral data
+						
+						WAIT_CNT <= 16'd26-16'd2;
+						NEXT_COMM_ST <= CS_INTBACK_PERI3;
+						COMM_ST <= CS_WAIT;
+					end
+					
+					CS_INTBACK_PERI3: begin
+						MIRQ_N <= 0; 
+						
+						WAIT_CNT <= 16'd75-16'd2;
+						NEXT_COMM_ST <= CS_INTBACK_BREAK;
+						COMM_ST <= CS_WAIT;
 					end
 					
 					CS_INTBACK_BREAK: begin
 						INTBACK_EXEC <= 0;
 						INTBACK_PERI <= 0;
+						CHECK_CONTINUE <= 0;
 						SF <= 0;
 						COMM_ST <= CS_IDLE;
 					end
@@ -801,9 +837,10 @@ module SMPC (
 				
 				if (!IRQV_N && IRQV_N_OLD) begin
 					VBLANK_PEND <= 1;
+					INTBACK_BREAK_PEND <= 0;
 				end
 			
-				if (PORT_DELAY) PORT_DELAY <= PORT_DELAY - 16'd1;
+				if (PORT_DELAY) PORT_DELAY <= PORT_DELAY - 9'd1;
 					
 				OREG_WRITE <= 0;
 				OREG_END <= 0;
@@ -814,8 +851,11 @@ module SMPC (
 					end
 					
 					PS_START: begin
-						if (!IOSEL[PORT_NUM]) begin
+						if (PMD[PORT_NUM] == 2'b11) begin
+							PORT_ST <= PS_NEXT;
+						end else if (!IOSEL[PORT_NUM]) begin
 							PDR_O[PORT_NUM] <= '1; 
+							PORT_DELAY <= !PORT_NUM ? 9'd224-9'd1 : 9'd245-9'd1;
 							PORT_ST <= PS_ID1_0;
 						end else begin
 							OREG_DATA <= 8'hA0;//8'hF0; //temporary hack
@@ -827,7 +867,7 @@ module SMPC (
 					PS_ID1_0: begin
 						DDR[PORT_NUM][`THTR] <= 2'b10;
 						PDR_O[PORT_NUM][`THTR] <= 2'b11;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd43-9'd2;
 						PORT_ST <= PS_ID1_1;
 					end
 					
@@ -839,7 +879,7 @@ module SMPC (
 					PS_ID1_2: begin
 						DDR[PORT_NUM][`THTR] <= 2'b10;
 						PDR_O[PORT_NUM][`THTR] <= 2'b01;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd44-9'd2;
 						PORT_ST <= PS_ID1_3;
 					end
 					
@@ -879,7 +919,7 @@ module SMPC (
 					PS_DPAD_0: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b10;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd43-9'd2;
 						PORT_ST <= PS_DPAD_1;
 					end
 					
@@ -891,7 +931,7 @@ module SMPC (
 					PS_DPAD_2: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b00;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd44-9'd2;
 						PORT_ST <= PS_DPAD_3;
 					end
 					
@@ -903,24 +943,28 @@ module SMPC (
 					PS_DPAD_4: begin
 						OREG_DATA <= 8'hF1;
 						OREG_WRITE <= 1;
+						PORT_DELAY <= 9'd43-9'd2;
 						PORT_ST <= PS_DPAD_5;
 					end
 					
 					PS_DPAD_5: begin
 						OREG_DATA <= 8'h02;
 						OREG_WRITE <= 1;
+						PORT_DELAY <= 9'd43-9'd2;
 						PORT_ST <= PS_DPAD_6;
 					end
 					
 					PS_DPAD_6: begin
 						OREG_DATA <= JOY_DATA[15:8];
 						OREG_WRITE <= 1;
+						PORT_DELAY <= 9'd43-9'd2;
 						PORT_ST <= PS_DPAD_7;
 					end
 					
 					PS_DPAD_7: begin
 						OREG_DATA <= {JOY_DATA[7:3],3'b111};
 						OREG_WRITE <= 1;
+						PORT_DELAY <= 9'd171+9'd43-9'd2;
 						PORT_ST <= PS_NEXT;
 					end
 					
@@ -928,7 +972,7 @@ module SMPC (
 					PS_MOUSE_0: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b00;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd60;
 						PORT_ST <= PS_MOUSE_1;
 					end
 					
@@ -942,7 +986,7 @@ module SMPC (
 					PS_MOUSE_2: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b01;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd60;
 						PORT_ST <= PS_MOUSE_3;
 					end
 					
@@ -969,7 +1013,7 @@ module SMPC (
 					PS_MOUSE_6: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b00;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd60;
 						PORT_ST <= PS_MOUSE_7;
 					end
 					
@@ -983,7 +1027,7 @@ module SMPC (
 					PS_MOUSE_8: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b01;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd60;
 						PORT_ST <= PS_MOUSE_9;
 					end
 					
@@ -1005,7 +1049,7 @@ module SMPC (
 					PS_ID5_0: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b00;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd60;
 						PORT_ST <= PS_ID5_1;
 					end
 					
@@ -1019,7 +1063,7 @@ module SMPC (
 					PS_ID5_2: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b01;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd60;
 						PORT_ST <= PS_ID5_3;
 					end
 					
@@ -1050,7 +1094,7 @@ module SMPC (
 					PS_ANALOG_6: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b00;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd60;
 						PORT_ST <= PS_ANALOG_7;
 					end
 					
@@ -1064,7 +1108,7 @@ module SMPC (
 					PS_ANALOG_8: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b01;
-						PORT_DELAY <= 16'd60;
+						PORT_DELAY <= 9'd60;
 						PORT_ST <= PS_ANALOG_9;
 					end
 					
@@ -1086,14 +1130,11 @@ module SMPC (
 					PS_NEXT: begin
 						DDR[PORT_NUM][`THTR] <= 2'b11;
 						PDR_O[PORT_NUM][`THTR] <= 2'b11;
-						PORT_DELAY <= 16'd60;
 							
 						PORT_NUM <= ~PORT_NUM;
 						if (!PORT_NUM) begin
 							PORT_ST <= PS_START;
 						end else begin
-							OREG_DATA <= 8'hF0;
-							OREG_WRITE <= 1;
 							PORT_ST <= PS_END;
 						end
 					end
@@ -1124,7 +1165,7 @@ module SMPC (
 					7'h0B: IREG[5] <= DI;
 					7'h0D: IREG[6] <= DI;
 					7'h1F: begin COMREG <= DI; COMREG_SET <= 1; end
-					7'h63: if (DI[0]) SF <= 1;
+					7'h63: SF <= 1;
 					7'h75: if (IOSEL[0]) PDR_O[0] <= DI;
 					7'h77: if (IOSEL[1]) PDR_O[1] <= DI;
 					7'h79: DDR[0] <= DI[6:0];
@@ -1133,19 +1174,20 @@ module SMPC (
 					7'h7F: EXLE <= DI[1:0];
 					default:;
 				endcase
+				IO_BUF <= DI;
 			end 
 			
 			CS_N_OLD <= CS_N;
 			if (!CS_N && CS_N_OLD && RW_N) begin
-				if ({A,1'b1} <= 7'h5F)
+				if ({A,1'b1} >= 7'h21 && {A,1'b1} <= 7'h5F)
 					REG_DO <= OREG_RAM_Q;
 				else
 					case ({A,1'b1})
 						7'h61: REG_DO <= SR;
-						7'h63: REG_DO <= {7'b1111000,SF};
-						7'h75: REG_DO <= {PDR_O[0][7],PDR1I};
-						7'h77: REG_DO <= {PDR_O[1][7],PDR2I};
-						default: REG_DO <= '0;
+						7'h63: REG_DO <= {IO_BUF[7:1],SF};
+						7'h75: REG_DO <= {IO_BUF[7],PDR1I};
+						7'h77: REG_DO <= {IO_BUF[7],PDR2I};
+						default: REG_DO <= IO_BUF;
 					endcase
 			end
 		end
@@ -1157,13 +1199,14 @@ module SMPC (
 	assign DDR2 = DDR[1];
 	assign EXL_N = (~EXLE[0] | PDR1I[6]) & (~EXLE[1] | PDR2I[6]);
 	
-	bit [ 7: 0] SMEM_Q;
-	SMPC_SMEM SMEM (CLK, OREG_CNT[1:0], IREG[OREG_CNT[2:0]], (COMM_ST == CS_EXEC && COMREG == 8'h17 && CE), OREG_CNT[1:0], SMEM_Q);
+	bit  [ 7: 0] SMEM_Q;
+	wire [ 7: 0] SMEM_RADDR = OREG_RAM_WA[1:0] + 2'h1;
+	SMPC_SMEM SMEM (CLK, OREG_CNT[1:0], IREG[OREG_CNT[2:0]], (COMM_ST == CS_EXEC && COMREG == 8'h17 && CE), SMEM_RADDR, SMEM_Q);
 	
-	bit [4:0] OREG_RAM_WA;
-	bit [7:0] OREG_RAM_D;
-	bit       OREG_RAM_WE;
-	bit [7:0] OREG_RAM_Q;
+	bit  [ 4: 0] OREG_RAM_WA;
+	bit  [ 7: 0] OREG_RAM_D;
+	bit          OREG_RAM_WE;
+	bit  [ 7: 0] OREG_RAM_Q;
 	SMPC_OREG_RAM OREG_RAM (CLK, OREG_RAM_WA, OREG_RAM_D, OREG_RAM_WE, (A - 6'h10), OREG_RAM_Q);
 	
 	assign DO = REG_DO;

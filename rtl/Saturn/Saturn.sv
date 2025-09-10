@@ -512,7 +512,7 @@ module Saturn
 `ifdef STV_BUILD
                      !STVIO_CS_N                                     ? MEM_DI :
 `endif
-                     !SMPCCE_N                                       ? {4{SMPC_DO}} :
+                     !SMPCCE_N                                       ? {16'h0000,8'hFF,SMPC_DO} :
 							!MSHCS1_N || !MSHCS2_N || !MSHIVECF_N           ? SCU_DO :
 							OPEN_BUS;
 	assign CDI      = {!MSHDQM_N[3] ? MSHDO[31:24] : OPEN_BUS[31:24],
