@@ -71,6 +71,7 @@ module SH7604_BSC
 	output            BUS_RLS,
 	
 	input             FAST
+	
 );
 
 	import SH7604_PKG::*;
@@ -177,7 +178,7 @@ module SH7604_BSC
 	typedef enum bit[3:0] {
 		T0,  
 		T1,T2,TW,								//ordinary,SRAM
-		TRAS,TWCAS,TRCAS,TRD,TRFS1,TRFS2,//SDRAM
+		TRAS,TWCAS,TRCAS,TRD,TWNOP,TRFS1,TRFS2,//SDRAM
 		TV1,TV2									//vector fetch
 	} BusState_t;
 	BusState_t BUS_STATE;
@@ -193,12 +194,12 @@ module SH7604_BSC
 	bit          CBUS_ACTIVE,DBUS_ACTIVE,VBUS_ACTIVE,REFRESH_ACTIVE;
 	bit  [31: 0] DAT_BUF;
 	bit  [ 7: 0] VEC_BUF;
-		bit [ 1: 0] RFS_WAIT_CNT;
+	bit  [ 1: 0] RFS_WAIT_CNT;
 	always @(posedge CLK or negedge RST_N) begin
 		BusState_t  STATE_NEXT;
 		bit         DBUS_SKIP;
 		bit         CBUS_LOCK_INT,DBUS_LOCK_INT;
-		bit [ 1: 0] CBUS_CNT;
+		bit [ 1: 0] CBUS_REQ_CNT;
 		bit [ 2: 0] WAIT_CNT;
 		bit [ 1: 0] RCD_WAIT_CNT;
 		bit [ 1: 0] NOP_WAIT_CNT;
@@ -207,7 +208,7 @@ module SH7604_BSC
 		bit [ 3: 0] NEXT_BA;
 		bit [ 1: 0] AREA_SZ;
 		bit         LL;
-		bit         IS_SDRAM, IS_SAME_BANK_SDRAM;
+		bit         CBUS_IS_SDRAM,DBUS_IS_SDRAM,BUS_IS_SDRAM,IS_SAME_BANK_SDRAM;
 		bit [ 3: 0] SDRAM_AREA;
 		bit [ 2: 0] BURST_CNT;
 		bit         BURST_EN,BURST_SINGLE;
@@ -230,7 +231,7 @@ module SH7604_BSC
 			BUSY <= 0;
 			{CBUSY,CBUSY2,DBUSY,VBUSY} <= '0;
 			{CBUS_ACTIVE,DBUS_ACTIVE,VBUS_ACTIVE,REFRESH_ACTIVE} <= '0;
-			CBUS_CNT <= '0;
+			CBUS_REQ_CNT <= '0;
 			BUS_STATE <= T0;
 			WAIT_CNT <= '0;
 			NEXT_BA <= '0;
@@ -243,7 +244,6 @@ module SH7604_BSC
 						
 			DATA_LATCH = 0;
 			STATE_NEXT = BUS_STATE;
-			if (NOP_WAIT_CNT && CE_R) NOP_WAIT_CNT <= NOP_WAIT_CNT - 2'd1;
 			case (BUS_STATE)
 				T0: begin
 				end
@@ -334,17 +334,16 @@ module SH7604_BSC
 				TRAS: begin
 					if (CE_R) begin
 						BS_N <= 1;
-						if (!NOP_WAIT_CNT || !SDRAM_INSERT_NOP || FAST) begin
-							if (BUS_WE_LATCH) begin
-								if (WAIT_N || !LL) begin
-									if (!NEXT_BA) begin
-										BUSY <= 0;
-									end
-									STATE_NEXT = TWCAS;
+						if (BUS_WE_LATCH) begin
+							if (WAIT_N || !LL) begin
+								if (!NEXT_BA) begin
+									BUSY <= 0;
 								end
-							end else begin
-								STATE_NEXT = TRCAS;
+								NOP_WAIT_CNT <= 2'd1;
+								STATE_NEXT = TWCAS;
 							end
+						end else begin
+							STATE_NEXT = TRCAS;
 						end
 					end
 				end
@@ -363,8 +362,17 @@ module SH7604_BSC
 							RD_WR_N <= 1;
 						end
 						SDRAM_PRECHARGE_PEND <= 0;
-						NOP_WAIT_CNT <= 2'd2;
-						STATE_NEXT = T0;
+						STATE_NEXT = TWNOP;
+					end
+				end
+				
+				TWNOP: begin
+					if (CE_R) begin
+						if (NOP_WAIT_CNT) begin
+							NOP_WAIT_CNT <= NOP_WAIT_CNT - 2'd1;
+						end else begin
+							STATE_NEXT = T0;
+						end
 					end
 				end
 				
@@ -411,7 +419,6 @@ module SH7604_BSC
 							CS3_N <= 1;
 							RD_WR_N <= 1;
 							SDRAM_PRECHARGE_PEND <= 0;
-							NOP_WAIT_CNT <= 2'd2;
 							STATE_NEXT = T0;
 						end
 					end
@@ -487,7 +494,7 @@ module SH7604_BSC
 			end
 			
 			if (CE_R) begin
-				if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TRD || BUS_STATE == TRFS2 || BUS_STATE == TV2) begin
+				if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TWNOP || BUS_STATE == TRD || BUS_STATE == TRFS2 || BUS_STATE == TV2) begin
 					if (CBUS_EXT_REQ && !BUS_RLS && !BUSY && (BURST_CNT[0] || !BURST_EN)) begin
 						CBUSY <= 1;
 						CBUSY2 <= 0;
@@ -498,16 +505,17 @@ module SH7604_BSC
 					if (VBUS_REQ && !BUS_RLS && !BUSY) begin
 						VBUSY <= 1;
 					end
-					if ((BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TRD || BUS_STATE == TRFS2 || BUS_STATE == TV2) && BUSY && !RD_WR_N && !BUS_RLS) begin
+					if ((BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TWNOP || BUS_STATE == TRD || BUS_STATE == TRFS2 || BUS_STATE == TV2) && BUSY && !RD_WR_N && !BUS_RLS) begin
 						if (CBUS_EXT_REQ && !CBUSY) CBUSY <= 1;
 						if (DBUS_REQ && !DBUSY) DBUSY <= 1;
 					end
 					
 					SDRAM_AREA = SDRAMAreaSel(BCR1);
-					IS_SDRAM = 0; 
+					CBUS_IS_SDRAM = IsSDRAMArea(CBUS_A[26:25],BCR1); 
+					DBUS_IS_SDRAM = IsSDRAMArea(DBUS_A[26:25],BCR1); 
+					BUS_IS_SDRAM = IsSDRAMArea(A[26:25],BCR1);
 					VBUS_ACTIVE <= 0;
 					if (((BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TRD) && BUSY && NEXT_BA) || ((BUS_STATE == T2 || BUS_STATE == TRD) && BURST_EN && !BURST_LAST)) begin
-						IS_SDRAM = IsSDRAMArea(A[26:25],BCR1);
 						case (AREA_SZ)
 							2'b01: if (!SIZE_BYTE_DISABLE) begin 
 								A[3:0] <= A[3:0] + 4'd1; 
@@ -562,7 +570,7 @@ module SH7604_BSC
 						BS_N <= 0;
 						RD_N <= BUS_WE_LATCH;
 						CACK <= 1;
-						STATE_NEXT = IS_SDRAM ? (!BUS_WE_LATCH ? TRD : TRAS) : T1;
+						STATE_NEXT = BUS_IS_SDRAM ? (!BUS_WE_LATCH ? TRD : TRAS) : T1;
 					end
 					else if (BUS_SEL && !BUS_RLS && ((!BGR && MASTER) || (BREQ && !MASTER))) begin
 						BUSY <= 1;
@@ -575,11 +583,10 @@ module SH7604_BSC
 						if (!DBUS_LOCK_INT) DBUS_ACTIVE <= 0;
 						REFRESH_ACTIVE <= 0;
 						if (((RFS_REQ && !CBUS_EXT_REQ && !DBUS_REQ) || DELAYED_RFS_REQ) && !CBUS_LOCK_INT && !DBUS_LOCK_INT) begin
-							IS_SDRAM = IsSDRAMArea(A[26:25],BCR1);
-							if (INSERT_WAIT && !BUS_WE_LATCH && !IS_SDRAM) begin
+							if (INSERT_WAIT && !BUS_WE_LATCH && !BUS_IS_SDRAM) begin
 								A <= CBUS_A[26:0];
 								INSERT_WAIT <= 0;
-							end else if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
+							end else if (BUS_STATE == T0 || BUS_STATE == T2 /*|| BUS_STATE == TWCAS*/ || (BUS_STATE == TWNOP && !NOP_WAIT_CNT) || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
 								REFRESH_ACTIVE <= 1;
 								INSERT_WAIT <= ~FAST;
 								A[24:0] <= '0;
@@ -604,7 +611,7 @@ module SH7604_BSC
 							end
 						end 
 						else if (VBUS_REQ && !CBUS_LOCK_INT && !DBUS_LOCK_INT) begin
-							if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
+							if (BUS_STATE == T0 || BUS_STATE == T2 || (BUS_STATE == TWNOP && !NOP_WAIT_CNT) || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
 								VBUS_ACTIVE <= 1;
 								A <= {23'h000000,VBUS_A};
 								DO <= '0; 
@@ -626,12 +633,12 @@ module SH7604_BSC
 							end
 						end 
 						else if ((DBUS_REQ && !CBUS_LOCK_INT && !(CBUS_EXT_REQ && DBUS_SKIP) && !(SDRAM_PRECHARGE_PEND && BUS_STATE != TRFS2 && BRLS && MASTER)) || (DBUS_REQ && DBUS_LOCK_INT && !CBUS_LOCK_INT)) begin
-							IS_SDRAM = IsSDRAMArea(DBUS_A[26:25],BCR1); 
 							IS_SAME_BANK_SDRAM = (SDRAMBank(A,MCR) == SDRAMBank(DBUS_A[26:0],MCR));
-							if (INSERT_WAIT && ((A[26:25] != DBUS_A[26:25] && !DBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (DBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (DBUS_WE && BUS_STATE == T0 && !IS_SDRAM))) begin
+							SDRAM_INSERT_NOP <= IS_SAME_BANK_SDRAM && BUS_WE_LATCH && DBUS_IS_SDRAM;
+							if (INSERT_WAIT && ((A[26:25] != DBUS_A[26:25] && !DBUS_WE && !BUS_WE_LATCH && !DBUS_IS_SDRAM) || (DBUS_WE && !BUS_WE_LATCH && !DBUS_IS_SDRAM) || (DBUS_WE && BUS_STATE == T0 && !DBUS_IS_SDRAM))) begin
 								A <= DBUS_A[26:0];
 								INSERT_WAIT <= 0;
-							end else if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
+							end else if (BUS_STATE == T0 || BUS_STATE == T2 || (BUS_STATE == TWCAS && !SDRAM_INSERT_NOP && !DELAYED_RFS_REQ) || (BUS_STATE == TWNOP && !NOP_WAIT_CNT) || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
 								DBUS_ACTIVE <= 1;
 								DBUS_SKIP <= 1;
 								DBUS_LOCK_INT <= DBUS_LOCK;
@@ -688,7 +695,7 @@ module SH7604_BSC
 									end
 									default:; 
 								endcase
-								if (IS_SDRAM && !DBUS_WE) begin
+								if (DBUS_IS_SDRAM && !DBUS_WE) begin
 									if (!BURST_EN || BURST_LAST) begin
 										BURST_CNT <= 3'd0;
 										BURST_EN <= 1;
@@ -700,7 +707,6 @@ module SH7604_BSC
 									BURST_SINGLE <= 1;
 								end
 								RCD_WAIT_CNT <= 2'd1 + MCR.RCD;
-								SDRAM_INSERT_NOP <= IS_SAME_BANK_SDRAM && BUS_WE_LATCH && IS_SDRAM;
 								SDRAM_PRECHARGE_PEND <= MASTER;
 								INSERT_WAIT <= ~FAST; 
 								
@@ -717,7 +723,7 @@ module SH7604_BSC
 								BUS_WE_LATCH <= DBUS_WE;
 								BUS_DI_LATCH <= DBUS_DI;
 								DELAYED_RFS_REQ <= RFS_REQ;
-								STATE_NEXT = IS_SDRAM ? TRAS : T1;
+								STATE_NEXT = DBUS_IS_SDRAM ? TRAS : T1;
 								if (!(DBUS_A[31:27] ==? 5'b00?00)) begin
 									BURST_CNT <= 3'd0;
 									BURST_EN <= 0;
@@ -740,17 +746,18 @@ module SH7604_BSC
 							end
 						end
 						else if ((CBUS_EXT_REQ && !(SDRAM_PRECHARGE_PEND && BUS_STATE != TRFS2 && BRLS && MASTER)) || (CBUS_EXT_REQ && CBUS_LOCK_INT)) begin
-							IS_SDRAM = IsSDRAMArea(CBUS_A[26:25],BCR1);
 							IS_SAME_BANK_SDRAM = (SDRAMBank(A,MCR) == SDRAMBank(CBUS_A[26:0],MCR));
-							if (INSERT_WAIT && ((A[26:25] != CBUS_A[26:25] && !CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && !BUS_WE_LATCH && !IS_SDRAM) || (CBUS_WE && BUS_STATE == T0 && !IS_SDRAM) || (CBUS_WE && REFRESH_ACTIVE && !IS_SDRAM) || (CBUS_WE && CBUS_CNT == 2'd3 && !IS_SDRAM))) begin
+							SDRAM_INSERT_NOP = IS_SAME_BANK_SDRAM && BUS_WE_LATCH && CBUS_IS_SDRAM;
+							if (INSERT_WAIT && ((A[26:25] != CBUS_A[26:25] && !CBUS_WE && !BUS_WE_LATCH && !CBUS_IS_SDRAM) || (CBUS_WE && !BUS_WE_LATCH && !CBUS_IS_SDRAM) || (CBUS_WE && BUS_STATE == T0 && !CBUS_IS_SDRAM) || (CBUS_WE && REFRESH_ACTIVE) || 
+							                    (CBUS_WE && CBUS_REQ_CNT == 2'd3 && (BRLS || !MASTER) && !NOP_WAIT_CNT))) begin
 								A <= CBUS_A[26:0];
-								CBUS_CNT <= 2'd0;
 								INSERT_WAIT <= 0;
-							end else if (BUS_STATE == T0 || BUS_STATE == T2 || BUS_STATE == TWCAS || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
+								CBUS_REQ_CNT <= 2'd0;
+							end else if (BUS_STATE == T0 || BUS_STATE == T2 || (BUS_STATE == TWCAS && !SDRAM_INSERT_NOP && !DELAYED_RFS_REQ) || (BUS_STATE == TWNOP && !NOP_WAIT_CNT) || BUS_STATE == TRD || BUS_STATE == TRFS2) begin
 								CBUS_ACTIVE <= 1;
-								if (A[26:25] == CBUS_A[26:25] && CBUS_WE) CBUS_CNT <= CBUS_CNT + 2'd1;
-								else CBUS_CNT <= 2'd0;
 								DBUS_SKIP <= 0;
+								if (CBUS_WE && CBUS_REQ_CNT < 2'd3) CBUS_REQ_CNT <= CBUS_REQ_CNT + 2'd1;
+								else CBUS_REQ_CNT <= 2'd0;
 								CBUS_LOCK_INT <= CBUS_LOCK;
 								case (GetAreaSZ(CBUS_A[26:25],BCR1,BCR2,A0_SZ,DRAM_SZ))
 									2'b01: if (!SIZE_BYTE_DISABLE) begin 
@@ -805,7 +812,7 @@ module SH7604_BSC
 									end
 									default:; 
 								endcase
-								if ((CBUS_BURST || IS_SDRAM) && !CBUS_WE) begin
+								if ((CBUS_BURST || CBUS_IS_SDRAM) && !CBUS_WE) begin
 									if (!BURST_EN || BURST_LAST) begin
 										BURST_CNT <= 3'd0;
 										BURST_EN <= 1;
@@ -817,7 +824,6 @@ module SH7604_BSC
 									BURST_SINGLE <= 1;
 								end
 								RCD_WAIT_CNT <= 2'd1 + MCR.RCD;
-								SDRAM_INSERT_NOP <= IS_SAME_BANK_SDRAM && BUS_WE_LATCH && IS_SDRAM;
 								if (!CBUS_WE) SDRAM_PRECHARGE_PEND <= MASTER;
 								INSERT_WAIT <= ~FAST;
 								
@@ -833,8 +839,8 @@ module SH7604_BSC
 								
 								BUS_WE_LATCH <= CBUS_WE;
 								BUS_DI_LATCH <= CBUS_DI; 
-								DELAYED_RFS_REQ <= RFS_REQ;
-								STATE_NEXT = IS_SDRAM ? TRAS : T1;
+								DELAYED_RFS_REQ <= RFS_REQ && CBUS_IS_SDRAM;
+								STATE_NEXT = CBUS_IS_SDRAM ? TRAS : T1;
 							end
 						end
 					end
@@ -847,7 +853,7 @@ module SH7604_BSC
 				end
 				else if ((BUS_STATE == T1 || BUS_STATE == TW || BUS_STATE == TRAS || BUS_STATE == TRCAS || BUS_STATE == TRFS1) && BUS_SEL && !BUS_RLS) begin
 					if (!VBUSY && VBUS_REQ) VBUSY <= 1;
-					if ((BUS_STATE == T1 || BUS_STATE == TW || BUS_STATE == TRAS) && !RD_WR_N /*&& !NEXT_BA*/) begin
+					if ((BUS_STATE == T1 || BUS_STATE == TW || BUS_STATE == TRAS) && !RD_WR_N) begin
 						if (CBUS_EXT_REQ && !CBUSY) CBUSY <= 1;
 						if (DBUS_REQ && !DBUSY) DBUSY <= 1;
 					end
@@ -855,7 +861,7 @@ module SH7604_BSC
 						CBUSY2 <= 1;
 					end
 				end
-				if (BUS_RLS) begin INSERT_WAIT <= 0; CBUS_CNT <= 2'd0; end
+				if (BUS_RLS) begin INSERT_WAIT <= 0; CBUS_REQ_CNT <= '0; end
 			end
 			if (CE_F) begin
 				if (!CBUS_EXT_REQ && CBUS_PREREQ && BUS_STATE == T0 && !BUS_RLS) DBUS_SKIP <= 1;
