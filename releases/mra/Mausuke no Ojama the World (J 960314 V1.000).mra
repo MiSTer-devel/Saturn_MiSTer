@@ -17,7 +17,7 @@
 	</rom>
 	<rom index="3" md5="" zip="mausuke.zip" address="0x34000000">
 		<interleave output="64">
-			<part crc="b456f4cd" name="ic13.bin" map="01030507" />
+			<part crc="b456f4cd" name="ic13.bin" map="1357" />
 		</interleave>
 		<interleave output="64">
 			<part crc="b456f4cd" name="ic13.bin" map="21436587" />

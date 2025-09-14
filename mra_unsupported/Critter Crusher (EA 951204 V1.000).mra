@@ -19,10 +19,10 @@
 	</rom>
 	<rom index="3" md5="" zip="critcrsh.zip" address="0x34000000">
 		<interleave output="64">
-			<part crc="9a6658e2" name="epr-18821.ic13" map="01030507" />
+			<part crc="9a6658e2" name="epr-18821.ic13" map="1357" />
 		</interleave>
 		<interleave output="64">
-			<part crc="9a6658e2" name="epr-18821.ic13" map="01030507" />
+			<part crc="9a6658e2" name="epr-18821.ic13" map="1357" />
 		</interleave>
 		<part repeat="0x1a00000">00</part>
 		<interleave output="64">

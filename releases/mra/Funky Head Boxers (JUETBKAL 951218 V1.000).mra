@@ -25,7 +25,7 @@
 	</rom>
 	<rom index="3" md5="" zip="fhboxers.zip" address="0x34000000">
 		<interleave output="64">
-			<part crc="8c61a17c" name="fr18541a.13" map="01030507" />
+			<part crc="8c61a17c" name="fr18541a.13" map="1357" />
 		</interleave>
 		<interleave output="64">
 			<part crc="7b5230c5" name="mpr18538.7" map="12345678" />
