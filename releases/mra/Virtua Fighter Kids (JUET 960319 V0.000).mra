@@ -23,7 +23,7 @@
 	</rom>
 	<rom index="3" md5="" zip="vfkids.zip" address="0x34000000">
 		<interleave output="64">
-			<part crc="cd35730a" name="fpr18914.13" map="01030507" />
+			<part crc="cd35730a" name="fpr18914.13" map="1357" />
 		</interleave>
 		<part repeat="0xa00000">00</part>
 		<interleave output="64">

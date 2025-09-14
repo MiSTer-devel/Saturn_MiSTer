@@ -23,12 +23,12 @@
 	</rom>
 	<rom index="3" md5="" zip="batmanfr.zip" address="0x34000000">
 		<interleave output="64">
-			<part crc="2a5a8c3a" name="350-mpa1.u19" map="01030507" />
-			<part crc="735e23ab" name="350-mpa1.u16" map="10305070" />
+			<part crc="2a5a8c3a" name="350-mpa1.u19" map="1357" />
+			<part crc="735e23ab" name="350-mpa1.u16" map="13570" />
 		</interleave>
 		<interleave output="64">
-			<part crc="2a5a8c3a" name="350-mpa1.u19" map="01030507" />
-			<part crc="735e23ab" name="350-mpa1.u16" map="10305070" />
+			<part crc="2a5a8c3a" name="350-mpa1.u19" map="1357" />
+			<part crc="735e23ab" name="350-mpa1.u16" map="13570" />
 		</interleave>
 		<interleave output="64">
 			<part crc="a82d0b7e" name="gfx0.u1" map="12345678" />
