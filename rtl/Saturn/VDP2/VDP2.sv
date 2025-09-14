@@ -251,6 +251,7 @@ module VDP2 (
 	bit          HSYNC;
 	always @(posedge CLK or negedge RST_N) begin
 		bit  [ 1: 0] VRES_LATCH0,VRES_LATCH1;
+		bit          F;
 		
 		if (!RST_N) begin
 			{HCT9,HCT} <= '0;
@@ -264,6 +265,7 @@ module VDP2 (
 			ODD <= 0;
 			HSYNC <= 0;
 			VSYNC <= 0;
+			F <= 0;
 		end else begin
 		if (DOT_CE_R) begin
 			{HCT9,HCT} <= ({HCT9,HCT} + (HRES[2] ? 10'd2 : 10'd1)) & {9'b111111111,~HRES[2]};
@@ -322,13 +324,16 @@ module VDP2 (
 				VB_INT <= 1;
 			end else if (LAST_DOT && V_CNT == NEXT_TO_LAST_LINE>>1) begin
 				VB_INT <= 0;
-				DISP_INT <= REGS.TVMD.DISP;
 			end
 			
 			if ({HCT9,HCT} == {1'b0,VINC_DOT0} || {HCT9,HCT} == {1'b0,VINC_DOT1}) begin
 				if ({VCT,VCT0} == NEXT_TO_LAST_LINE) begin
-					LSMD <= REGS.TVMD.LSMD;//?
+					if (F) LSMD <= REGS.TVMD.LSMD;//?
+					F <= ~F;
 					if (REGS.TVMD.LSMD == 2'b00) ODD <= 1;
+				end
+				if ({VCT,VCT0} == LAST_LINE) begin
+					DISP_INT <= REGS.TVMD.DISP;
 				end
 			end
 			HRES <= REGS.TVMD.HRESO[2:0];
