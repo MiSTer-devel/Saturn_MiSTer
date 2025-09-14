@@ -23,10 +23,10 @@
 	</rom>
 	<rom index="3" md5="" zip="pblbeach.zip" address="0x34000000">
 		<interleave output="64">
-			<part crc="d12414ec" name="epr18852.13" map="01030507" />
+			<part crc="d12414ec" name="epr18852.13" map="1357" />
 		</interleave>
 		<interleave output="64">
-			<part crc="d12414ec" name="epr18852.13" map="01030507" />
+			<part crc="d12414ec" name="epr18852.13" map="1357" />
 		</interleave>
 		<part repeat="0x200000">00</part>
 		<interleave output="64">

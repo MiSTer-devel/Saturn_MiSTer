@@ -17,10 +17,10 @@
 	</rom>
 	<rom index="3" md5="" zip="introdon.zip" address="0x34000000">
 		<interleave output="64">
-			<part crc="1f40d766" name="epr18937.13" map="01030507" />
+			<part crc="1f40d766" name="epr18937.13" map="1357" />
 		</interleave>
 		<interleave output="64">
-			<part crc="1f40d766" name="epr18937.13" map="01030507" />
+			<part crc="1f40d766" name="epr18937.13" map="1357" />
 		</interleave>
 		<interleave output="64">
 			<part crc="f7f75ce5" name="mpr18944.7" map="12345678" />

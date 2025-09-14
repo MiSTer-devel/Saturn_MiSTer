@@ -23,7 +23,7 @@
 	</rom>
 	<rom index="3" md5="" zip="ffreveng.zip" address="0x34000000">
 		<interleave output="64">
-			<part crc="3ffea541" name="ffr110.ic35" map="01030507" />
+			<part crc="3ffea541" name="ffr110.ic35" map="1357" />
 		</interleave>
 		<interleave output="64">
 			<part crc="32d36fee" name="opr21872.7" map="12345678" />
