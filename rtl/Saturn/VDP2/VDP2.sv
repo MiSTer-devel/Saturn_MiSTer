@@ -940,9 +940,6 @@ module VDP2 (
 		RxCT_ADDR[1] = RxCTAddr(KAst[    1], RxKA[    1], RPxREG[    1].KTAOS, RPxREG[    1].KDBS);
 		RxCTA_ADDR   = RxCTAddr(KAst[    0], RxKA[    0], RPxREG[    0].KTAOS, RPxREG[    0].KDBS);
 		RxCTB_ADDR   = RxCTAddr(KAst[    1], RxKA[    1], RPxREG[    1].KTAOS, RPxREG[    1].KDBS);
-		
-		LW_ADDR[0]   = LWAddr({REGS.LWTA0U.WxLWTA,REGS.LWTA0L.WxLWTA}, LW_OFFS);
-		LW_ADDR[1]   = LWAddr({REGS.LWTA1U.WxLWTA,REGS.LWTA1L.WxLWTA}, LW_OFFS);
 	end
 		
 	
@@ -957,7 +954,6 @@ module VDP2 (
 	bit  [ 3: 2] LS_VAL_OFFS[2];
 	bit  [12: 2] LS_TBL_OFFS[2];
 	bit          LW_POS;
-	bit  [10: 2] LW_OFFS;
 	bit  [ 6: 0] VS_OFFS;
 	bit  [ 7: 2] RP_POS;
 	bit  [ 1: 0] VRAM_BANK;
@@ -1265,7 +1261,7 @@ module VDP2 (
 				end else if (LW_FETCH) begin
 					VRAM_BANK <= LW_ADDR[LW_POS][18:17];
 					LW_POS <= ~LW_POS;
-					if (LW_POS) LW_OFFS <= LW_OFFS + (DDI ? 9'd2 : 9'd1);
+					LW_ADDR[LW_POS] <= LW_ADDR[LW_POS] + (DDI ? 9'd4 : 9'd2);
 				end else if (RPA_FETCH || RPB_FETCH) begin
 					RP_POS[6:2] <= RP_POS[6:2] + 5'd1;
 					if (RP_POS[6:2] == 5'd23) RP_POS <= {~RP_POS[7],5'd0};
@@ -1407,7 +1403,6 @@ module VDP2 (
 				if (H_CNT == LS_FETCH_START - 2 && IS_LAST_LINE) begin
 					LS_POS <= '0;
 					LS_VAL_OFFS <= '{2{'0}};
-//					LS_TBL_OFFS <= '{2{'0}};
 					LS_TBL_OFFS[0] <= !NSxREG[0].LSS && DDI && !ODD ? NxLSTblSize(NSxREG[0].LSCX,NSxREG[0].LSCY,NSxREG[0].LZMX,0) : '0;
 					LS_TBL_OFFS[1] <= !NSxREG[1].LSS && DDI && !ODD ? NxLSTblSize(NSxREG[1].LSCX,NSxREG[1].LSCY,NSxREG[1].LZMX,0) : '0;
 				end
@@ -1415,7 +1410,8 @@ module VDP2 (
 				if (LAST_DOT && IS_PRELAST_LINE) begin
 					NBG_PN_FETCH <= '{4{0}};
 					LW_POS <= 0;
-					LW_OFFS <= DDI && !ODD ? 9'd1 : 9'd0;
+					LW_ADDR[0] <= {REGS.LWTA0U.WxLWTA,REGS.LWTA0L.WxLWTA,1'b0} + (DDI && !ODD ? 9'd2 : 9'd0);
+					LW_ADDR[1] <= {REGS.LWTA1U.WxLWTA,REGS.LWTA1L.WxLWTA,1'b0} + (DDI && !ODD ? 9'd2 : 9'd0);
 					BS_ADDR <= {REGS.BKTAU.BKTA,REGS.BKTAL.BKTA};
 					LN_ADDR <= {REGS.LCTAU.LCTA,REGS.LCTAL.LCTA};
 					RP_POS <= '0;
@@ -3408,23 +3404,22 @@ module VDP2 (
 		PAL_N = {CAOS,8'b00000000} + PAL;
 	end
 	
-	DotColor_t DC_FST_LATCH, DC_SEC_LATCH, DC_THD_LATCH;
-	bit        CC_FST;
-	DotColor_t CFST, CSEC, CTHD, CFTH;
+	DotColor_t CFST, CSEC;
 	bit  [4:0] CCRT;
-	bit        CCENFST, CCENSEC, CCENTHD;
-	bit        PTHD;
-	bit        LCEN;
+	bit        CCENFST;
 	bit        COEN;
 	bit        COSL;
 	bit        SDEN;
-	bit        BOKEN;
 	bit        HB_INT2;
 	always @(posedge CLK or negedge RST_N) begin
 		bit [23:0] DC;
 		bit        CC;
+		DotColor_t DC_FST_LATCH, DC_SEC_LATCH, DC_THD_LATCH;
+		bit        CC_FST;
 		bit        BOKEN_PREV1,BOKEN_PREV2;
 		DotColor_t CSEC_PREV1, CSEC_PREV2;
+		DotColor_t CSEC_DC, CTHD_DC, CFTH_DC;
+		DotColor_t CSEC_ECC;
 		
 		if (!RST_N) begin
 			// synopsys translate_off
@@ -3434,14 +3429,8 @@ module VDP2 (
 			CC_FST <= 0;
 			CFST <= DC_NULL;
 			CSEC <= DC_NULL;
-			CTHD <= DC_NULL;
-			CFTH <= DC_NULL;
 			CCRT <= '0;
 			CCENFST <= 0;
-			CCENSEC <= 0;
-			CCENTHD <= 0;
-			PTHD <= 0;
-			LCEN <= 0;
 			SDEN <= 0;
 			COEN <= 0;
 			COSL <= 0;
@@ -3462,21 +3451,18 @@ module VDP2 (
 				endcase
 			end
 			
+			CSEC_DC = !DOT_SEC.P ? DOT_SEC.DC : DC_SEC_LATCH;
+			CTHD_DC = BOKEN_PREV1 ? CSEC_PREV1 : !DOT_THD.P ? DOT_THD.DC : DC_THD_LATCH;
+			CFTH_DC = BOKEN_PREV2 ? CSEC_PREV2 : !DOT_FTH.P ? DOT_FTH.DC : DC;
+			CSEC_ECC = ExtColorCalc(CSEC_DC, DOT_SEC.CCEN, CTHD_DC, DOT_THD.P, DOT_THD.CCEN, CFTH_DC, DOT_FST.LCEN, DOT_SEC.BOKEN, REGS.RAMCTL.CRMD, REGS.CCCTL.EXCCEN & ~REGS.CCCTL.BOKEN);
 			if (!HRES[1] && DOT_CE_R) begin
 				CFST <= !DOT_FST.P ? DOT_FST.DC : DC_FST_LATCH;
-				CSEC <= !DOT_SEC.P ? DOT_SEC.DC : DC_SEC_LATCH;
-				CTHD <= BOKEN_PREV1 ? CSEC_PREV1 : !DOT_THD.P ? DOT_THD.DC : DC_THD_LATCH;
-				CFTH <= BOKEN_PREV2 ? CSEC_PREV2 : !DOT_FTH.P ? DOT_FTH.DC : DC;
+				CSEC <= CSEC_ECC;
 				CCRT <= !REGS.CCCTL.CCRTMD ? DOT_FST.CCRT : DOT_SEC.CCRT;
 				CCENFST <= !DOT_FST.CCM3 ? DOT_FST.CCEN : DOT_FST.CCEN & (CC_FST | ~DOT_FST.P);
-				CCENSEC <= DOT_SEC.CCEN;
-				CCENTHD <= DOT_THD.CCEN;
-				PTHD <= DOT_THD.P; 
-				LCEN <= DOT_FST.LCEN; 
 				COEN <= DOT_FST.COEN; 
 				COSL <= DOT_FST.COSL;
 				SDEN <= DOT_FST.SDEN;
-				BOKEN <= DOT_SEC.BOKEN;
 				
 				CSEC_PREV2 <= CSEC_PREV1; CSEC_PREV1 <= !DOT_SEC.P ? DOT_SEC.DC : DC_SEC_LATCH;
 				BOKEN_PREV2 <= BOKEN_PREV1; BOKEN_PREV1 <= DOT_SEC.BOKEN;
@@ -3484,14 +3470,8 @@ module VDP2 (
 			else if (HRES[1] && (DOT_CE_R || DOT_CE_F)) begin
 				CFST <= !DOT_FST.P ? DOT_FST.DC : DC_FST_LATCH;
 				CSEC <= !DOT_SEC.P ? DOT_SEC.DC : DC;
-				CTHD <= '0;
-				CFTH <= '0;
 				CCRT <= !REGS.CCCTL.CCRTMD ? DOT_FST.CCRT : DOT_SEC.CCRT;
 				CCENFST <= |REGS.RAMCTL.CRMD && DOT_SEC.P ? 1'b0 : !DOT_FST.CCM3 ? DOT_FST.CCEN : DOT_FST.CCEN & (CC_FST | ~DOT_FST.P);
-				CCENSEC <= 0;
-				CCENTHD <= 0;
-				PTHD <= 0; 
-				LCEN <= 0; 
 				COEN <= DOT_FST.COEN; 
 				COSL <= DOT_FST.COSL;
 				SDEN <= DOT_FST.SDEN;
@@ -3503,13 +3483,7 @@ module VDP2 (
 			if (HB_INT2 && DOT_CE_F) begin
 				CFST <= DC_NULL;
 				CSEC <= DC_NULL;
-				CTHD <= DC_NULL;
-				CFTH <= DC_NULL;
 				CCENFST <= 0;
-				CCENSEC <= 0;
-				CCENTHD <= 0;
-				PTHD <= 0;
-				LCEN <= 0;
 				SDEN <= 0;
 				COEN <= 0;
 				COSL <= 0;
@@ -3522,7 +3496,6 @@ module VDP2 (
 	DotColor_t DCOL;
 	bit        HB_INT3;
 	always @(posedge CLK or negedge RST_N) begin
-		DotColor_t CSEC2;
 		DotColor_t C;
 		
 		if (!RST_N) begin
@@ -3530,9 +3503,8 @@ module VDP2 (
 			DCOL <= DC_NULL;
 			// synopsys translate_on
 		end else begin
+			C <= ColorCalc(CFST, CSEC, CCRT, CCENFST, REGS.CCCTL.CCMD);
 			if (DOT_CE_R || DOT_CE_F) begin
-				CSEC2 = ExtColorCalc(CSEC, CCENSEC, CTHD, PTHD, CCENTHD, CFTH, LCEN, BOKEN, REGS.RAMCTL.CRMD, REGS.CCCTL.EXCCEN & ~REGS.CCCTL.BOKEN);
-				C = ColorCalc(CFST, CSEC2, CCRT, CCENFST, REGS.CCCTL.CCMD);
 				DCOL.B <= Shadow(ColorOffset(C.B, REGS.COAB.COBL, REGS.COBB.COBL, COEN, COSL), SDEN); 
 				DCOL.G <= Shadow(ColorOffset(C.G, REGS.COAG.COGR, REGS.COBG.COGR, COEN, COSL), SDEN); 
 				DCOL.R <= Shadow(ColorOffset(C.R, REGS.COAR.CORD, REGS.COBR.CORD, COEN, COSL), SDEN); 

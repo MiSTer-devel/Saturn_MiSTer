@@ -2273,13 +2273,13 @@ package VDP2_PKG;
 		TP = ~((|DATA[14:8] & ~SPCTL.SPTYPE[3]) | |DATA[7:0]);
 		
 		RGB888 = {DATA[14:10],3'b000,DATA[9:5],3'b000,DATA[4:0],3'b000};
-		RGB_TP = TP & TPEN & SPCTL.SPWINEN;
+		RGB_TP = SPCTL.SPTYPE[3] ? TP : TP & TPEN & SPCTL.SPWINEN;
 		
 		MSD = MSB & ~TP &          ~SPCTL.SPWINEN;
 		TSD = MSB &  TP & TPSDSL & ~SPCTL.SPWINEN;
 		PAL_TP = TP | NSD | TSD;
 		
-		if (SPCTL.SPCLMD && DATA[15] && !SPCTL.SPTYPE[3])
+		if (SPCTL.SPCLMD && DATA[15])
 			SDD = {1'b0, RGB_TP, 1'b0,        1'b0, 3'h0, 3'h0,        RGB888};
 		else
 			SDD = {1'b1, PAL_TP,  MSB, NSD|MSD|TSD,   PR,   CC, {13'h0000,DC}};
@@ -2416,12 +2416,12 @@ package VDP2_PKG;
 		return TEMP;
 	endfunction
 	
-	function bit [7:0] ColorOffset(input bit [7:0] C, input bit [8:0] COAx, input bit [8:0] COBx, input bit COEN, input bit COSL);
-		bit [8:0] CAS, CBS;
+	function bit [7:0] ColorOffset(input bit [7:0] C, input bit [8:0] COA, input bit [8:0] COB, input bit COEN, input bit COSL);
+		bit [8:0] CO, CSUM;
 
-		CAS = $signed({1'b0,C}) + $signed(COAx);
-		CBS = $signed({1'b0,C}) + $signed(COBx);
-		return !COEN ? C : !COSL ? CAS[7:0] & ~{8{COAx[8]&CAS[8]}} | {8{~COAx[8]&CAS[8]}} : CBS[7:0] & ~{8{COBx[8]&CBS[8]}} | {8{~COBx[8]&CBS[8]}}; 
+		CO = !COSL ? COA : COB;
+		CSUM = $signed({1'b0,C}) + $signed(CO);
+		return !COEN ? C : CSUM[7:0] & ~{8{CO[8]&CSUM[8]}} | {8{~CO[8]&CSUM[8]}}; 
 	endfunction
 	
 	function bit [7:0] Shadow(input bit [7:0] C, input bit SDEN);
@@ -2462,19 +2462,6 @@ package VDP2_PKG;
 		endcase
 	
 		return LOG ? log_and : log_or;
-	endfunction
-	
-	function bit [19:1] LWAddr(input bit [18:1] WxLWTA, input bit [10:2] LW_OFFS);
-		return {WxLWTA,1'b0} + {LW_OFFS,1'b0};
-	endfunction
-	
-	//
-	function bit [19:1] BSAddr(input bit [18:0] BKTA, input bit [8:0] LINE, input bit BKCLMD);
-		return BKTA + (LINE & {9{BKCLMD}});
-	endfunction
-	
-	function bit [19:1] LNAddr(input bit [18:0] LCTA, input bit [8:0] LINE, input bit LCCLMD);
-		return LCTA + (LINE & {9{LCCLMD}});
 	endfunction
 	
 endpackage
