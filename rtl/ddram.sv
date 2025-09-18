@@ -86,9 +86,7 @@ module ddram
 
 	input  [ 6: 1] eeprom_addr,
 	output [15: 0] eeprom_dout,
-//	input  [15: 0] eeprom_din,
 	input          eeprom_rd,
-//	input  [ 1: 0] eeprom_wr,
 	output         eeprom_busy,
 
 	input  [24: 1] rax_addr,
@@ -125,12 +123,14 @@ reg            ramh_read_busy;
 
 reg  [ 18:  1] cdram_rcache_addr,cdram_write_addr;
 reg            cdram_rcache_dirty;
+reg            cdram_rcache_busy;
 reg  [ 15:  0] cdram_write_data;
 reg  [  1:  0] cdram_be;
 reg            cdram_read_busy,cdram_write_busy;
 
 reg  [ 21:  1] raml_rcache_addr,raml_write_addr;
 reg            raml_rcache_dirty;
+reg            raml_rcache_busy;
 reg  [ 15:  0] raml_write_data;
 reg  [  1:  0] raml_be;
 reg            raml_read_busy,raml_write_busy;
@@ -139,27 +139,30 @@ reg  [ 18:  1] vdp1vram_rcache_addr,vdp1vram_rcache_addr_end;
 reg  [  9:  1] vdp1vram_rcache_addr_lsb;
 reg  [  8:  0] vdp1vram_rcache_blen;
 reg            vdp1vram_rcache_dirty;
+reg            vdp1vram_rcache_busy;
 reg            vdp1vram_read_busy;
 
 reg  [ 18:  1] vdp1fb_rcache_addr;
 reg            vdp1fb_rcache_dirty;
+reg            vdp1fb_rcache_busy;
 reg            vdp1fb_read_busy;
 
 reg  [ 13:  1] cdbuf_rcache_addr;
 reg            cdbuf_rcache_dirty;
+reg            cdbuf_rcache_busy;
 reg            cdbuf_read_busy;
 
 reg  [ 25:  1] cart_rcache_addr,cart_write_addr;
 reg            cart_rcache_dirty;
+reg            cart_rcache_busy;
 reg  [ 15:  0] cart_write_data;
 reg  [  1:  0] cart_be;
 reg            cart_read_busy,cart_write_busy;
 
-reg  [  6:  1] eeprom_rcache_addr/*,eeprom_write_addr*/;
+reg  [  6:  1] eeprom_rcache_addr;
 reg            eeprom_rcache_dirty;
-//reg  [ 15:  0] eeprom_write_data;
-//reg  [  1:  0] eeprom_be;
-reg            eeprom_read_busy/*,eeprom_write_busy*/;
+reg            eeprom_rcache_busy;
+reg            eeprom_read_busy;
 
 reg  [ 24:  1] rax_rcache_addr,rax_write_addr;
 reg            rax_rcache_dirty;
@@ -174,6 +177,7 @@ reg            bios_write_busy;
 
 reg  [ 20:  1] bsram_rcache_addr,bsram_write_addr;
 reg            bsram_rcache_dirty;
+reg            bsram_rcache_busy;
 reg  [ 15:  0] bsram_write_data;
 reg  [  1:  0] bsram_be;
 reg            bsram_read_busy,bsram_write_busy;
@@ -191,7 +195,7 @@ reg            vdp1vram_rd_old,vdp1vram_wr_old;
 reg            vdp1fb_rd_old,vdp1fb_wr_old;
 reg            cdbuf_rd_old;
 reg            cart_rd_old,cart_wr_old;
-reg            eeprom_rd_old/*,eeprom_wr_old*/;
+reg            eeprom_rd_old;
 reg            rax_rd_old,rax_wr_old;
 reg            bios_wr_old;
 reg            bsram_rd_old,bsram_wr_old;
@@ -203,7 +207,7 @@ always @(posedge clk) begin
 	{vdp1fb_rd_old,vdp1fb_wr_old} <= {vdp1fb_rd,|vdp1fb_wr};
 	cdbuf_rd_old <= cdbuf_rd;
 	{cart_rd_old,cart_wr_old} <= {cart_rd,|cart_wr};
-	{eeprom_rd_old/*,eeprom_wr_old*/} <= {eeprom_rd/*,|eeprom_wr*/};
+	{eeprom_rd_old} <= {eeprom_rd};
 	{rax_rd_old,rax_wr_old} <= {rax_rd,|rax_wr};
 	bios_wr_old <= |bios_wr;
 	{bsram_rd_old,bsram_wr_old} <= {bsram_rd,|bsram_wr};
@@ -267,20 +271,25 @@ always @(posedge clk) begin
 			ramh_rcache_addr <= ramh_addr;
 			ramh_rcache_dirty <= 0;
 		end
+		cdram_rcache_busy <= 0;
 		if (cdram_rd && !cdram_rd_old) begin
-			if (cdram_addr[18:4] != cdram_rcache_addr[18:4] || cdram_rcache_dirty) begin
+			if (cdram_addr[18:5] != cdram_rcache_addr[18:5] || cdram_rcache_dirty) begin
 				cdram_read_busy <= 1;
 			end
 			cdram_rcache_addr <= cdram_addr;
+			cdram_rcache_busy <= 1;
 			cdram_rcache_dirty <= 0;
 		end
+		raml_rcache_busy <= 0;
 		if (raml_rd && !raml_rd_old) begin
 			if (raml_addr[21:5] != raml_rcache_addr[21:5] || raml_rcache_dirty) begin
 				raml_read_busy <= 1;
 			end
 			raml_rcache_addr <= raml_addr;
+			raml_rcache_busy <= 1;
 			raml_rcache_dirty <= 0;
 		end
+		vdp1vram_rcache_busy <= 0;
 		if (vdp1vram_rd && !vdp1vram_rd_old) begin
 			if (vdp1vram_blen) begin
 				if (vdp1vram_addr != vdp1vram_rcache_addr || vdp1vram_rcache_dirty) begin
@@ -302,34 +311,43 @@ always @(posedge clk) begin
 				end
 			end
 			vdp1vram_rcache_addr_lsb <= vdp1vram_addr[9:1];
+			vdp1vram_rcache_busy <= 1;
 			vdp1vram_rcache_dirty <= 0;
 		end
+		vdp1fb_rcache_busy <= 0;
 		if (vdp1fb_rd && !vdp1fb_rd_old) begin
 			if (vdp1fb_addr[18:5] != vdp1fb_rcache_addr[18:5] || vdp1fb_rcache_dirty) begin
 				vdp1fb_read_busy <= 1;
 			end
 			vdp1fb_rcache_addr <= vdp1fb_addr;
+			vdp1fb_rcache_busy <= 1;
 			vdp1fb_rcache_dirty <= 0;
 		end
+		cdbuf_rcache_busy <= 0;
 		if (cdbuf_rd && !cdbuf_rd_old) begin
-			if (cdbuf_addr[13:4] != cdbuf_rcache_addr[13:4] || cdbuf_rcache_dirty) begin
+			if (cdbuf_addr[13:5] != cdbuf_rcache_addr[13:5] || cdbuf_rcache_dirty) begin
 				cdbuf_read_busy <= 1;
 			end
 			cdbuf_rcache_addr <= cdbuf_addr;
+			cdbuf_rcache_busy <= 1;
 			cdbuf_rcache_dirty <= 0;
 		end
+		cart_rcache_busy <= 0;
 		if (cart_rd && !cart_rd_old) begin
-			if (cart_addr[25:4] != cart_rcache_addr[25:4] || cart_rcache_dirty) begin
+			if (cart_addr[25:5] != cart_rcache_addr[25:5] || cart_rcache_dirty) begin
 				cart_read_busy <= 1;
 			end
 			cart_rcache_addr <= cart_addr;
+			cart_rcache_busy <= 1;
 			cart_rcache_dirty <= 0;
 		end
+		eeprom_rcache_busy <= 0;
 		if (eeprom_rd && !eeprom_rd_old) begin
-			if (eeprom_addr[6:4] != eeprom_rcache_addr[6:4] || eeprom_rcache_dirty) begin
+			if (eeprom_addr[6:5] != eeprom_rcache_addr[6:5] || eeprom_rcache_dirty) begin
 				eeprom_read_busy <= 1;
 			end
 			eeprom_rcache_addr <= eeprom_addr;
+			eeprom_rcache_busy <= 1;
 			eeprom_rcache_dirty <= 0;
 		end
 		if (rax_rd && !rax_rd_old) begin
@@ -339,11 +357,13 @@ always @(posedge clk) begin
 			rax_rcache_addr <= rax_addr;
 			rax_rcache_dirty <= 0;
 		end
+		bsram_rcache_busy <= 0;
 		if (bsram_rd && !bsram_rd_old) begin
-			if (bsram_addr[20:4] != bsram_rcache_addr[20:4] || bsram_rcache_dirty) begin
+			if (bsram_addr[20:5] != bsram_rcache_addr[20:5] || bsram_rcache_dirty) begin
 				bsram_read_busy <= 1;
 			end
 			bsram_rcache_addr <= bsram_addr;
+			bsram_rcache_busy <= 1;
 			bsram_rcache_dirty <= 0;
 		end
 	end
@@ -358,7 +378,7 @@ always @(posedge clk) begin
 			end	
 		end
 		if (|cdram_wr && !cdram_wr_old) begin
-			if (cdram_addr[18:4] == cdram_rcache_addr[18:4]) begin
+			if (cdram_addr[18:5] == cdram_rcache_addr[18:5]) begin
 				cdram_rcache_dirty <= 1;
 			end
 			cdram_write_addr <= cdram_addr;
@@ -395,7 +415,7 @@ always @(posedge clk) begin
 			end	
 		end
 		if (|cart_wr && !cart_wr_old) begin
-			if (cart_addr[25:4] == cart_rcache_addr[25:4]) begin
+			if (cart_addr[25:5] == cart_rcache_addr[25:5]) begin
 				cart_rcache_dirty <= 1;
 			end
 			cart_write_addr <= cart_addr;
@@ -419,7 +439,7 @@ always @(posedge clk) begin
 			bios_write_busy <= 1;	
 		end
 		if (|bsram_wr && !bsram_wr_old) begin
-			if (bsram_addr[20:4] == bsram_rcache_addr[20:4]) begin
+			if (bsram_addr[20:5] == bsram_rcache_addr[20:5]) begin
 				bsram_rcache_dirty <= 1;
 			end
 			bsram_write_addr <= bsram_addr;
@@ -478,10 +498,10 @@ always @(posedge clk) begin
 					state       <= 3'h1;
 				end
 				else if (cdram_read_busy) begin
-					ram_address <= {8'b00010000,cdram_rcache_addr[18:4],3'b000};
+					ram_address <= {8'b00010000,cdram_rcache_addr[18:5],4'b0000};
 					ram_be      <= 8'hFF;
 					ram_read    <= 1;
-					ram_burst   <= 2;
+					ram_burst   <= 4;
 					ram_chan    <= 4'd1;
 					cache_wraddr<= '0;
 					word_cnt    <= '0;
@@ -561,10 +581,10 @@ always @(posedge clk) begin
 					state       <= 3'h2;
 				end
 				else if (cdbuf_read_busy) begin
-					ram_address <= {13'b0010000000000,cdbuf_rcache_addr[13:4],3'b000};
+					ram_address <= {13'b0010000000000,cdbuf_rcache_addr[13:5],4'b0000};
 					ram_be      <= 8'hFF;
 					ram_read    <= 1;
-					ram_burst   <= 2;
+					ram_burst   <= 4;
 					ram_chan    <= 4'd5;
 					cache_wraddr<= '0;
 					word_cnt    <= '0;
@@ -586,20 +606,20 @@ always @(posedge clk) begin
 					state       <= 3'h1;
 				end
 				else if (cart_read_busy) begin
-					ram_address <= {1'b1,cart_rcache_addr[25:4],3'b000};
+					ram_address <= {1'b1,cart_rcache_addr[25:5],4'b0000};
 					ram_be      <= 8'hFF;
 					ram_read    <= 1;
-					ram_burst   <= 2;
+					ram_burst   <= 4;
 					ram_chan    <= 4'd6;
 					cache_wraddr<= '0;
 					word_cnt    <= '0;
 					state       <= 3'h2;
 				end
 				else if (eeprom_read_busy) begin
-					ram_address <= {20'b01000000000000000000,eeprom_rcache_addr[6:4],3'b000};
+					ram_address <= {20'b01000000000000000000,eeprom_rcache_addr[6:5],4'b0000};
 					ram_be      <= 8'hFF;
 					ram_read    <= 1;
-					ram_burst   <= 2;
+					ram_burst   <= 4;
 					ram_chan    <= 4'd7;
 					cache_wraddr<= '0;
 					word_cnt    <= '0;
@@ -661,10 +681,10 @@ always @(posedge clk) begin
 					state       <= 3'h1;
 				end
 				else if (bsram_read_busy) begin
-					ram_address <= bsram_rcache_addr[20] ? {7'b1000000,bsram_rcache_addr[19:4],3'b000} : {11'b00000010000,bsram_rcache_addr[15:4],3'b000};
+					ram_address <= bsram_rcache_addr[20] ? {7'b1000000,bsram_rcache_addr[19:5],4'b0000} : {11'b00000010000,bsram_rcache_addr[15:5],4'b0000};
 					ram_be      <= 8'hFF;
 					ram_read    <= 1;
-					ram_burst   <= 2;
+					ram_burst   <= 4;
 					ram_chan    <= 4'd9;
 					cache_wraddr<= '0;
 					word_cnt    <= '0;
@@ -680,16 +700,16 @@ always @(posedge clk) begin
 				cache_wraddr <= cache_wraddr + 7'd1;
 				word_cnt <= word_cnt + 7'd1;
 				if (word_cnt == ram_burst[6:0] - 7'd1) begin
-					if (ram_chan == 4'd0 ) ramh_read_busy <= 0;
-					if (ram_chan == 4'd1 ) cdram_read_busy <= 0;
-					if (ram_chan == 4'd2 ) raml_read_busy <= 0;
-					if (ram_chan == 4'd3 ) vdp1vram_read_busy <= 0;
-					if (ram_chan == 4'd4 ) vdp1fb_read_busy <= 0;
-					if (ram_chan == 4'd5 ) cdbuf_read_busy <= 0;
-					if (ram_chan == 4'd6 ) cart_read_busy <= 0;
-					if (ram_chan == 4'd7 ) eeprom_read_busy <= 0;
-					if (ram_chan == 4'd9 ) bsram_read_busy <= 0;
-					if (ram_chan == 4'd10) rax_read_busy <= 0;
+					if (ram_chan == 4'd0 ) begin ramh_read_busy <= 0; end
+					if (ram_chan == 4'd1 ) begin cdram_read_busy <= 0; cdram_rcache_busy <= 1; end
+					if (ram_chan == 4'd2 ) begin raml_read_busy <= 0; raml_rcache_busy <= 1; end
+					if (ram_chan == 4'd3 ) begin vdp1vram_read_busy <= 0; vdp1vram_rcache_busy <= 1; end
+					if (ram_chan == 4'd4 ) begin vdp1fb_read_busy <= 0; vdp1fb_rcache_busy <= 1; end
+					if (ram_chan == 4'd5 ) begin cdbuf_read_busy <= 0; cdbuf_rcache_busy <= 1; end
+					if (ram_chan == 4'd6 ) begin cart_read_busy <= 0; cart_rcache_busy <= 1; end
+					if (ram_chan == 4'd7 ) begin eeprom_read_busy <= 0; eeprom_rcache_busy <= 1; end
+					if (ram_chan == 4'd9 ) begin bsram_read_busy <= 0; bsram_rcache_busy <= 1; end
+					if (ram_chan == 4'd10) begin rax_read_busy <= 0;  end
 					state <= 0;
 				end
 			end
@@ -697,20 +717,19 @@ always @(posedge clk) begin
 	end
 end
 
-
 wire           cache_wren = (state == 3'h2) && DDRAM_DOUT_READY && !DDRAM_BUSY;
 wire [ 63:  0] ramh_cache_q,cdram_cache_q,raml_cache_q,vdp1vram_cache_q,vdp1fb_cache_q,cdbuf_cache_q,cart_cache_q,eeprom_cache_q,rax_cache_q,bsram_cache_q;
 
-ddr_cache_ram #(2) cache0  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 0,  ramh_rcache_addr[4:3], ramh_cache_q);
-ddr_cache_ram #(1) cache1  (clk, cache_wraddr[0:0], DDRAM_DOUT, cache_wren & ram_chan == 1,  cdram_rcache_addr[3:3], cdram_cache_q);
-ddr_cache_ram #(2) cache2  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 2,  raml_rcache_addr[4:3], raml_cache_q);
-ddr_cache_ram #(7) cache3  (clk, cache_wraddr[6:0], DDRAM_DOUT, cache_wren & ram_chan == 3,  vdp1vram_rcache_addr_lsb[9:3], vdp1vram_cache_q);
-ddr_cache_ram #(2) cache4  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 4,  vdp1fb_rcache_addr[4:3], vdp1fb_cache_q);
-ddr_cache_ram #(1) cache5  (clk, cache_wraddr[0:0], DDRAM_DOUT, cache_wren & ram_chan == 5,  cdbuf_rcache_addr[3:3], cdbuf_cache_q);
-ddr_cache_ram #(1) cache6  (clk, cache_wraddr[0:0], DDRAM_DOUT, cache_wren & ram_chan == 6,  cart_rcache_addr[3:3], cart_cache_q);
-ddr_cache_ram #(1) cache7  (clk, cache_wraddr[0:0], DDRAM_DOUT, cache_wren & ram_chan == 7,  eeprom_rcache_addr[3:3], eeprom_cache_q);
-ddr_cache_ram #(1) cache9  (clk, cache_wraddr[0:0], DDRAM_DOUT, cache_wren & ram_chan == 9,  bsram_rcache_addr[3:3], bsram_cache_q);
-ddr_cache_ram #(1) cache10 (clk, cache_wraddr[0:0], DDRAM_DOUT, cache_wren & ram_chan == 10, rax_rcache_addr[3:3], rax_cache_q);
+ddr_cache_ram  #(2) cache0  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 0,  ramh_rcache_addr[4:3], ramh_cache_q);
+ddr_cache_ram2 #(2) cache1  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 1,  cdram_rcache_addr[4:3], cdram_cache_q);
+ddr_cache_ram2 #(2) cache2  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 2,  raml_rcache_addr[4:3], raml_cache_q);
+ddr_cache_ram2 #(7) cache3  (clk, cache_wraddr[6:0], DDRAM_DOUT, cache_wren & ram_chan == 3,  vdp1vram_rcache_addr_lsb[9:3], vdp1vram_cache_q);
+ddr_cache_ram2 #(2) cache4  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 4,  vdp1fb_rcache_addr[4:3], vdp1fb_cache_q);
+ddr_cache_ram2 #(2) cache5  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 5,  cdbuf_rcache_addr[4:3], cdbuf_cache_q);
+ddr_cache_ram2 #(2) cache6  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 6,  cart_rcache_addr[4:3], cart_cache_q);
+ddr_cache_ram2 #(2) cache7  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 7,  eeprom_rcache_addr[4:3], eeprom_cache_q);
+ddr_cache_ram2 #(2) cache9  (clk, cache_wraddr[1:0], DDRAM_DOUT, cache_wren & ram_chan == 9,  bsram_rcache_addr[4:3], bsram_cache_q);
+ddr_cache_ram  #(1) cache10 (clk, cache_wraddr[0:0], DDRAM_DOUT, cache_wren & ram_chan == 10, rax_rcache_addr[3:3], rax_cache_q);
 
 always_comb begin
 	case (ramh_rcache_addr[2])
@@ -725,7 +744,7 @@ always_comb begin
 		2'b10: cdram_dout = cdram_cache_q[31:16];
 		2'b11: cdram_dout = cdram_cache_q[15:00];
 	endcase
-	cdram_busy = cdram_write_busy | cdram_read_busy;
+	cdram_busy = cdram_write_busy | cdram_read_busy | cdram_rcache_busy;
 	
 	case (raml_rcache_addr[2:1])
 		2'b00: raml_dout = raml_cache_q[63:48];
@@ -733,7 +752,7 @@ always_comb begin
 		2'b10: raml_dout = raml_cache_q[31:16];
 		2'b11: raml_dout = raml_cache_q[15:00];
 	endcase
-	raml_busy = raml_write_busy | raml_read_busy;
+	raml_busy = raml_write_busy | raml_read_busy | raml_rcache_busy;
 	
 	case (vdp1vram_rcache_addr_lsb[2:1])
 		2'b00: vdp1vram_dout = vdp1vram_cache_q[63:48];
@@ -741,7 +760,7 @@ always_comb begin
 		2'b10: vdp1vram_dout = vdp1vram_cache_q[31:16];
 		2'b11: vdp1vram_dout = vdp1vram_cache_q[15:00];
 	endcase
-	vdp1vram_busy = vdp1vram_fifo_full | vdp1vram_read_busy;
+	vdp1vram_busy = vdp1vram_fifo_full | vdp1vram_read_busy | vdp1vram_rcache_busy;
 	
 	case (vdp1fb_rcache_addr[2:1])
 		2'b00: vdp1fb_dout = vdp1fb_cache_q[63:48];
@@ -749,7 +768,7 @@ always_comb begin
 		2'b10: vdp1fb_dout = vdp1fb_cache_q[31:16];
 		2'b11: vdp1fb_dout = vdp1fb_cache_q[15:00];
 	endcase
-	vdp1fb_busy = vdp1fb_fifo_full | vdp1fb_read_busy;
+	vdp1fb_busy = vdp1fb_fifo_full | vdp1fb_read_busy | vdp1fb_rcache_busy;
 	
 	case (cdbuf_rcache_addr[2:1])
 		2'b00: cdbuf_dout = cdbuf_cache_q[63:48];
@@ -757,7 +776,7 @@ always_comb begin
 		2'b10: cdbuf_dout = cdbuf_cache_q[31:16];
 		2'b11: cdbuf_dout = cdbuf_cache_q[15:00];
 	endcase
-	cdbuf_busy = cdbuf_read_busy;
+	cdbuf_busy = cdbuf_read_busy | cdbuf_rcache_busy;
 	
 	case (cart_rcache_addr[2:1])
 		2'b00: cart_dout = cart_cache_q[63:48];
@@ -765,7 +784,7 @@ always_comb begin
 		2'b10: cart_dout = cart_cache_q[31:16];
 		2'b11: cart_dout = cart_cache_q[15:00];
 	endcase
-	cart_busy = cart_write_busy | cart_read_busy;
+	cart_busy = cart_write_busy | cart_read_busy | cart_rcache_busy;
 	
 	case (eeprom_rcache_addr[2:1])
 		2'b00: eeprom_dout = eeprom_cache_q[63:48];
@@ -773,7 +792,7 @@ always_comb begin
 		2'b10: eeprom_dout = eeprom_cache_q[31:16];
 		2'b11: eeprom_dout = eeprom_cache_q[15:00];
 	endcase
-	eeprom_busy = eeprom_read_busy;
+	eeprom_busy = eeprom_read_busy | eeprom_rcache_busy;
 	
 	case (rax_rcache_addr[2:1])
 		2'b00: rax_dout = rax_cache_q[63:48];
@@ -791,7 +810,7 @@ always_comb begin
 		2'b10: bsram_dout = bsram_cache_q[31:16];
 		2'b11: bsram_dout = bsram_cache_q[15:00];
 	endcase
-	bsram_busy = bsram_write_busy | bsram_read_busy;
+	bsram_busy = bsram_write_busy | bsram_read_busy | bsram_rcache_busy;
 end
 
 assign DDRAM_CLK      = clk;
@@ -865,6 +884,79 @@ module ddr_cache_ram #(parameter wa = 2) (
 		altdpram_component.wraddress_reg = "INCLOCK",
 		altdpram_component.wrcontrol_aclr = "OFF",
 		altdpram_component.wrcontrol_reg = "INCLOCK";
+
+endmodule
+
+module ddr_cache_ram2 #(parameter wa = 2) (
+	clock,
+	wraddress,
+	data,
+	wren,
+	rdaddress,
+	q);
+
+	input	  clock;
+	input	[wa-1:0]  wraddress;
+	input	[63:0] data;
+	input	       wren;
+	input	[wa-1:0]  rdaddress;
+	output	[63:0]  q;
+`ifndef ALTERA_RESERVED_QIS
+// synopsys translate_off
+`endif
+	tri0	  wren;
+`ifndef ALTERA_RESERVED_QIS
+// synopsys translate_on
+`endif
+
+	wire [63:0] sub_wire0;
+	wire [63:0] q = sub_wire0;
+
+	altsyncram	altsyncram_component (
+				.address_a (wraddress),
+				.byteena_a (1'b1),
+				.clock0 (clock),
+				.data_a (data),
+				.wren_a (wren),
+				.address_b (rdaddress),
+				.q_b (sub_wire0),
+				.aclr0 (1'b0),
+				.aclr1 (1'b0),
+				.addressstall_a (1'b0),
+				.addressstall_b (1'b0),
+				.byteena_b (1'b1),
+				.clock1 (1'b1),
+				.clocken0 (1'b1),
+				.clocken1 (1'b1),
+				.clocken2 (1'b1),
+				.clocken3 (1'b1),
+				.data_b ({64{1'b1}}),
+				.eccstatus (),
+				.q_a (),
+				.rden_a (1'b1),
+				.rden_b (1'b1),
+				.wren_b (1'b0));
+	defparam
+		altsyncram_component.address_aclr_b = "NONE",
+		altsyncram_component.address_reg_b = "CLOCK0",
+		altsyncram_component.clock_enable_input_a = "BYPASS",
+		altsyncram_component.clock_enable_input_b = "BYPASS",
+		altsyncram_component.clock_enable_output_b = "BYPASS",
+		altsyncram_component.intended_device_family = "Cyclone V",
+		altsyncram_component.lpm_type = "altsyncram",
+		altsyncram_component.numwords_a = 2**wa,
+		altsyncram_component.numwords_b = 2**wa,
+		altsyncram_component.operation_mode = "DUAL_PORT",
+		altsyncram_component.outdata_aclr_b = "NONE",
+		altsyncram_component.outdata_reg_b = "UNREGISTERED",
+		altsyncram_component.power_up_uninitialized = "FALSE",
+		altsyncram_component.ram_block_type = "M10K",
+		altsyncram_component.read_during_write_mode_mixed_ports = "DONT_CARE",
+		altsyncram_component.widthad_a = wa,
+		altsyncram_component.widthad_b = wa,
+		altsyncram_component.width_a = 64,
+		altsyncram_component.width_b = 64,
+		altsyncram_component.width_byteena_a = 1;
 
 endmodule
 
@@ -948,42 +1040,5 @@ module ddr_infifo
 		altdpram_component.wrcontrol_reg = "INCLOCK";
 		
 	assign Q = sub_wire0;
-
-endmodule
-
-module ddr_infifo2
-(
-	input	         CLK,
-	input          RST,
-	
-	input	 [59: 0] DATA,
-	input	         WRREQ,
-	
-	input	         RDREQ,
-	output [59: 0] Q,
-	output	      EMPTY,
-	output	      FULL
-);
-
-	bit  [ 59: 0] BUF;
-	always @(posedge CLK) begin
-		if (RST) begin
-			EMPTY <= 1;
-			FULL <= 0;
-		end
-		else begin
-			if (WRREQ) begin
-				BUF <= DATA;
-				EMPTY <= 0;
-				FULL <= 1;
-			end
-			if (RDREQ) begin
-				EMPTY <= 1;
-				FULL <= 0;
-			end
-		end
-	end
-		
-	assign Q = BUF;
 
 endmodule
