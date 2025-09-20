@@ -245,7 +245,8 @@ module VDP2 (
 	
 	bit          VB_INT,VBLANK;
 	bit          HB_INT,HBLANK;
-	bit          DISP_INT;
+	bit          DISP_INT,DISP_INT2;
+	bit          INTERLACE_INT;
 	bit          ODD;
 	bit          VSYNC;
 	bit          HSYNC;
@@ -326,14 +327,17 @@ module VDP2 (
 				VB_INT <= 0;
 			end
 			
-			if ({HCT9,HCT} == {1'b0,VINC_DOT0} || {HCT9,HCT} == {1'b0,VINC_DOT1}) begin
-				if ({VCT,VCT0} == NEXT_TO_LAST_LINE) begin
-					if (F) LSMD <= REGS.TVMD.LSMD;//?
-					F <= ~F;
-					if (REGS.TVMD.LSMD == 2'b00) ODD <= 1;
-				end
+			if ({HCT9,HCT} == {1'b0,VINC_DOT1}) begin
+				DISP_INT <= REGS.TVMD.DISP;
 				if ({VCT,VCT0} == LAST_LINE) begin
-					DISP_INT <= REGS.TVMD.DISP;
+					DISP_INT2 <= REGS.TVMD.DISP;
+				end
+				if ({VCT,VCT0} == NEXT_TO_LAST_LINE) begin
+					LSMD <= REGS.TVMD.LSMD;//?
+					if (REGS.TVMD.LSMD == 2'b00) ODD <= 1;
+					if (F) INTERLACE_INT <= (REGS.TVMD.LSMD == 2'b11);
+					F <= ~F;
+//					HRES2 <= REGS.TVMD.HRESO;
 				end
 			end
 			HRES <= REGS.TVMD.HRESO[2:0];
@@ -550,13 +554,13 @@ module VDP2 (
 				LW_FETCH <= 0;
 			end
 			
-			if (H_CNT == LN_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
+			if (H_CNT == LN_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT2) begin
 				LN_FETCH <= 1;
 			end else begin
 				LN_FETCH <= 0;
 			end
 			
-			if (H_CNT == BS_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
+			if (H_CNT == BS_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT2) begin
 				BACK_FETCH <= 1;
 			end else begin
 				BACK_FETCH <= 0;
@@ -3529,8 +3533,8 @@ module VDP2 (
 	assign HBL_N = ~HB_INT3;
 	assign VS_N = ~VSYNC;
 	assign HS_N = ~HSYNC;
-	assign FIELD = ~ODD && LSMD[1];
-	assign INTERLACE = LSMD[1];
+	assign FIELD = ~ODD && INTERLACE_INT;
+	assign INTERLACE = INTERLACE_INT;
 	
 	
 	//Color RAM
