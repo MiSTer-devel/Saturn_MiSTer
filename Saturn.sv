@@ -1443,20 +1443,15 @@ module emu
 		.ramh_dout(ramh_do),
 		.ramh_busy(ramh_busy),
 		
-		//CD RAM
 `ifndef STV_BUILD
+		//CD RAM
 		.cdram_addr(CD_RAM_A[18:1]),
 		.cdram_din (CD_RAM_D),
 		.cdram_wr  (CD_RAM_WE & {2{CD_RAM_CS}}),
 		.cdram_rd  (CD_RAM_RD & CD_RAM_CS),
-`else
-		.cdram_addr('0),
-		.cdram_din ('0),
-		.cdram_wr  ('0),
-		.cdram_rd  (0),
-`endif
 		.cdram_dout(cdram_do),
 		.cdram_busy(cdram_busy),
+`endif
 	
 		//CPU bus (ROM,SRAM,RAML)
 		.raml_addr(raml_addr),
@@ -1483,16 +1478,13 @@ module emu
 		.vdp1fb_dout(vdp1fb_do),
 		.vdp1fb_busy(vdp1fb_busy),
 		
-		//CD BUF
 `ifndef STV_BUILD
+		//CD BUF
 		.cdbuf_addr(CD_BUF_ADDR),
 		.cdbuf_rd  (CD_BUF_RD),
-`else
-		.cdbuf_addr('0),
-		.cdbuf_rd  (0),
-`endif
 		.cdbuf_dout(cdbuf_do),
 		.cdbuf_busy(cdbuf_busy),
+`endif
 		
 		//CART MEM (0x34000000)
 `ifdef DEBUG
@@ -1509,31 +1501,21 @@ module emu
 		.cart_dout(cart_do),
 		.cart_busy(cart_busy),
 		
+`ifdef STV_BUILD
 		//STV EEPROM (0x32000000)
-`ifndef STV_BUILD
-		.eeprom_addr('0),
-		.eeprom_rd  (0),
-`else
 		.eeprom_addr(STV_EEPROM_ADDR),
 		.eeprom_rd  (STV_EEPROM_RD),
-`endif
 		.eeprom_dout(eeprom_do),
 		.eeprom_busy(eeprom_busy),
 		
 		//STV RAX ROM (0x36000000)
-`ifndef STV_BUILD
-		.rax_addr('0),
-		.rax_din ('0),
-		.rax_wr  (0),
-		.rax_rd  (0),
-`else
 		.rax_addr(CART_RAX_MEM_A[24:1]),
 		.rax_din (CART_RAX_MEM_DO),
 		.rax_wr  ({2{CART_RAX_MEM_WR&CART_RAX_MEM_A[24]}}),
 		.rax_rd  (CART_RAX_MEM_RD),
-`endif
 		.rax_dout(rax_do),
 		.rax_busy(rax_busy),
+`endif
 	
 		//BIOS/CART load
 		.bios_addr(IO_ADDR),
@@ -1560,14 +1542,14 @@ module emu
 	assign VDP1_VRAM_RDY = ~vdp1vram_busy;
 
 `ifndef STV_BUILD
+	assign CD_RAM_Q = cdram_do;
+	assign CD_RAM_RDY = ~cdram_busy;
+	
 	assign CD_BUF_DI = cdbuf_do;
 	assign CD_BUF_RDY = ~cdbuf_busy;
 	
 	assign CART_MEM_Q = cart_do;
 	assign CART_MEM_RDY = ~cart_busy;
-	
-	assign CD_RAM_Q = cdram_do;
-	assign CD_RAM_RDY = ~cdram_busy;
 	
 	assign ioctl_din = '0;
 `else
