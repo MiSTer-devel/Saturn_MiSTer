@@ -493,9 +493,6 @@ module VDP1 (
 			LOC_COORD <= COORD_NULL;
 			CMD_SUB_RUN <= 0;
 			
-			LOPR <= '0;
-			COPR <= '0;
-			
 `ifdef DEBUG
 			CMD_SKIP <= '1;
 			
@@ -679,7 +676,8 @@ module VDP1 (
 								end
 							
 								default: begin	
-									CMD_ST <= CMDS_END;
+									CMD_READ <= 1;
+									CMD_ST <= CMDS_READ;
 								end
 							endcase
 						end
@@ -687,7 +685,6 @@ module VDP1 (
 							CMD_ST <= CMDS_END;
 						end
 						
-						LOPR <= COPR;
 						COPR <= CMD_ADDR[18:3];
 `ifdef DEBUG
 						DBG_CMD_WAIT_CNT <= '0;
@@ -1532,11 +1529,11 @@ module VDP1 (
 					case (CMD.CMDCTRL.JP[1:0])
 						2'b00: begin CMD_ADDR <= NEXT_ADDR; end
 						2'b01: begin CMD_ADDR <= {CMD.CMDLINK[15:2],2'b00,2'b00}; end
-						2'b10: begin CMD_ADDR <= {CMD.CMDLINK[15:2],2'b00,2'b00}; CMD_RET_ADDR <= NEXT_ADDR; CMD_SUB_RUN <= 1; end
+						2'b10: begin CMD_ADDR <= {CMD.CMDLINK[15:2],2'b00,2'b00}; if (!CMD_SUB_RUN) CMD_RET_ADDR <= NEXT_ADDR; CMD_SUB_RUN <= 1; end
 						2'b11: begin CMD_ADDR <= CMD_SUB_RUN ? CMD_RET_ADDR : NEXT_ADDR; CMD_SUB_RUN <= 0; end
 					endcase
 					
-					if (CMD.CMDCTRL.END || CMD.CMDCTRL.COMM >= 4'hC) begin
+					if (CMD.CMDCTRL.END) begin
 						DRAW_END <= 1;
 						CMD_ST <= CMDS_IDLE;
 `ifdef DEBUG
@@ -2410,11 +2407,10 @@ module VDP1 (
 	//Registers
 	wire REG_REQ = (A[20:19] == 2'b10) & ~AD_N & ~CS_N & ~REQ_N;
 	
-	assign MODR = {4'h0,3'b000,PTMR.PTM[1],FBCR.EOS,FBCR.DIE,FBCR.DIL,FBCR.FCM,TVMR.VBE,TVMR.TVM};
+	assign MODR = {4'h1,3'b000,PTMR.PTM[1],FBCR.EOS,FBCR.DIE,FBCR.DIL,FBCR.FCM,TVMR.VBE,TVMR.TVM};
 	
 	bit        VBOUT;
 	always @(posedge CLK or negedge RST_N) begin
-//		bit        HTIM_N_OLD;
 		bit        VTIM_N_OLD;
 		bit        FRAME_CHANGE;
 		bit        MANUAL_ERASECHANGE_PEND;
@@ -2437,7 +2433,10 @@ module VDP1 (
 			DRAW_TERMINATE <= 0;
 			VBERASE_PEND <= 0;
 		end else if (!RES_N) begin
+			TVMR <= '0;
+			FBCR <= '0;
 			PTMR <= '0;
+			EDSR <= '0;
 		end else begin
 			START_DRAW_PEND <= 0;
 			DRAW_TERMINATE <= 0;
@@ -2484,6 +2483,7 @@ module VDP1 (
 					VBERASE_PEND <= TVMR.TVM[1];
 					EDSR.CEF <= 0;
 					EDSR.BEF <= EDSR.CEF;
+					LOPR <= COPR;
 					DIE <= FBCR.DIE;
 					DIL <= FBCR.DIL;
 					if (PTMR.PTM[1]) begin
@@ -2497,6 +2497,7 @@ module VDP1 (
 					FB_SEL <= ~FB_SEL;
 					EDSR.CEF <= 0;
 					EDSR.BEF <= EDSR.CEF;
+					LOPR <= COPR;
 					DIE <= FBCR.DIE;
 					DIL <= FBCR.DIL;
 					if (PTMR.PTM[1]) begin
@@ -2515,7 +2516,6 @@ module VDP1 (
 			
 			FRAME_CHANGE <= 0;
 			if (DCE_R) begin
-//				HTIM_N_OLD <= HTIM_N;
 				VTIM_N_OLD <= VTIM_N;
 				
 				if (VTIM_N && !VTIM_N_OLD) begin
