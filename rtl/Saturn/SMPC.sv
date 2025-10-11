@@ -71,9 +71,11 @@ module SMPC (
 	typedef enum bit [3:0] {
 		CS_IDLE,
 		CS_WAIT, 
+		CS_VBIN,
+		CS_VBOUT,
 		CS_COMMAND,
-		CS_RESET, 
-		CS_RESET_WAIT,
+		CS_RESET_START, 
+		CS_RESET_END,
 		CS_INTBACK_STAT,
 		CS_EXEC,
 		CS_INTBACK_CONT,CS_INTBACK_CONT2,
@@ -196,6 +198,8 @@ module SMPC (
 				DAYS <= IREG[3];
 				{DAY,MONTH} <= IREG[2];
 				YEAR <= {IREG[0],IREG[1]};
+				CLK_CNT <= 22'd0;
+				SEC_CLK <= 0;
 			end
 		end
 		
@@ -218,16 +222,18 @@ module SMPC (
 	bit         OREG_WRITE;
 	bit         OREG_END;
 	always @(posedge CLK or negedge RST_N) begin
-		CommExecState_t NEXT_COMM_ST;
+		CommExecState_t WAIT_ST,RET_COMM_ST,RET_WAIT_ST;
 		bit         VBLANK_PEND;
 		bit         COMREG_SET;
+		bit         VBIN_PEND,VBOUT_PEND;
+		bit         IRQ_EN;
 		bit         INTBACK_BREAK_PEND;
 		bit         RW_N_OLD;
 		bit         CS_N_OLD;
 		bit [ 7: 0] IO_BUF;
 		bit         IRQV_N_OLD;
 		bit [ 1: 0] FRAME_CNT;
-		bit [15: 0] WAIT_CNT;
+		bit [15: 0] WAIT_CNT,RET_WAIT_CNT;
 		bit [16: 0] TIME_CNT,INTBACK_TIME;
 		bit         SRES_EXEC;
 		bit         INTBACK_EXEC;
@@ -272,6 +278,7 @@ module SMPC (
 			CS_N_OLD <= 1;
 			IRQV_N_OLD <= 1;
 			COMM_ST <= CS_IDLE;
+			{VBIN_PEND,VBOUT_PEND,IRQ_EN} <= '0;
 			SRES_EXEC <= 0;
 			INTBACK_EXEC <= 0;
 			INTBACK_PERI <= 0;
@@ -298,6 +305,7 @@ module SMPC (
 			STE <= TIME_SET;/////////////////
 			
 			COMM_ST <= CS_IDLE;
+			{VBIN_PEND,VBOUT_PEND,IRQ_EN} <= '0;
 			INTBACK_EXEC <= 0;
 			INTBACK_PERI <= 0;
 			{INTBACK_OPTIM_TIME,INTBACK_NOT_OPTIM_TIME} <= '0;
@@ -330,9 +338,11 @@ module SMPC (
 				TIME_CNT <= TIME_CNT + 17'd1;
 				if (IRQV_N && !IRQV_N_OLD) begin
 					TIME_CNT <= '0;
+					VBOUT_PEND <= 1;
 				end
 				if (!IRQV_N && IRQV_N_OLD) begin
 					INTBACK_TIME <= TIME_CNT - 17'd6020;//~1ms prior to vblank
+					VBIN_PEND <= 1;
 				end
 				
 				if (!IRQV_N) begin
@@ -351,10 +361,11 @@ module SMPC (
 				MIRQ_N <= 1;
 				case (COMM_ST)
 					CS_IDLE: begin
+						IRQ_EN <= 1;
 						if (INTBACK_EXEC && (INTBACK_BREAK_PEND || VBLANK_PEND)) begin
 							INTBACK_BREAK_PEND <= 0;
 							WAIT_CNT <= 16'd158-16'd3;
-							NEXT_COMM_ST <= CS_INTBACK_BREAK;
+							WAIT_ST <= CS_INTBACK_BREAK;
 							COMM_ST <= CS_WAIT;
 						end 
 						else if (INTBACK_PERI && ((INTBACK_OPTIM_EN && INTBACK_OPTIM_TIME) || (!INTBACK_OPTIM_EN && INTBACK_NOT_OPTIM_TIME)) && IRQV_N && !SRES_EXEC) begin
@@ -365,8 +376,9 @@ module SMPC (
 						else if (COMREG_SET && !SRES_EXEC) begin
 							COMREG_SET <= 0;
 							OREG_CNT <= '0;
-							WAIT_CNT <= 16'd60;
-							NEXT_COMM_ST <= CS_COMMAND;
+							WAIT_CNT <= 16'd60-16'd2;
+							WAIT_ST <= CS_COMMAND;
+							IRQ_EN <= 0;
 							COMM_ST <= CS_WAIT;
 						end
 						VBLANK_PEND <= 0;
@@ -374,7 +386,7 @@ module SMPC (
 						if (CHECK_CONTINUE) begin
 							if (CONT != CONT_PREV && INTBACK_EXEC) begin
 								WAIT_CNT <= 16'd100-16'd2;
-								NEXT_COMM_ST <= CS_INTBACK_CONT;
+								WAIT_ST <= CS_INTBACK_CONT;
 								COMM_ST <= CS_WAIT;
 							end
 							else if (BREAK) begin
@@ -387,91 +399,113 @@ module SMPC (
 					
 					CS_WAIT: begin
 						if (!WAIT_CNT) begin
-							COMM_ST <= NEXT_COMM_ST;
+							COMM_ST <= WAIT_ST;
 						end
+					end
+					
+					CS_VBIN: begin
+//						if (!WAIT_CNT) begin
+							WAIT_CNT <= RET_WAIT_CNT;
+							WAIT_ST <= RET_WAIT_ST;
+							COMM_ST <= RET_COMM_ST;
+//						end
+					end
+					
+					CS_VBOUT: begin
+//						if (!WAIT_CNT) begin
+							WAIT_CNT <= RET_WAIT_CNT;
+							WAIT_ST <= RET_WAIT_ST;
+							COMM_ST <= RET_COMM_ST;
+//						end
 					end
 					
 					CS_COMMAND: begin
 						case (COMREG) 
 							8'h00: begin		//MSHON
-								WAIT_CNT <= 16'd120 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd122 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h02: begin		//SSHON
-								WAIT_CNT <= 16'd120 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd122 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h03: begin		//SSHOFF
-								WAIT_CNT <= 16'd120 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd122 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h06: begin		//SNDON
-								WAIT_CNT <= 16'd120 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd118 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h07: begin		//SNDOFF
-								WAIT_CNT <= 16'd120 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd118 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h08: begin		//CDON
-								WAIT_CNT <= 16'd160 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd130 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h09: begin		//CDOFF
-								WAIT_CNT <= 16'd160 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd134 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
+								COMM_ST <= CS_WAIT;
+							end
+							
+							8'h0A: begin		//
+								WAIT_CNT <= 16'd130 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
+								COMM_ST <= CS_WAIT;
+							end
+							
+							8'h0B: begin		//
+								WAIT_CNT <= 16'd142 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h0D: begin		//SYSRES
-								if (IRQV_N && !IRQV_N_OLD) begin
-									MSHRES_N <= 0;
-									MSHNMI_N <= 0;
-									SSHRES_N <= 0;
-									SSHNMI_N <= 0;
-									SNDRES_N <= 0;
-									CDRES_N <= 0;
-									SYSRES_N <= 0;
-									COMM_ST <= CS_RESET;
-								end
+								MSHRES_N <= 0;
+								MSHNMI_N <= 0;
+								SSHRES_N <= 0;
+								SSHNMI_N <= 0;
+								SNDRES_N <= 0;
+								CDRES_N <= 0;
+								SYSRES_N <= 0;
+								COMM_ST <= CS_RESET_START;
 							end
 							
 							8'h0E: begin		//CKCHG352
-								if (IRQV_N && !IRQV_N_OLD) begin
-									SSHRES_N <= 0;
-									SSHNMI_N <= 0;
-									SNDRES_N <= 0;
-									SYSRES_N <= 0;
-									DOTSEL <= 1;
-									COMM_ST <= CS_RESET;
-								end
+								SSHRES_N <= 0;
+								SSHNMI_N <= 0;
+								SNDRES_N <= 0;
+								SYSRES_N <= 0;
+								DOTSEL <= 1;
+								COMM_ST <= CS_RESET_START;
 							end
 							
 							8'h0F: begin		//CKCHG320
-								if (IRQV_N && !IRQV_N_OLD) begin
-									SSHRES_N <= 0;
-									SSHNMI_N <= 0;
-									SNDRES_N <= 0;
-									SYSRES_N <= 0;
-									DOTSEL <= 0;
-									COMM_ST <= CS_RESET;
-								end
+								SSHRES_N <= 0;
+								SSHNMI_N <= 0;
+								SNDRES_N <= 0;
+								SYSRES_N <= 0;
+								DOTSEL <= 0;
+								COMM_ST <= CS_RESET_START;
 							end
 							
 							8'h10: begin		//INTBACK
-								if (IREG[2][7:4] && (IREG[0][3:0] || IREG[1][3])) begin
+								if (IREG[0][3:0] || IREG[1][3]) begin
 									INTBACK_OPTIM_EN <= ~IREG[1][1] & IREG[1][3];
 									if (IREG[0][3:0]) begin
 										WAIT_CNT <= 16'd1023;
@@ -490,42 +524,79 @@ module SMPC (
 							end
 							
 							8'h16: begin		//SETTIME
-								WAIT_CNT <= 16'd280 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd470 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h17: begin		//SETSMEM
-								WAIT_CNT <= 16'd160 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd319 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h18: begin		//NMIREQ
 								WAIT_CNT <= 16'd130 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h19: begin		//RESENAB
-								WAIT_CNT <= 16'd130 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd122 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							8'h1A: begin		//RESDISA
-								WAIT_CNT <= 16'd130 - 16'd60;
-								NEXT_COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd122 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
+								COMM_ST <= CS_WAIT;
+							end
+							
+							8'h1E: begin		//
+								WAIT_CNT <= 16'd170 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
+								COMM_ST <= CS_WAIT;
+							end
+							
+							8'h1F: begin		//
+								WAIT_CNT <= 16'd7470 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
+								COMM_ST <= CS_WAIT;
+							end
+							
+							8'h01,
+							8'h04,
+							8'h05,
+							8'h0C,
+							8'h11,
+							8'h12,
+							8'h13,
+							8'h14,
+							8'h15,
+							8'h1B,
+							8'h1C,
+							8'h1D: begin
+								WAIT_CNT <= 16'd110 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
 								COMM_ST <= CS_WAIT;
 							end
 							
 							default: begin
-								COMM_ST <= CS_EXEC;
+								WAIT_CNT <= 16'd82 - 16'd60 - 16'd2;
+								WAIT_ST <= CS_EXEC;
+								COMM_ST <= CS_WAIT;
 							end
 						endcase
 					end
 					
-					CS_RESET: begin
+					CS_RESET_START: begin
+						WAIT_CNT <= 16'd65535;
+						WAIT_ST <= CS_RESET_END;
+						COMM_ST <= CS_WAIT;
+					end
+					
+					CS_RESET_END: begin
 						case (COMREG) 
 							8'h0D: begin		//SYSRES
 								CDRES_N <= 1;
@@ -543,19 +614,7 @@ module SMPC (
 							
 							default: ;
 						endcase
-						COMM_ST <= CS_RESET_WAIT;
-					end
-					
-					CS_RESET_WAIT: begin
-						if (IRQV_N && !IRQV_N_OLD) begin
-							FRAME_CNT <= FRAME_CNT + 2'd1;
-							if (FRAME_CNT == 2'd2) begin
-								FRAME_CNT <= '0;
-								WAIT_CNT <= 16'd32700;
-								NEXT_COMM_ST <= CS_EXEC;
-								COMM_ST <= CS_WAIT;
-							end
-						end
+						COMM_ST <= CS_EXEC;
 					end
 					
 					CS_INTBACK_STAT: begin
@@ -571,8 +630,8 @@ module SMPC (
 							16'd0621: begin OREG_RAM_WA <= 5'h07; OREG_RAM_D <= SEC;                                                 OREG_RAM_WE <= 1; end
 							16'd0571: begin OREG_RAM_WA <= 5'h08; OREG_RAM_D <= 8'h00;                                               OREG_RAM_WE <= 1; end
 							16'd0521: begin OREG_RAM_WA <= 5'h09; OREG_RAM_D <= {4'b0000,AC};                                        OREG_RAM_WE <= 1; end
-							16'd0471: begin OREG_RAM_WA <= 5'h0A; OREG_RAM_D <= {1'b0,DOTSEL,2'b10,MSHNMI_N,1'b1,SYSRES_N,SNDRES_N}; OREG_RAM_WE <= 1; end
-							16'd0421: begin OREG_RAM_WA <= 5'h0B; OREG_RAM_D <= {1'b0,CDRES_N,6'b000000};                            OREG_RAM_WE <= 1; end
+							16'd0471: begin OREG_RAM_WA <= 5'h0A; OREG_RAM_D <= {1'b0,DOTSEL,1'b1,SSHRES_N,MSHNMI_N,1'b1,SYSRES_N,SNDRES_N}; OREG_RAM_WE <= 1; end
+							16'd0421: begin OREG_RAM_WA <= 5'h0B; OREG_RAM_D <= {1'b0,CDRES_N,6'b000010};                            OREG_RAM_WE <= 1; end
 							16'd0371: begin OREG_RAM_WA <= 5'h0C; OREG_RAM_D <= SMEM_Q;                                              OREG_RAM_WE <= 1; end
 							16'd0316: begin OREG_RAM_WA <= 5'h0D; OREG_RAM_D <= SMEM_Q;                                              OREG_RAM_WE <= 1; end
 							16'd0260: begin OREG_RAM_WA <= 5'h0E; OREG_RAM_D <= SMEM_Q;                                              OREG_RAM_WE <= 1; end
@@ -695,6 +754,7 @@ module SMPC (
 								COMM_ST <= CS_END;
 							end
 						endcase
+						IRQ_EN <= 1;
 					end
 					
 					CS_INTBACK_CONT: begin
@@ -702,7 +762,7 @@ module SMPC (
 							CONT_PREV <= CONT;
 							CHECK_CONTINUE <= 0;
 							WAIT_CNT <= 16'd383-16'd2;
-							NEXT_COMM_ST <= CS_INTBACK_CONT2;
+							WAIT_ST <= CS_INTBACK_CONT2;
 							COMM_ST <= CS_WAIT;
 						end else begin
 							COMM_ST <= CS_IDLE;
@@ -739,7 +799,7 @@ module SMPC (
 						//CHECK_CONTINUE <= 1;//TODO: multiple requests for large peripheral data
 						
 						WAIT_CNT <= 16'd26-16'd2;
-						NEXT_COMM_ST <= CS_INTBACK_PERI3;
+						WAIT_ST <= CS_INTBACK_PERI3;
 						COMM_ST <= CS_WAIT;
 					end
 					
@@ -747,7 +807,7 @@ module SMPC (
 						MIRQ_N <= 0; 
 						
 						WAIT_CNT <= 16'd75-16'd2;
-						NEXT_COMM_ST <= CS_INTBACK_BREAK;
+						WAIT_ST <= CS_INTBACK_BREAK;
 						COMM_ST <= CS_WAIT;
 					end
 					
@@ -834,6 +894,25 @@ module SMPC (
 						COMM_ST <= CS_IDLE;
 					end
 				endcase
+				
+//				if (VBIN_PEND && IRQ_EN) begin
+//					VBIN_PEND <= 0;
+//					RET_WAIT_CNT <= WAIT_CNT;
+//					RET_WAIT_ST <= WAIT_ST;
+//					RET_COMM_ST <= COMM_ST;
+//					WAIT_CNT <= /*16'd174*/16'd2-16'd2 + (DBG_EXT[0] ? 16'd10 : DBG_EXT[1] ? 16'd50 : DBG_EXT[2] ? 16'd100 : 16'd0);
+//					WAIT_ST <= CS_VBIN;
+//					COMM_ST <= CS_WAIT;
+//				end 
+//				if (VBOUT_PEND && IRQ_EN) begin
+//					VBOUT_PEND <= 0;
+//					RET_WAIT_CNT <= WAIT_CNT;
+//					RET_WAIT_ST <= WAIT_ST;
+//					RET_COMM_ST <= COMM_ST;
+//					WAIT_CNT <= /*16'd70*/16'd2-16'd2 + (DBG_EXT[0] ? 16'd10 : DBG_EXT[1] ? 16'd30 : DBG_EXT[2] ? 16'd70 : 16'd0);
+//					WAIT_ST <= CS_VBIN;
+//					COMM_ST <= CS_WAIT;
+//				end 
 				
 				if (!IRQV_N && IRQV_N_OLD) begin
 					VBLANK_PEND <= 1;
