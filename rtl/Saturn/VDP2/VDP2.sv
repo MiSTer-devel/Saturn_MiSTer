@@ -206,7 +206,9 @@ module VDP2 (
 	
 	bit  [ 1: 0] DOTCLK_DIV;
 	always @(posedge CLK) begin
-		if (CE_R) begin
+		if (!RES_N) begin
+			DOTCLK_DIV <= '0;
+		end else if (CE_R) begin
 			DOTCLK_DIV <= DOTCLK_DIV + 2'd1;
 		end
 	end
@@ -266,6 +268,19 @@ module VDP2 (
 			ODD <= 0;
 			HSYNC <= 0;
 			VSYNC <= 0;
+			F <= 0;
+		end else if (!RES_N) begin
+			{HCT9,HCT} <= 10'h3B0;
+			{VCT,VCT0} <= {9'h1E6,1'b0};
+			HB_INT <= 0;
+			VB_INT <= 0;
+			H_CNT <= '0;
+			V_CNT <= 9'h1E6;
+			HBLANK <= 1;
+			VBLANK <= 1;
+			ODD <= 1;
+			HSYNC <= 0;
+			VSYNC <= 1;
 			F <= 0;
 		end else begin
 		if (DOT_CE_R) begin
@@ -327,11 +342,13 @@ module VDP2 (
 				VB_INT <= 0;
 			end
 			
+			if (!REGS.TVMD.DISP &&            DISP_INT) DISP_INT <= 0;
+			if ( REGS.TVMD.DISP && VBLANK && !DISP_INT) DISP_INT <= 1;
+			
 			if ({HCT9,HCT} == {1'b0,VINC_DOT1}) begin
-				DISP_INT <= REGS.TVMD.DISP;
-				if ({VCT,VCT0} == LAST_LINE) begin
-					DISP_INT2 <= REGS.TVMD.DISP;
-				end
+//				if ({VCT,VCT0} == LAST_LINE) begin
+//					DISP_INT2 <= REGS.TVMD.DISP;
+//				end
 				if ({VCT,VCT0} == NEXT_TO_LAST_LINE) begin
 					LSMD <= REGS.TVMD.LSMD;//?
 					if (REGS.TVMD.LSMD == 2'b00) ODD <= 1;
@@ -363,8 +380,10 @@ module VDP2 (
 		if (!RST_N) begin
 			HINT <= 0;
 			VINT <= 0;
-		end
-		else begin
+		end else if (!RES_N) begin
+			HINT <= 0;
+			VINT <= 1;
+		end else begin
 			if ({VCT,VCT0} == VBL_START) begin
 				VINT <= 1;
 			end
@@ -390,8 +409,10 @@ module VDP2 (
 		if (!RST_N) begin
 			HTIM <= 0;
 			VTIM <= 0;
-		end
-		else if (DOT_CE_R) begin
+		end else if (!RES_N) begin
+			HTIM <= 0;
+			VTIM <= 0;
+		end else if (DOT_CE_R) begin
 			if ({HCT9,HCT} == HTIM_START) begin
 				HTIM <= 1;
 			end else if ({HCT9,HCT} == HTIM_END) begin
@@ -476,8 +497,23 @@ module VDP2 (
 			BACK_FETCH <= 0;
 			REFRESH <= 0;
 			DOT_FETCH <= 0;
-		end
-		else if (DOT_CE_R) begin
+		end else if (!RES_N) begin
+			CELLX <= '0;
+			NPN_FETCH <= 0;
+			NCH_FETCH <= 0;
+			NVCS_FETCH <= 0;
+			RBG_FETCH <= 0;
+			RBG_CALC <= 0;
+			RCTA_FETCH <= 0;
+			RCTB_FETCH <= 0;
+			LS_FETCH <= 0;
+			LW_FETCH <= 0;
+			RPA_FETCH <= 0;
+			RPB_FETCH <= 0;
+			BACK_FETCH <= 0;
+			REFRESH <= 0;
+			DOT_FETCH <= 0;
+		end else if (DOT_CE_R) begin
 			CELLX <= CELLX + 1'd1;
 			if (H_CNT == NBG_CELLX_START - 1 && IS_RENDER_LINES) begin
 				CELLX <= '0;
@@ -554,13 +590,13 @@ module VDP2 (
 				LW_FETCH <= 0;
 			end
 			
-			if (H_CNT == LN_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT2) begin
+			if (H_CNT == LN_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				LN_FETCH <= 1;
 			end else begin
 				LN_FETCH <= 0;
 			end
 			
-			if (H_CNT == BS_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT2) begin
+			if (H_CNT == BS_FETCH_START - 1 && IS_RENDER_LINES && DISP_INT) begin
 				BACK_FETCH <= 1;
 			end else begin
 				BACK_FETCH <= 0;
