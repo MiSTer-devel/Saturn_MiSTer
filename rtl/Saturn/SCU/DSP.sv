@@ -536,6 +536,10 @@ module SCU_DSP (
 			ES <= 0;
 			LE <= 0;
 			E <= 0;
+			PRG_TRANS_WE <= 0;
+			DATA_TRANS_ADDR <= '0;
+			DATA_TRANS_WE <= 0;
+			DATA_TRANS_RE <= 0;
 		end else begin
 			if (CE_R) begin
 				PRG_TRANS_WE <= 0;
