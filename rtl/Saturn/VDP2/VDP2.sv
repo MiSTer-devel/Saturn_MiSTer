@@ -2251,6 +2251,9 @@ module VDP2 (
 				if (VA_PIPE[2].BS) begin
 					BACK_DC <= Color555To888(WD[14:0]);
 				end
+				if (!DISP_INT && !REGS.TVMD.BDCLMD) begin
+					BACK_DC <= DC_NULL;
+				end
 				
 				if (VA_PIPE[2].LN) begin
 					LINE_PAL <= WD[10:0];
@@ -3555,7 +3558,7 @@ module VDP2 (
 			end
 			
 			if (!DISP) begin
-				DCOL <= REGS.TVMD.BDCLMD ? BACK_DC : DC_NULL;
+				DCOL <= BACK_DC;
 			end else if (HB_INT3 && DOT_CE_F) begin
 				DCOL <= DC_NULL;
 			end
