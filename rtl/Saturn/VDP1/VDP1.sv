@@ -62,8 +62,8 @@ module VDP1 (
 	output     [ 8: 0] DBG_TEXT_X,
 	output     [ 7: 0] DBG_TEXT_Y,
 	output     [15: 0] ORIG_C_DBG,
-	output     [10: 0] DRAW_X_DBG,
-	output     [10: 0] DRAW_Y_DBG,
+	output     [11: 0] DRAW_X_DBG,
+	output     [11: 0] DRAW_Y_DBG,
 	output       RGB_t DBG_ORIG_RGB,
 	output Pattern_t   DBG_PAT,
 	output             TP_DBG,
@@ -82,7 +82,9 @@ module VDP1 (
 	output       RGB_t DBG_GHCOLOR_C,
 	output       RGB_t DBG_GHCOLOR_D,
 	output reg         DBG_SKIP,
-	output             DBG_PENALTY_OVER
+	output             DBG_PENALTY_OVER,
+	output reg         DBG_HOOK,
+	output             DBG_REG_WR
 `endif
 );
 	import VDP1_PKG::*;
@@ -162,7 +164,7 @@ module VDP1 (
 		CMDS_LINE_START,
 		CMDS_EDGE_INIT,
 		CMDS_LINE_INIT,
-		CMDS_PRE_DRAW,
+		CMDS_PRE_DRAW,CMDS_PRE_DRAW2,
 		CMDS_NSPR_CALCX,
 		CMDS_NSPR_DRAW,
 		CMDS_SSPR_CALCX,
@@ -229,11 +231,11 @@ module VDP1 (
 	bit          COL_DIRY;
 	bit          SPR_COL_ENLARGE;
 	bit          EC_FIND;
-	bit  [10: 0] AA_X;
-	bit  [10: 0] AA_Y;
+	bit  [11: 0] AA_X;
+	bit  [11: 0] AA_Y;
 	bit          AA;
-	bit  [10: 0] AA_X_INC;
-	bit  [10: 0] AA_Y_INC;
+	bit  [11: 0] AA_X_INC;
+	bit  [11: 0] AA_Y_INC;
 	bit  [ 1: 0] DIR;
 	bit          HSS_EN;
 	bit          DRAW_WAIT;
@@ -257,21 +259,21 @@ module VDP1 (
 	wire         IS_PAT_EC = (CMD.CMDCTRL.COMM <= 4'h3 && !CMD.CMDPMOD.ECD && PAT.EC && !HSS_EN);
 	
 	bit  [12: 0] COL_D;
-	bit  [12: 0] NEXT_LEFT_COL_ERROR_X, NEXT_LEFT_COL_ERROR_Y, LEFT_COL_ERROR_X, LEFT_COL_ERROR_Y, LEFT_COL_ERROR_X_INC, LEFT_COL_ERROR_Y_INC, LEFT_COL_ERROR_ADJ;
-	bit  [12: 0] NEXT_RIGHT_COL_ERROR_X, NEXT_RIGHT_COL_ERROR_Y, RIGHT_COL_ERROR_X, RIGHT_COL_ERROR_Y, RIGHT_COL_ERROR_X_INC, RIGHT_COL_ERROR_Y_INC, RIGHT_COL_ERROR_ADJ;
-	bit  [12: 0] NEXT_LEFT_D_ERROR, LEFT_D_ERROR, LEFT_D_ERROR_INC, LEFT_D_ERROR_ADJ;
-	bit  [12: 0] NEXT_RIGHT_D_ERROR, RIGHT_D_ERROR, RIGHT_D_ERROR_INC, RIGHT_D_ERROR_ADJ;
+	bit  [13: 0] NEXT_LEFT_COL_ERROR_X, NEXT_LEFT_COL_ERROR_Y, LEFT_COL_ERROR_X, LEFT_COL_ERROR_Y, LEFT_COL_ERROR_X_INC, LEFT_COL_ERROR_Y_INC, LEFT_COL_ERROR_ADJ;
+	bit  [13: 0] NEXT_RIGHT_COL_ERROR_X, NEXT_RIGHT_COL_ERROR_Y, RIGHT_COL_ERROR_X, RIGHT_COL_ERROR_Y, RIGHT_COL_ERROR_X_INC, RIGHT_COL_ERROR_Y_INC, RIGHT_COL_ERROR_ADJ;
+	bit  [13: 0] NEXT_LEFT_D_ERROR, LEFT_D_ERROR, LEFT_D_ERROR_INC, LEFT_D_ERROR_ADJ;
+	bit  [13: 0] NEXT_RIGHT_D_ERROR, RIGHT_D_ERROR, RIGHT_D_ERROR_INC, RIGHT_D_ERROR_ADJ;
 	bit          LEFT_D_ERROR_CMP, RIGHT_D_ERROR_CMP, LEFT_COL_ERROR_X_CMP, LEFT_COL_ERROR_Y_CMP, RIGHT_COL_ERROR_X_CMP, RIGHT_COL_ERROR_Y_CMP;
 					 
-	bit  [12: 0] NEXT_LINE_ERROR, LINE_ERROR, LINE_ERROR_INC, LINE_ERROR_ADJ;
-	bit  [12: 0] NEXT_TEXT_ERROR, TEXT_ERROR, TEXT_ERROR_INC, TEXT_ERROR_ADJ;
-	bit  [12: 0] NEXT_TEXT_Y_ERROR, TEXT_Y_ERROR, TEXT_Y_ERROR_INC, TEXT_Y_ERROR_ADJ;
+	bit  [13: 0] NEXT_LINE_ERROR, LINE_ERROR, LINE_ERROR_INC, LINE_ERROR_ADJ;
+	bit  [13: 0] NEXT_TEXT_ERROR, TEXT_ERROR, TEXT_ERROR_INC, TEXT_ERROR_ADJ;
+	bit  [13: 0] NEXT_TEXT_Y_ERROR, TEXT_Y_ERROR, TEXT_Y_ERROR_INC, TEXT_Y_ERROR_ADJ;
 	always_comb begin
 		bit COL_STEP;
-		bit  [12: 0] TEXT_ERROR_ADJUSTED,LINE_ERROR_ICREMENTED;
-		bit  [12: 0] TEXT_Y_ERROR_ADJUSTED;
-		bit  [12: 0] LEFT_D_ERROR_ICREMENTED,LEFT_COL_ERROR_X_ICREMENTED,LEFT_COL_ERROR_Y_ICREMENTED;
-		bit  [12: 0] RIGHT_D_ERROR_ICREMENTED,RIGHT_COL_ERROR_X_ICREMENTED,RIGHT_COL_ERROR_Y_ICREMENTED;
+		bit  [13: 0] TEXT_ERROR_ADJUSTED,LINE_ERROR_ICREMENTED;
+		bit  [13: 0] TEXT_Y_ERROR_ADJUSTED;
+		bit  [13: 0] LEFT_D_ERROR_ICREMENTED,LEFT_COL_ERROR_X_ICREMENTED,LEFT_COL_ERROR_Y_ICREMENTED;
+		bit  [13: 0] RIGHT_D_ERROR_ICREMENTED,RIGHT_COL_ERROR_X_ICREMENTED,RIGHT_COL_ERROR_Y_ICREMENTED;
 		
 		LINE_DRAW_STEP = 0;
 		LINE_AA_STEP = 0;
@@ -304,9 +306,9 @@ module VDP1 (
 					LINE_DRAW_STEP = 1;
 					TEXT_X_READ_STEP = 0;
 				end else begin
-					if (!TEXT_ERROR[12]) begin
+					if (!TEXT_ERROR[13]) begin
 						TEXT_ERROR_ADJUSTED = $signed(TEXT_ERROR) - $signed(TEXT_ERROR_ADJ);
-						if (TEXT_ERROR_ADJUSTED[12]) begin
+						if (TEXT_ERROR_ADJUSTED[13]) begin
 							LINE_DRAW_STEP = 1;
 							NEXT_TEXT_ERROR = $signed(TEXT_ERROR_ADJUSTED) + $signed(TEXT_ERROR_INC);
 						end else begin
@@ -318,14 +320,14 @@ module VDP1 (
 						NEXT_TEXT_ERROR = $signed(TEXT_ERROR_ADJUSTED) + $signed(TEXT_ERROR_INC);
 					end
 					
-					if (!NEXT_TEXT_ERROR[12]) begin
+					if (!NEXT_TEXT_ERROR[13]) begin
 						TEXT_X_READ_STEP = 1;
 					end
 				end
 					
 				if (LINE_DRAW_STEP && CMD_ST == CMDS_LINE_DRAW) begin
 					LINE_ERROR_ICREMENTED = LINE_ERROR + LINE_ERROR_INC;
-					if ($signed(LINE_ERROR_ICREMENTED) >= 13'sd1) begin
+					if ($signed(LINE_ERROR_ICREMENTED) >= 14'sd1) begin
 						NEXT_LINE_ERROR = LINE_ERROR_ICREMENTED + LINE_ERROR_ADJ;
 						LINE_AA_STEP = 1;
 					end else begin
@@ -343,9 +345,9 @@ module VDP1 (
 				if (CMD.CMDCTRL.COMM >= 4'h4) begin
 					COL_DRAW_STEP = 1;
 				end else begin
-					if (!TEXT_Y_ERROR[12]) begin
+					if (!TEXT_Y_ERROR[13]) begin
 						TEXT_Y_ERROR_ADJUSTED = $signed(TEXT_Y_ERROR) - $signed(TEXT_Y_ERROR_ADJ);
-						if (!TEXT_Y_ERROR_ADJUSTED[12]) begin
+						if (!TEXT_Y_ERROR_ADJUSTED[13]) begin
 							NEXT_TEXT_Y_ERROR = $signed(TEXT_Y_ERROR_ADJUSTED);
 						end else begin
 							COL_DRAW_STEP = 1;
@@ -362,11 +364,11 @@ module VDP1 (
 			
 			CMDS_LINE_NEXT: begin
 				LEFT_D_ERROR_ICREMENTED = LEFT_D_ERROR + LEFT_D_ERROR_INC;
-				if ($signed(LEFT_D_ERROR_ICREMENTED) >= $signed({13{LEFT_D_ERROR_CMP}})) begin
+				if ($signed(LEFT_D_ERROR_ICREMENTED) >= $signed({14{LEFT_D_ERROR_CMP}})) begin
 					NEXT_LEFT_D_ERROR = LEFT_D_ERROR_ICREMENTED + LEFT_D_ERROR_ADJ;
 					
 					LEFT_COL_ERROR_X_ICREMENTED = LEFT_COL_ERROR_X + LEFT_COL_ERROR_X_INC;
-					if ($signed(LEFT_COL_ERROR_X_ICREMENTED) >= $signed({13{LEFT_COL_ERROR_X_CMP}})) begin
+					if ($signed(LEFT_COL_ERROR_X_ICREMENTED) >= $signed({14{LEFT_COL_ERROR_X_CMP}})) begin
 						NEXT_LEFT_COL_ERROR_X = LEFT_COL_ERROR_X_ICREMENTED + LEFT_COL_ERROR_ADJ;
 						LEFT_COL_X_STEP = 1;
 					end else begin
@@ -374,7 +376,7 @@ module VDP1 (
 					end
 					
 					LEFT_COL_ERROR_Y_ICREMENTED = LEFT_COL_ERROR_Y + LEFT_COL_ERROR_Y_INC;
-					if ($signed(LEFT_COL_ERROR_Y_ICREMENTED) >= $signed({13{LEFT_COL_ERROR_Y_CMP}})) begin
+					if ($signed(LEFT_COL_ERROR_Y_ICREMENTED) >= $signed({14{LEFT_COL_ERROR_Y_CMP}})) begin
 						NEXT_LEFT_COL_ERROR_Y = LEFT_COL_ERROR_Y_ICREMENTED + LEFT_COL_ERROR_ADJ;
 						LEFT_COL_Y_STEP = 1;
 					end else begin
@@ -387,11 +389,11 @@ module VDP1 (
 				end
 				
 				RIGHT_D_ERROR_ICREMENTED = RIGHT_D_ERROR + RIGHT_D_ERROR_INC;
-				if ($signed(RIGHT_D_ERROR_ICREMENTED) >= $signed({13{RIGHT_D_ERROR_CMP}})) begin
+				if ($signed(RIGHT_D_ERROR_ICREMENTED) >= $signed({14{RIGHT_D_ERROR_CMP}})) begin
 					NEXT_RIGHT_D_ERROR = RIGHT_D_ERROR_ICREMENTED + RIGHT_D_ERROR_ADJ;
 					
 					RIGHT_COL_ERROR_X_ICREMENTED = RIGHT_COL_ERROR_X + RIGHT_COL_ERROR_X_INC;
-					if ($signed(RIGHT_COL_ERROR_X_ICREMENTED) >= $signed({13{RIGHT_COL_ERROR_X_CMP}})) begin
+					if ($signed(RIGHT_COL_ERROR_X_ICREMENTED) >= $signed({14{RIGHT_COL_ERROR_X_CMP}})) begin
 						NEXT_RIGHT_COL_ERROR_X = RIGHT_COL_ERROR_X_ICREMENTED + RIGHT_COL_ERROR_ADJ;
 						RIGHT_COL_X_STEP = 1;
 					end else begin
@@ -399,7 +401,7 @@ module VDP1 (
 					end
 					
 					RIGHT_COL_ERROR_Y_ICREMENTED = RIGHT_COL_ERROR_Y + RIGHT_COL_ERROR_Y_INC;
-					if ($signed(RIGHT_COL_ERROR_Y_ICREMENTED) >= $signed({13{RIGHT_COL_ERROR_Y_CMP}})) begin
+					if ($signed(RIGHT_COL_ERROR_Y_ICREMENTED) >= $signed({14{RIGHT_COL_ERROR_Y_CMP}})) begin
 						NEXT_RIGHT_COL_ERROR_Y = RIGHT_COL_ERROR_Y_ICREMENTED + RIGHT_COL_ERROR_ADJ;
 						RIGHT_COL_Y_STEP = 1;
 					end else begin
@@ -416,7 +418,7 @@ module VDP1 (
 		endcase
 	end
 	
-	
+
 	bit  [16: 0] DIV_R_Q,DIV_G_Q,DIV_B_Q;//5.12
 	wire DIV_START = (CMD_ST == CMDS_GRD_CALC_LEFT || CMD_ST == CMDS_GRD_CALC_RIGHT || CMD_ST == CMDS_GRD_CALC_LINE) && GRD_CALC_STATE == 0;
 	
@@ -515,16 +517,16 @@ module VDP1 (
 		end else if (EN) begin
 			SPR_OFFSY_NEXT = TEXT_DIRY ? SPR_OFFSY - ORIG_WIDTH[8:3] : SPR_OFFSY + ORIG_WIDTH[8:3];
 		
-			SYS_CLIP_X1 <= 13'd0 - $signed({{2{LOC_COORD.X[10]}},LOC_COORD.X});
-			SYS_CLIP_Y1 <= 13'd0 - $signed({{2{LOC_COORD.Y[10]}},LOC_COORD.Y});
-			SYS_CLIP_X2 <= $signed({{2{SYS_CLIP.X2[10]}},SYS_CLIP.X2}) - $signed({{2{LOC_COORD.X[10]}},LOC_COORD.X});
-			SYS_CLIP_Y2 <= $signed({{2{SYS_CLIP.Y2[10]}},SYS_CLIP.Y2}) - $signed({{2{LOC_COORD.Y[10]}},LOC_COORD.Y});
+			SYS_CLIP_X1 <= 13'd0 - $signed({{1{LOC_COORD.X[10]}},LOC_COORD.X});
+			SYS_CLIP_Y1 <= 13'd0 - $signed({{1{LOC_COORD.Y[10]}},LOC_COORD.Y});
+			SYS_CLIP_X2 <= $signed({{2{SYS_CLIP.X2[10]}},SYS_CLIP.X2}) - $signed({{1{LOC_COORD.X[10]}},LOC_COORD.X});
+			SYS_CLIP_Y2 <= $signed({{2{SYS_CLIP.Y2[10]}},SYS_CLIP.Y2}) - $signed({{1{LOC_COORD.Y[10]}},LOC_COORD.Y});
 			
 			if (CMD.CMDPMOD.CLIP && !CMD.CMDPMOD.CMOD) begin
-				SYS_CLIP_X1 <= $signed({{2{USR_CLIP.X1[10]}},USR_CLIP.X1}) - $signed({{2{LOC_COORD.X[10]}},LOC_COORD.X});
-				SYS_CLIP_Y1 <= $signed({{2{USR_CLIP.Y1[10]}},USR_CLIP.Y1}) - $signed({{2{LOC_COORD.Y[10]}},LOC_COORD.Y});
-				SYS_CLIP_X2 <= $signed({{2{USR_CLIP.X2[10]}},USR_CLIP.X2}) - $signed({{2{LOC_COORD.X[10]}},LOC_COORD.X});
-				SYS_CLIP_Y2 <= $signed({{2{USR_CLIP.Y2[10]}},USR_CLIP.Y2}) - $signed({{2{LOC_COORD.Y[10]}},LOC_COORD.Y});
+				SYS_CLIP_X1 <= $signed({{2{USR_CLIP.X1[10]}},USR_CLIP.X1}) - $signed({{1{LOC_COORD.X[10]}},LOC_COORD.X});
+				SYS_CLIP_Y1 <= $signed({{2{USR_CLIP.Y1[10]}},USR_CLIP.Y1}) - $signed({{1{LOC_COORD.Y[10]}},LOC_COORD.Y});
+				SYS_CLIP_X2 <= $signed({{2{USR_CLIP.X2[10]}},USR_CLIP.X2}) - $signed({{1{LOC_COORD.X[10]}},LOC_COORD.X});
+				SYS_CLIP_Y2 <= $signed({{2{USR_CLIP.Y2[10]}},USR_CLIP.Y2}) - $signed({{1{LOC_COORD.Y[10]}},LOC_COORD.Y});
 			end
 			
 			LINE_DIFF_LEFT_CLIPX1 = $signed(LEFT_VERT.X) - $signed(SYS_CLIP_X1);
@@ -748,8 +750,8 @@ module VDP1 (
 							end
 							
 							4'hA: begin	
-								LOC_COORD.X <= CMD.CMDXA[10:0]; 
-								LOC_COORD.Y <= CMD.CMDYA[10:0];
+								LOC_COORD.X <= CMD.CMDXA[11:0]; 
+								LOC_COORD.Y <= CMD.CMDYA[11:0];
 								CMD_ST <= CMDS_END;
 							end
 								
@@ -791,7 +793,7 @@ module VDP1 (
 				CMDS_NSPR_START: begin
 					VERTA.X <= CMD.CMDXA[12:0];
 					VERTB.X <= CMD.CMDXA[12:0] + ORIG_WIDTH - 13'd1;
-					VERTC.X <= CMD.CMDXA[12:0] + ORIG_WIDTH - 13'd1;;
+					VERTC.X <= CMD.CMDXA[12:0] + ORIG_WIDTH - 13'd1;
 					VERTD.X <= CMD.CMDXA[12:0];
 					VERTA.Y <= CMD.CMDYA[12:0];
 					VERTB.Y <= CMD.CMDYA[12:0];
@@ -1062,10 +1064,10 @@ module VDP1 (
 						LINE_CLIP <= 1;
 						DIR[0] <= 1;
 					end else*/ begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= 0;
 						LINE_DIRY <= 0;
 						LINE_CLIP <= 0;
@@ -1085,58 +1087,58 @@ module VDP1 (
 					NEW_LINE_ASX = Abs(NEW_LINE_SX);
 //					NEW_LINE_ASY = Abs(NEW_LINE_SY);
 					if (LINE_LT_LEFT_CLIPX1 && LINE_GT_RIGHT_CLIPX2 && CLIP_H) begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= SYS_CLIP_X2[10:0];
-						LINE_VERTB.Y <= SYS_CLIP_X2[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= SYS_CLIP_X2[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_CLIP <= 0;
 						DIR[0] <= 0;
 					end else if (LINE_GT_LEFT_CLIPX2 && LINE_LT_RIGHT_CLIPX1 && CLIP_H) begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= SYS_CLIP_X1[10:0];
-						LINE_VERTB.Y <= SYS_CLIP_X1[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= SYS_CLIP_X1[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_CLIP <= 0;
 						DIR[0] <= 0;
 					end else if (LINE_LT_LEFT_CLIPX1 && (LINE_LT_RIGHT_CLIPX2 || LINE_EQ_RIGHT_CLIPX2) && CLIP_H) begin
-						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
-						LINE_VERTB.X <= LEFT_VERT.X[10:0];
-						LINE_VERTB.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTA.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTA.Y <= RIGHT_VERT.Y[11:0];
+						LINE_VERTB.X <= LEFT_VERT.X[11:0];
+						LINE_VERTB.Y <= LEFT_VERT.Y[11:0];
 						LINE_DIRX <= ~NEW_LINE_SX[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 1;
 					end else if ((LINE_LT_LEFT_CLIPX2 || LINE_EQ_LEFT_CLIPX2) && LINE_GT_RIGHT_CLIPX1 && CLIP_H) begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 0;
 					end else if (LINE_GT_LEFT_CLIPX2 && (LINE_GT_RIGHT_CLIPX1 || LINE_EQ_RIGHT_CLIPX1) && CLIP_H) begin
-						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
-						LINE_VERTB.X <= LEFT_VERT.X[10:0];
-						LINE_VERTB.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTA.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTA.Y <= RIGHT_VERT.Y[11:0];
+						LINE_VERTB.X <= LEFT_VERT.X[11:0];
+						LINE_VERTB.Y <= LEFT_VERT.Y[11:0];
 						LINE_DIRX <= ~NEW_LINE_SX[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 1;
 					end else if ((LINE_GT_LEFT_CLIPX1 || LINE_EQ_LEFT_CLIPX1) && LINE_GT_RIGHT_CLIPX2 && CLIP_H) begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 0;
 					end else begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_CLIP <= 0;
 						DIR[0] <= 0;
@@ -1152,24 +1154,24 @@ module VDP1 (
 				CMDS_SSPR_CALCTX: begin
 					if (ROW_WIDTH < {4'b0000,ORIG_WIDTH} && CMD.CMDPMOD.HSS) begin
 						if (ROW_WIDTH < {5'b00000,ORIG_WIDTH[8:1]}) begin
-							TEXT_ERROR_INC <= {4'b0000,ORIG_WIDTH};
+							TEXT_ERROR_INC <= {5'b00000,ORIG_WIDTH};
 							TEXT_ERROR_ADJ <= (ROW_WIDTH << 1);
-							TEXT_ERROR <= {5'b00000,ORIG_WIDTH[8:1]} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
+							TEXT_ERROR <= {6'b000000,ORIG_WIDTH[8:1]} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 14'd0 : 14'd1);
 						end else begin
-							TEXT_ERROR_INC <= ({5'b00000,ORIG_WIDTH[8:1] - 8'd1} << 1);
-							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 12'd1) << 1);
-							TEXT_ERROR <= (-ROW_WIDTH) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
+							TEXT_ERROR_INC <= ({6'b000000,ORIG_WIDTH[8:1] - 8'd1} << 1);
+							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 13'd1) << 1);
+							TEXT_ERROR <= (-ROW_WIDTH) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 14'd0 : 14'd1);
 						end
 						HSS_EN <= 1;
 					end else begin
-						if (ROW_WIDTH < {4'b0000,ORIG_WIDTH}) begin
-							TEXT_ERROR_INC <= ({4'b0000,ORIG_WIDTH} << 1);
+						if (ROW_WIDTH < {5'b00000,ORIG_WIDTH}) begin
+							TEXT_ERROR_INC <= ({5'b00000,ORIG_WIDTH} << 1);
 							TEXT_ERROR_ADJ <= (ROW_WIDTH << 1);
-							TEXT_ERROR <= {4'b0000,ORIG_WIDTH} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
+							TEXT_ERROR <= {5'b00000,ORIG_WIDTH} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 14'd0 : 14'd1);
 						end else begin
-							TEXT_ERROR_INC <= ({4'b0000,ORIG_WIDTH - 9'd1} << 1);
-							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 12'd1) << 1);
-							TEXT_ERROR <= (-ROW_WIDTH) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
+							TEXT_ERROR_INC <= ({5'b00000,ORIG_WIDTH - 9'd1} << 1);
+							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 13'd1) << 1);
+							TEXT_ERROR <= (-ROW_WIDTH) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 14'd0 : 14'd1);
 						end
 						HSS_EN <= 0;
 					end
@@ -1189,66 +1191,66 @@ module VDP1 (
 					NEW_LINE_ASY = Abs(NEW_LINE_SY);
 					LINE_SWAP = 0;
 					if (LINE_LT_LEFT_CLIPX1 && LINE_GT_RIGHT_CLIPX2 && CLIP_H) begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= SYS_CLIP_X2[10:0];
-						LINE_VERTB.Y <= SYS_CLIP_X2[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= SYS_CLIP_X2[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_DIRY <= NEW_LINE_SY[12];
 						LINE_CLIP <= 0;
 						DIR[0] <= 0;
 					end else if (LINE_GT_LEFT_CLIPX2 && LINE_LT_RIGHT_CLIPX1 && CLIP_H) begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= SYS_CLIP_X1[10:0];
-						LINE_VERTB.Y <= SYS_CLIP_X1[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= SYS_CLIP_X1[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_DIRY <= NEW_LINE_SY[12];
 						LINE_CLIP <= 0;
 						DIR[0] <= 0;
 					end else if (LINE_LT_LEFT_CLIPX1 && (LINE_LT_RIGHT_CLIPX2 || LINE_EQ_RIGHT_CLIPX2) && CLIP_H) begin
-						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
-						LINE_VERTB.X <= LEFT_VERT.X[10:0];
-						LINE_VERTB.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTA.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTA.Y <= RIGHT_VERT.Y[11:0];
+						LINE_VERTB.X <= LEFT_VERT.X[11:0];
+						LINE_VERTB.Y <= LEFT_VERT.Y[11:0];
 						LINE_DIRX <= ~NEW_LINE_SX[12];
 						LINE_DIRY <= ~NEW_LINE_SY[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 1;
 						LINE_SWAP = 1;
 					end else if ((LINE_LT_LEFT_CLIPX2 || LINE_EQ_LEFT_CLIPX2) && LINE_GT_RIGHT_CLIPX1 && CLIP_H) begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_DIRY <= NEW_LINE_SY[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 0;
 					end else if (LINE_GT_LEFT_CLIPX2 && (LINE_GT_RIGHT_CLIPX1 || LINE_EQ_RIGHT_CLIPX1) && CLIP_H) begin
-						LINE_VERTA.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTA.Y <= RIGHT_VERT.Y[10:0];
-						LINE_VERTB.X <= LEFT_VERT.X[10:0];
-						LINE_VERTB.Y <= LEFT_VERT.Y[10:0];
+						LINE_VERTA.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTA.Y <= RIGHT_VERT.Y[11:0];
+						LINE_VERTB.X <= LEFT_VERT.X[11:0];
+						LINE_VERTB.Y <= LEFT_VERT.Y[11:0];
 						LINE_DIRX <= ~NEW_LINE_SX[12];
 						LINE_DIRY <= ~NEW_LINE_SY[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 1;
 						LINE_SWAP = 1;
 					end else if ((LINE_GT_LEFT_CLIPX1 || LINE_EQ_LEFT_CLIPX1) && LINE_GT_RIGHT_CLIPX2 && CLIP_H) begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_DIRY <= NEW_LINE_SY[12];
 						LINE_CLIP <= 1;
 						DIR[0] <= 0;
 					end else begin
-						LINE_VERTA.X <= LEFT_VERT.X[10:0];
-						LINE_VERTA.Y <= LEFT_VERT.Y[10:0];
-						LINE_VERTB.X <= RIGHT_VERT.X[10:0];
-						LINE_VERTB.Y <= RIGHT_VERT.Y[10:0];
+						LINE_VERTA.X <= LEFT_VERT.X[11:0];
+						LINE_VERTA.Y <= LEFT_VERT.Y[11:0];
+						LINE_VERTB.X <= RIGHT_VERT.X[11:0];
+						LINE_VERTB.Y <= RIGHT_VERT.Y[11:0];
 						LINE_DIRX <= NEW_LINE_SX[12];
 						LINE_DIRY <= NEW_LINE_SY[12];
 						LINE_CLIP <= 0;
@@ -1260,8 +1262,8 @@ module VDP1 (
 						LINE_ERROR_ADJ <= -(NEW_LINE_ASY << 1);
 						LINE_ERROR <= (NEW_LINE_ASY - (NEW_LINE_ASY << 1)) - (NEW_LINE_ASX << 1);
 						LINE_S <= 1;
-						AA_X_INC <= (NEW_LINE_SY[12]^LINE_SWAP) ? {11{(NEW_LINE_SX[12]^LINE_SWAP)}} : {{10{1'b0}},~(NEW_LINE_SX[12]^LINE_SWAP)};
-						AA_Y_INC <= (NEW_LINE_SY[12]^LINE_SWAP) ? {{10{1'b0}},(NEW_LINE_SX[12]^LINE_SWAP)} : {11{~(NEW_LINE_SX[12]^LINE_SWAP)}};
+						AA_X_INC <= (NEW_LINE_SY[12]^LINE_SWAP) ? {12{(NEW_LINE_SX[12]^LINE_SWAP)}} : {{11{1'b0}},~(NEW_LINE_SX[12]^LINE_SWAP)};
+						AA_Y_INC <= (NEW_LINE_SY[12]^LINE_SWAP) ? {{11{1'b0}},(NEW_LINE_SX[12]^LINE_SWAP)} : {12{~(NEW_LINE_SX[12]^LINE_SWAP)}};
 						
 						ROW_WIDTH <= NEW_LINE_ASY + 12'd1;
 					end else begin
@@ -1269,12 +1271,11 @@ module VDP1 (
 						LINE_ERROR_ADJ <= -(NEW_LINE_ASX << 1);
 						LINE_ERROR <= (NEW_LINE_ASX - (NEW_LINE_ASX << 1)) - (NEW_LINE_ASY << 1);
 						LINE_S <= 0;
-						AA_X_INC <= (NEW_LINE_SX[12]^LINE_SWAP) ? {{10{1'b0}},~(NEW_LINE_SY[12]^LINE_SWAP)} : {11{(NEW_LINE_SY[12]^LINE_SWAP)}};
-						AA_Y_INC <= (NEW_LINE_SX[12]^LINE_SWAP) ? {{10{1'b0}},~(NEW_LINE_SY[12]^LINE_SWAP)} : {11{(NEW_LINE_SY[12]^LINE_SWAP)}};
+						AA_X_INC <= (NEW_LINE_SX[12]^LINE_SWAP) ? {{11{1'b0}},~(NEW_LINE_SY[12]^LINE_SWAP)} : {12{(NEW_LINE_SY[12]^LINE_SWAP)}};
+						AA_Y_INC <= (NEW_LINE_SX[12]^LINE_SWAP) ? {{11{1'b0}},~(NEW_LINE_SY[12]^LINE_SWAP)} : {12{(NEW_LINE_SY[12]^LINE_SWAP)}};
 						
 						ROW_WIDTH <= NEW_LINE_ASX + 12'd1;
 					end
-					
 					
 					CMD_ST <= CMDS_LINE_CALCTX;
 				end
@@ -1282,24 +1283,24 @@ module VDP1 (
 				CMDS_LINE_CALCTX: begin
 					if (ROW_WIDTH <= {4'b0000,ORIG_WIDTH - 9'd1} && CMD.CMDPMOD.HSS && !CMD.CMDCTRL.COMM[2]) begin
 						if (ROW_WIDTH < {5'b00000,ORIG_WIDTH[8:1]}) begin
-							TEXT_ERROR_INC <= {4'b0000,ORIG_WIDTH};
+							TEXT_ERROR_INC <= {5'b00000,ORIG_WIDTH};
 							TEXT_ERROR_ADJ <= (ROW_WIDTH << 1);
-							TEXT_ERROR <= {5'b00000,ORIG_WIDTH[8:1]} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
+							TEXT_ERROR <= {6'b000000,ORIG_WIDTH[8:1]} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 14'd0 : 14'd1);
 						end else begin
-							TEXT_ERROR_INC <= ({5'b00000,ORIG_WIDTH[8:1] - 8'd1} << 1);
+							TEXT_ERROR_INC <= ({6'b000000,ORIG_WIDTH[8:1] - 8'd1} << 1);
 							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 13'd1) << 1);
-							TEXT_ERROR <= ROW_WIDTH - (ROW_WIDTH << 1) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
+							TEXT_ERROR <= ROW_WIDTH - (ROW_WIDTH << 1) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 14'd0 : 14'd1);
 						end
 						HSS_EN <= 1;
 					end else begin
 						if (ROW_WIDTH < {4'b0000,ORIG_WIDTH}) begin
-							TEXT_ERROR_INC <= ({4'b0000,ORIG_WIDTH} << 1);
+							TEXT_ERROR_INC <= ({5'b00000,ORIG_WIDTH} << 1);
 							TEXT_ERROR_ADJ <= (ROW_WIDTH << 1);
-							TEXT_ERROR <= {4'b0000,ORIG_WIDTH} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
+							TEXT_ERROR <= {5'b00000,ORIG_WIDTH} - (ROW_WIDTH << 1) - (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 14'd0 : 14'd1);
 						end else begin
-							TEXT_ERROR_INC <= ({4'b0000,ORIG_WIDTH - 9'd1} << 1);
+							TEXT_ERROR_INC <= ({5'b00000,ORIG_WIDTH - 9'd1} << 1);
 							TEXT_ERROR_ADJ <= ((ROW_WIDTH - 13'd1) << 1);
-							TEXT_ERROR <= ROW_WIDTH - (ROW_WIDTH << 1) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 13'd0 : 13'd1);
+							TEXT_ERROR <= ROW_WIDTH - (ROW_WIDTH << 1) + (!TEXT_DIRX || ORIG_WIDTH == 8'd1 ? 14'd0 : 14'd1);
 						end
 						HSS_EN <= 0;
 					end
@@ -1338,7 +1339,7 @@ module VDP1 (
 					if (GRD_CALC_STATE == 5'd20) begin
 						GRD_CALC_STATE <= '0;
 						LINE_GHCOLOR_STEP <= GRD_CALC_STEP;
-
+						
 						case (CMD.CMDCTRL.COMM) 
 							4'h0: CMD_ST <= CMDS_NSPR_DRAW;
 							4'h1: CMD_ST <= CMDS_SSPR_DRAW;
@@ -1358,7 +1359,7 @@ module VDP1 (
 					TEXT_ERROR <= NEXT_TEXT_ERROR;
 					
 					if (LINE_DRAW_STEP) begin
-						LINE_VERTA.X <= LINE_VERTA.X + {{10{LINE_DIRX}},1'b1};
+						LINE_VERTA.X <= LINE_VERTA.X + {{11{LINE_DIRX}},1'b1};
 						
 						{LINE_GHCOLOR.R.INT,LINE_GHCOLOR.R.FRAC} <= {LINE_GHCOLOR.R.INT,LINE_GHCOLOR.R.FRAC} + ({LINE_GHCOLOR_STEP.R.INT,LINE_GHCOLOR_STEP.R.FRAC}^{17{DIR[0]^LINE_GHCOLOR_STEP.R.DIR}}) + (DIR[0]^LINE_GHCOLOR_STEP.R.DIR);
 						{LINE_GHCOLOR.G.INT,LINE_GHCOLOR.G.FRAC} <= {LINE_GHCOLOR.G.INT,LINE_GHCOLOR.G.FRAC} + ({LINE_GHCOLOR_STEP.G.INT,LINE_GHCOLOR_STEP.G.FRAC}^{17{DIR[0]^LINE_GHCOLOR_STEP.G.DIR}}) + (DIR[0]^LINE_GHCOLOR_STEP.G.DIR);
@@ -1387,19 +1388,19 @@ module VDP1 (
 					if (LINE_DRAW_STEP) begin
 						if (LINE_AA_STEP) begin
 							if (!LINE_S) begin
-								LINE_VERTA.Y <= LINE_VERTA.Y + {{10{LINE_DIRY}},1'b1};
+								LINE_VERTA.Y <= LINE_VERTA.Y + {{11{LINE_DIRY}},1'b1};
 							end else begin
-								LINE_VERTA.X <= LINE_VERTA.X + {{10{LINE_DIRX}},1'b1};
+								LINE_VERTA.X <= LINE_VERTA.X + {{11{LINE_DIRX}},1'b1};
 							end
 							AA <= 1;
 							AA_DRAW = 1;
 						end else begin
 							if (!LINE_S) begin
-								LINE_VERTA.X <= LINE_VERTA.X + {{10{LINE_DIRX}},1'b1};
+								LINE_VERTA.X <= LINE_VERTA.X + {{11{LINE_DIRX}},1'b1};
 								LINE_VERTA_X_OVR = (LINE_VERTA.X == LINE_VERTB.X) || ($signed(LINE_VERTA.X) < $signed(SYS_CLIP_X1) && LINE_DIRX && !CMD.CMDPMOD.PCLP) || ($signed(LINE_VERTA.X) > $signed(SYS_CLIP_X2) && !LINE_DIRX && !CMD.CMDPMOD.PCLP);
 								LINE_VERTA_Y_OVR = ($signed(LINE_VERTA.Y) < $signed(SYS_CLIP_Y1) && LINE_DIRY && !CMD.CMDPMOD.PCLP) || ($signed(LINE_VERTA.Y) > $signed(SYS_CLIP_Y2) && !LINE_DIRY && !CMD.CMDPMOD.PCLP);
 							end else begin
-								LINE_VERTA.Y <= LINE_VERTA.Y + {{10{LINE_DIRY}},1'b1};
+								LINE_VERTA.Y <= LINE_VERTA.Y + {{11{LINE_DIRY}},1'b1};
 								LINE_VERTA_X_OVR = ($signed(LINE_VERTA.X) < $signed(SYS_CLIP_X1) && LINE_DIRX && !CMD.CMDPMOD.PCLP) || ($signed(LINE_VERTA.X) > $signed(SYS_CLIP_X2) && !LINE_DIRX && !CMD.CMDPMOD.PCLP);
 								LINE_VERTA_Y_OVR = (LINE_VERTA.Y == LINE_VERTB.Y) || ($signed(LINE_VERTA.Y) < $signed(SYS_CLIP_Y1) && LINE_DIRY && !CMD.CMDPMOD.PCLP) || ($signed(LINE_VERTA.Y) > $signed(SYS_CLIP_Y2) && !LINE_DIRY && !CMD.CMDPMOD.PCLP);
 							end
@@ -1426,10 +1427,10 @@ module VDP1 (
 					
 					{LINE_VERTA_X_OVR,LINE_VERTA_Y_OVR} = '0;
 					if (!LINE_S) begin
-						LINE_VERTA.X <= LINE_VERTA.X + {{10{LINE_DIRX}},1'b1};
+						LINE_VERTA.X <= LINE_VERTA.X + {{11{LINE_DIRX}},1'b1};
 						LINE_VERTA_X_OVR = (LINE_VERTA.X == LINE_VERTB.X);
 					end else begin
-						LINE_VERTA.Y <= LINE_VERTA.Y + {{10{LINE_DIRY}},1'b1};
+						LINE_VERTA.Y <= LINE_VERTA.Y + {{11{LINE_DIRY}},1'b1};
 						LINE_VERTA_Y_OVR = (LINE_VERTA.Y == LINE_VERTB.Y);
 					end
 					if ((LINE_VERTA_X_OVR || LINE_VERTA_Y_OVR) && LINE_DRAW_STEP) 
@@ -1574,8 +1575,8 @@ module VDP1 (
 	
 	bit          CPU_VRAM_BUSY;
 	
-	bit  [10: 0] DRAW_X;
-	bit  [10: 0] DRAW_Y;
+	bit  [11: 0] DRAW_X;
+	bit  [11: 0] DRAW_Y;
 	Pattern_t    DRAW_PAT;
 	RGB_t        DRAW_GHCOLOR;
 	bit  [15: 0] DRAW_BACK_C;
@@ -1607,12 +1608,12 @@ module VDP1 (
 								DRAW_Y <= LOC_COORD.Y + AA_Y;
 							end else begin
 								if (LINE_AA_STEP && LINE_S) begin
-									DRAW_X <= LOC_COORD.X + LINE_VERTA.X + {{10{LINE_DIRX}},1'b1};
+									DRAW_X <= LOC_COORD.X + LINE_VERTA.X + {{11{LINE_DIRX}},1'b1};
 								end else begin
 									DRAW_X <= LOC_COORD.X + LINE_VERTA.X;
 								end
 								if (LINE_AA_STEP && !LINE_S) begin
-									DRAW_Y <= LOC_COORD.Y + LINE_VERTA.Y + {{10{LINE_DIRY}},1'b1};
+									DRAW_Y <= LOC_COORD.Y + LINE_VERTA.Y + {{11{LINE_DIRY}},1'b1};
 								end else begin
 									DRAW_Y <= LOC_COORD.Y + LINE_VERTA.Y;
 								end
@@ -1734,8 +1735,8 @@ module VDP1 (
 		end
 		CALC_C = CMD.CMDPMOD.MON ? {1'b1,DRAW_BACK_C[14:0]} : !TVMR.TVM[0] ? ColorCalc(ORIG_C, DRAW_BACK_C, DRAW_GHCOLOR, CMD.CMDPMOD.CCB) : ORIG_C;
 			
-		SCLIP = !DRAW_X[10]                                    && DRAW_X[9:0] <= SYS_CLIP.X2[9:0] && !DRAW_Y[10]                                    && DRAW_Y[9:0] <= SYS_CLIP.Y2[9:0];
-		UCLIP = !DRAW_X[10] && DRAW_X[9:0] >= USR_CLIP.X1[9:0] && DRAW_X[9:0] <= USR_CLIP.X2[9:0] && !DRAW_Y[10] && DRAW_Y[9:0] >= USR_CLIP.Y1[9:0] && DRAW_Y[9:0] <= USR_CLIP.Y2[9:0];
+		SCLIP = !DRAW_X[11:10]                                    && DRAW_X[9:0] <= SYS_CLIP.X2[9:0] && !DRAW_Y[11:10]                                    && DRAW_Y[9:0] <= SYS_CLIP.Y2[9:0];
+		UCLIP = !DRAW_X[11:10] && DRAW_X[9:0] >= USR_CLIP.X1[9:0] && DRAW_X[9:0] <= USR_CLIP.X2[9:0] && !DRAW_Y[11:10] && DRAW_Y[9:0] >= USR_CLIP.Y1[9:0] && DRAW_Y[9:0] <= USR_CLIP.Y2[9:0];
 		MESH = ~(DRAW_X[0] ^ DRAW_Y[0]) ^ (FRAME_ODD&BLUR_MESH);
 		IDRAW = ~(DIL ^ DRAW_Y[0]);
 		FB_DRAW_D = CALC_C;
@@ -1750,7 +1751,7 @@ module VDP1 (
 	assign SCLIP_DBG = SCLIP;
 	assign UCLIP_DBG = UCLIP;
 	
-	assign DBG_DRAW_OVER = DRAW_X[10:8] == 3'b011 || DRAW_X[10:8] == 3'b101 || DRAW_Y[10:8] == 2'b011 || DRAW_Y[10:8] == 3'b101;
+	assign DBG_DRAW_OVER = DRAW_X[11:8] == 4'b0011 || DRAW_X[11:8] == 4'b1101 || DRAW_Y[11:8] == 4'b0011 || DRAW_Y[11:8] == 4'b1101;
 	assign DBG_SPR_ADDR = SPR_ADDR;
 `endif
 
@@ -2463,7 +2464,9 @@ module VDP1 (
 			if (DRAW_END) begin
 				EDSR.CEF <= 1;
 			end
-			IRQ_N <= ~EDSR.CEF;
+			if (CE_R) begin
+				IRQ_N <= ~EDSR.CEF;
+			end
 
 			FRAME_START <= 0;
 			if (START_DRAW_PEND) begin
@@ -2493,7 +2496,7 @@ module VDP1 (
 `ifdef DEBUG
 					FRAMES_DBG <= 8'd0;
 `endif
-				end else if ((MANUAL_ERASECHANGE_PEND) && FBCR.FCT) begin
+				end else if (MANUAL_ERASECHANGE_PEND && FBCR.FCT) begin
 					FB_SEL <= ~FB_SEL;
 					EDSR.CEF <= 0;
 					EDSR.BEF <= EDSR.CEF;

@@ -174,8 +174,8 @@ package VDP1_PKG;
 	
 	typedef struct packed
 	{
-		bit [10: 0] X;
-		bit [10: 0] Y;
+		bit [11: 0] X;
+		bit [11: 0] Y;
 	} Coord_t;
 	parameter Coord_t COORD_NULL = {11'h000,11'h000};
 	
