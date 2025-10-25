@@ -19,6 +19,8 @@ module SH7604_INTC (
 	input             VECT_REQ,
 	output            VECT_WAIT,
 	
+	output reg        NMI_REQ,
+	
 	input      [31:0] IBUS_A,
 	input      [31:0] IBUS_DI,
 	output     [31:0] IBUS_DO,
@@ -78,7 +80,6 @@ module SH7604_INTC (
 	const bit [ 3:0] FRT_OCI_INT = 4'd14;
 	const bit [ 3:0] FRT_OVI_INT = 4'd15;
 	
-	bit        NMI_REQ;
 	bit        IRL_REQ;
 	bit [ 3:0] IRL_LVL;
 	bit [ 3:0] INT_ACTIVE;
@@ -248,42 +249,44 @@ module SH7604_INTC (
 				VCRD   <= VCRD_INIT;
 				ICR.NMIL <= NMI_N;
 			end
-			else if (REG_SEL && IBUS_WE && IBUS_REQ) begin
-				case ({IBUS_A[7:1],1'b0})
-					8'h60: begin
-						if (IBUS_BA[3]) IPRB[15:8] = IBUS_DI[31:24] & IPRB_WMASK[15:8];
-						if (IBUS_BA[2]) IPRB[ 7:0] = IBUS_DI[23:16] & IPRB_WMASK[ 7:0];
-					end
-					8'h62: begin
-						if (IBUS_BA[1]) VCRA[15:8] = IBUS_DI[15:8] & VCRA_WMASK[15:8];
-						if (IBUS_BA[0]) VCRA[ 7:0] = IBUS_DI[ 7:0] & VCRA_WMASK[ 7:0];
-					end
-					8'h64: begin
-						if (IBUS_BA[3]) VCRB[15:8] = IBUS_DI[31:24] & VCRB_WMASK[15:8];
-						if (IBUS_BA[2]) VCRB[ 7:0] = IBUS_DI[23:16] & VCRB_WMASK[ 7:0];
-					end
-					8'h66: begin
-						if (IBUS_BA[1]) VCRC[15:8] = IBUS_DI[15:8] & VCRC_WMASK[15:8];
-						if (IBUS_BA[0]) VCRC[ 7:0] = IBUS_DI[ 7:0] & VCRC_WMASK[ 7:0];
-					end
-					8'h68: begin
-						if (IBUS_BA[3]) VCRD[15:8] = IBUS_DI[31:24] & VCRD_WMASK[15:8];
-						if (IBUS_BA[2]) VCRD[ 7:0] = IBUS_DI[23:16] & VCRD_WMASK[ 7:0];
-					end
-					8'hE0: begin
-						if (IBUS_BA[3]) ICR[15:8] = IBUS_DI[31:24] & ICR_WMASK[15:8];
-						if (IBUS_BA[2]) ICR[ 7:0] = IBUS_DI[23:16] & ICR_WMASK[ 7:0];
-					end
-					8'hE2: begin
-						if (IBUS_BA[1]) IPRA[15:8] = IBUS_DI[15:8] & IPRA_WMASK[15:8];
-						if (IBUS_BA[0]) IPRA[ 7:0] = IBUS_DI[ 7:0] & IPRA_WMASK[ 7:0];
-					end
-					8'hE4: begin
-						if (IBUS_BA[3]) VCRWDT[15:8] = IBUS_DI[31:24] & VCRWDT_WMASK[15:8];
-						if (IBUS_BA[2]) VCRWDT[ 7:0] = IBUS_DI[23:16] & VCRWDT_WMASK[ 7:0];
-					end
-					default:;
-				endcase
+			else begin
+				if (REG_SEL && IBUS_WE && IBUS_REQ) begin
+					case ({IBUS_A[7:1],1'b0})
+						8'h60: begin
+							if (IBUS_BA[3]) IPRB[15:8] = IBUS_DI[31:24] & IPRB_WMASK[15:8];
+							if (IBUS_BA[2]) IPRB[ 7:0] = IBUS_DI[23:16] & IPRB_WMASK[ 7:0];
+						end
+						8'h62: begin
+							if (IBUS_BA[1]) VCRA[15:8] = IBUS_DI[15:8] & VCRA_WMASK[15:8];
+							if (IBUS_BA[0]) VCRA[ 7:0] = IBUS_DI[ 7:0] & VCRA_WMASK[ 7:0];
+						end
+						8'h64: begin
+							if (IBUS_BA[3]) VCRB[15:8] = IBUS_DI[31:24] & VCRB_WMASK[15:8];
+							if (IBUS_BA[2]) VCRB[ 7:0] = IBUS_DI[23:16] & VCRB_WMASK[ 7:0];
+						end
+						8'h66: begin
+							if (IBUS_BA[1]) VCRC[15:8] = IBUS_DI[15:8] & VCRC_WMASK[15:8];
+							if (IBUS_BA[0]) VCRC[ 7:0] = IBUS_DI[ 7:0] & VCRC_WMASK[ 7:0];
+						end
+						8'h68: begin
+							if (IBUS_BA[3]) VCRD[15:8] = IBUS_DI[31:24] & VCRD_WMASK[15:8];
+							if (IBUS_BA[2]) VCRD[ 7:0] = IBUS_DI[23:16] & VCRD_WMASK[ 7:0];
+						end
+						8'hE0: begin
+							if (IBUS_BA[3]) ICR[15:8] = IBUS_DI[31:24] & ICR_WMASK[15:8];
+							if (IBUS_BA[2]) ICR[ 7:0] = IBUS_DI[23:16] & ICR_WMASK[ 7:0];
+						end
+						8'hE2: begin
+							if (IBUS_BA[1]) IPRA[15:8] = IBUS_DI[15:8] & IPRA_WMASK[15:8];
+							if (IBUS_BA[0]) IPRA[ 7:0] = IBUS_DI[ 7:0] & IPRA_WMASK[ 7:0];
+						end
+						8'hE4: begin
+							if (IBUS_BA[3]) VCRWDT[15:8] = IBUS_DI[31:24] & VCRWDT_WMASK[15:8];
+							if (IBUS_BA[2]) VCRWDT[ 7:0] = IBUS_DI[23:16] & VCRWDT_WMASK[ 7:0];
+						end
+						default:;
+					endcase
+				end
 				ICR.NMIL <= NMI_N;
 			end
 		end

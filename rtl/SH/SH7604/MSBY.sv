@@ -16,7 +16,9 @@ module SH7604_MSBY (
 	output            IBUS_BUSY,
 	output            IBUS_ACT,
 	
-	output            SBY
+	input             SLEEP,
+	input             WDT_OVF,
+	output reg        SBY
 );
 
 	import SH7604_PKG::*;
@@ -37,7 +39,23 @@ module SH7604_MSBY (
 		end
 	end
 	
-	assign SBY = SBYCR.SBY;
+	always @(posedge CLK or negedge RST_N) begin
+		bit          SLEEP_OLD;
+		
+		if (!RST_N) begin
+			SBY <= 0;
+		end
+		else if (EN && CE_R) begin
+			SLEEP_OLD <= SLEEP;
+			if (SLEEP && !SLEEP_OLD && SBYCR.SBY) begin
+				SBY <= 1;
+			end
+			if (WDT_OVF && SBY) begin
+				SBY <= 0;
+			end
+		end
+	end
+//	assign SBY = SBYCR.SBY;
 	
 	bit [31:0] REG_DO;
 	always @(posedge CLK or negedge RST_N) begin

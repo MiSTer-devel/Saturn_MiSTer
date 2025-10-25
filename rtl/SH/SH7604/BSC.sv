@@ -711,13 +711,23 @@ module SH7604_BSC
 								INSERT_WAIT <= ~FAST; 
 								
 								A <= DBUS_A[26:0];
-								CS0_N <= ~(DBUS_A[26:25] == 2'b00);
-								CS1_N <= ~(DBUS_A[26:25] == 2'b01);
-								CS2_N <= ~(DBUS_A[26:25] == 2'b10);
-								CS3_N <= ~(DBUS_A[26:25] == 2'b11);
-								BS_N <= 0;
-								RD_WR_N <= ~DBUS_WE;
-								RD_N <= DBUS_WE;
+								if (DBUS_IS_SDRAM && MCR.RFSH && MCR.RMD && MASTER) begin
+									CS0_N <= 1;
+									CS1_N <= 1;
+									CS2_N <= 1;
+									CS3_N <= 1;
+									BS_N <= 1;
+									RD_WR_N <= 1;
+									RD_N <= 1;
+								end else begin
+									CS0_N <= ~(DBUS_A[26:25] == 2'b00);
+									CS1_N <= ~(DBUS_A[26:25] == 2'b01);
+									CS2_N <= ~(DBUS_A[26:25] == 2'b10);
+									CS3_N <= ~(DBUS_A[26:25] == 2'b11);
+									BS_N <= 0;
+									RD_WR_N <= ~DBUS_WE;
+									RD_N <= DBUS_WE;
+								end
 								CACK <= 1;
 								
 								BUS_WE_LATCH <= DBUS_WE;
@@ -828,13 +838,24 @@ module SH7604_BSC
 								INSERT_WAIT <= ~FAST;
 								
 								A <= CBUS_A[26:0];
-								CS0_N <= ~(CBUS_A[26:25] == 2'b00);
-								CS1_N <= ~(CBUS_A[26:25] == 2'b01);
-								CS2_N <= ~(CBUS_A[26:25] == 2'b10);
-								CS3_N <= ~(CBUS_A[26:25] == 2'b11);
-								BS_N <= 0;
-								RD_WR_N <= ~CBUS_WE;
-								RD_N <= CBUS_WE;
+								if (CBUS_IS_SDRAM && MCR.RFSH && MCR.RMD && MASTER) begin
+									CS0_N <= 1;
+									CS1_N <= 1;
+									CS2_N <= 1;
+									CS3_N <= 1;
+									BS_N <= 1;
+									RD_WR_N <= 1;
+									WE_N <= '1;
+									RD_N <= 1;
+								end else begin
+									CS0_N <= ~(CBUS_A[26:25] == 2'b00);
+									CS1_N <= ~(CBUS_A[26:25] == 2'b01);
+									CS2_N <= ~(CBUS_A[26:25] == 2'b10);
+									CS3_N <= ~(CBUS_A[26:25] == 2'b11);
+									BS_N <= 0;
+									RD_WR_N <= ~CBUS_WE;
+									RD_N <= CBUS_WE;
+								end
 								CACK <= 1;
 								
 								BUS_WE_LATCH <= CBUS_WE;
