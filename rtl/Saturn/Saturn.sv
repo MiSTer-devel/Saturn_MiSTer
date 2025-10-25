@@ -706,7 +706,7 @@ module Saturn
 		.MRES_N(MRES_N),
 		.TIME_SET(TIME_SET),
 		
-		.RTC(RTC),
+		.EXT_RTC(RTC),
 		
 		.AC(SMPC_AREA),	
 		
