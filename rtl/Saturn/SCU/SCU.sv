@@ -103,6 +103,7 @@ module SCU
 	IST_t       IST;
 	ASR0_t      ASR0;
 	ASR1_t      ASR1;
+	AREF_t      AREF;
 	RSEL_t      RSEL;
 	
 	bit  [26:0] DSP_DR;
@@ -388,7 +389,7 @@ module SCU
 	always @(posedge CLK or negedge RST_N) begin
 		bit  [24:0] ABUS_CA_INNER,BBUS_CA_INNER;
 		bit  [31:0] ABUS_CDI_INNER,BBUS_CDI_INNER;
-		bit   [3:0] ABUS_CDQMN_INNER,BBUS_CDQMN_INNER;
+		bit  [ 3:0] ABUS_CDQMN_INNER,BBUS_CDQMN_INNER;
 		bit         ABUS_CRDN_INNER,BBUS_CRDN_INNER;
 		bit         ABUS_CCS1N_INNER,BBUS_CCS1N_INNER;
 		bit         ABUS_CCS2N_INNER,BBUS_CCS2N_INNER;
@@ -398,13 +399,13 @@ module SCU
 		bit  [26:0] DMA_RA_NEW,DMA_WA_NEW,DMA_IA_NEW;
 		bit         DMA_WTN_LESS2;
 		bit         DMA_WTN_LESS4,DMA_RTN_LESS4;
-		bit   [2:0] DMA_WTN_OFFS,DMA_RTN_OFFS;
-		bit   [2:0] DMA_RTN_DEC;
-		bit   [2:0] DMA_WTN_DEC;
+		bit  [ 2:0] DMA_WTN_OFFS,DMA_RTN_OFFS;
+		bit  [ 2:0] DMA_RTN_DEC;
+		bit  [ 2:0] DMA_WTN_DEC;
 		bit  [19:0] DMA_RTN_NEXT;
 		bit  [19:0] DMA_WTN_NEXT;
-		bit   [1:0] DMA_RBA;
-		bit   [1:0] DMA_IND_REG;
+		bit  [ 1:0] DMA_RBA;
+		bit  [ 1:0] DMA_IND_REG;
 		bit         DMA_LAST;
 		bit         DMA_DSP;
 		bit         DMA_END;
@@ -420,8 +421,10 @@ module SCU
 		bit         CPU_BBUS_ACT;
 		bit         ABUS_A1;
 		bit         ABUS_LONG;
-		bit   [5:0] ABUS_WAIT_CNT;
-		bit   [1:0] BBUS_WORD;
+		bit  [ 5:0] ABUS_WAIT_CNT;
+		bit  [ 9:0] ABUS_RFS_CNT;
+		bit         ABUS_RFS;
+		bit  [ 1:0] BBUS_WORD;
 		bit         BBUS_WRITE_PAGE;
 		bit         BBUS_WRITE_UNALIGNED;
 		bit         BBUS_A1;
@@ -431,10 +434,10 @@ module SCU
 		bit         BBUS_READ_PROCESS;
 		bit         ABUS_WRITE_PROCESS;
 		bit         BBUS_WRITE_PROCESS;
-		bit   [1:0] BBUS_IND_POS;
-		bit   [2:0] CBUS_IND_POS;
+		bit  [ 1:0] BBUS_IND_POS;
+		bit  [ 2:0] CBUS_IND_POS;
 		bit         CBUS_RFS_PEND,CBUS_RAS_PEND;
-		bit   [1:0] CBUS_RAS_CNT;
+		bit  [ 1:0] CBUS_RAS_CNT;
 		
 		bit         ABUS_DMA_START;
 		bit         ABUS_READ_ACK;
@@ -516,6 +519,7 @@ module SCU
 			CPU_ABUS_REQ <= 0;
 			ABUS_A1 <= 0;
 			CPU_ABUS_ACT <= 0;
+			ABUS_RFS <= 0;
 			
 			BBUS_ST <= BBUS_IDLE;
 			BBUS_DMA_START <= 0;
@@ -576,6 +580,7 @@ module SCU
 			ABUS_DMA_START <= 0;
 			CPU_ABUS_REQ <= 0;
 			ABUS_A1 <= 0;
+			ABUS_RFS <= 0;
 			
 			BBUS_ST <= BBUS_IDLE;
 			BBUS_DMA_START <= 0;
@@ -785,7 +790,14 @@ module SCU
 			DMA_WTN_NEXT = (DMA_WTN - DMA_WTN_DEC) & (DMA_TN_MASK[DMA_CH] | {20{DMD[DMA_CH].MOD}});
 			
 			//A-BUS 02000000-058FFFFF
-			if (ABUS_WAIT_CNT && CE_R) ABUS_WAIT_CNT <= ABUS_WAIT_CNT - 6'd1;
+			if (CE_R) begin
+				ABUS_RFS_CNT <= ABUS_RFS_CNT + 10'd1;
+				if (ABUS_RFS_CNT == 10'd750) begin
+					ABUS_RFS_CNT <= '0;
+					ABUS_RFS <= 1;
+				end
+				if (ABUS_WAIT_CNT) ABUS_WAIT_CNT <= ABUS_WAIT_CNT - 6'd1;
+			end
 			if (DSTA.DACSA && ABUS_DMA_START && CE_R) ABUS_DMA_START <= 0;
 			ABUS_READ_ACK = 0;
 			ABUS_READ_DONE <= 0;
@@ -818,9 +830,10 @@ module SCU
 							AWRU_N <= ABUS_CDQMN_INNER[1];
 							ABUS_LONG <= 0;
 						end
-						ABUS_WAIT_CNT <= !ABUS_CCS1N_INNER  ? ASR0.A0NW + 6'd3 : 
-						                 !ABUS_CA_INNER[24] ? ASR0.A1NW + 6'd3 : 
-											  !ABUS_CA_INNER[23] ? ASR1.A3NW + 6'd3 : '0;
+						ABUS_WAIT_CNT <= !ABUS_CCS1N_INNER  ? ASR0.A0NW + 6'd3 + (ABUS_RFS ? AREF.ARWT + 6'd2 : 6'd0) : 
+						                 !ABUS_CA_INNER[24] ? ASR0.A1NW + (ABUS_RFS ? AREF.ARWT + 6'd2 : 6'd0) + 6'd3 : 
+											  !ABUS_CA_INNER[23] ? ASR1.A3NW + (ABUS_RFS ? AREF.ARWT + 6'd2 : 6'd0) + 6'd3 : '0;
+						ABUS_RFS <= 0;
 						ABUS_ST <= ABUS_WAIT;
 					end
 					else if (DMA_READ_A && !DMA_RA_ERR && DMA_DSP) begin
@@ -856,9 +869,10 @@ module SCU
 					AWRL_N <= ABUS_CDQMN_INNER[0];
 					AWRU_N <= ABUS_CDQMN_INNER[1];
 					ABUS_LONG <= 0;
-					ABUS_WAIT_CNT <= !ABUS_CCS1N_INNER  ? ASR0.A0NW + 6'd3 : 
-						              !ABUS_CA_INNER[24] ? ASR0.A1NW + 6'd3 : 
-										  !ABUS_CA_INNER[23] ? ASR1.A3NW + 6'd3 : '0;
+					ABUS_WAIT_CNT <= !ABUS_CCS1N_INNER  ? ASR0.A0NW + 6'd3 + (ABUS_RFS ? AREF.ARWT : 6'd0) : 
+					                 !ABUS_CA_INNER[24] ? ASR0.A1NW + 6'd3 + (ABUS_RFS ? AREF.ARWT : 6'd0) : 
+										  !ABUS_CA_INNER[23] ? ASR1.A3NW + (ABUS_RFS ? AREF.ARWT + 6'd2 : 6'd0) + 6'd3 : '0;
+					ABUS_RFS <= 0;
 					ABUS_ST <= ABUS_WAIT;
 				end
 				
@@ -871,8 +885,12 @@ module SCU
 						ACS0_N <= 1;
 						ACS1_N <= 1;
 						ACS2_N <= 1;
-						if (!ABUS_A1) ABUS_BUF[31:16] <= ADI;
-						else          ABUS_BUF[15: 0] <= ADI;
+						if (!ABUS_A1) begin
+							ABUS_BUF[31:16] <= ADI;
+							if (!ABUS_LONG) ABUS_BUF[15: 0] <= ADI;
+						end else begin
+							ABUS_BUF[15: 0] <= ADI;
+						end
 						ABUS_ST <= ABUS_NEXT;
 					end
 				end
@@ -903,7 +921,8 @@ module SCU
 						AAS_N <= 0;
 						ARD_N <= 0;
 						ABUS_READ_ACK = ABUS_A1;
-						ABUS_WAIT_CNT <= !DMA_RA[26] ? ASR0.A0NW + 6'd2 : !DMA_RA[24] ? ASR0.A1NW + 6'd2 : !DMA_RA[23] ? ASR1.A3NW + 6'd2 : '0;
+						ABUS_WAIT_CNT <= !DMA_RA[26] ? ASR0.A0NW + 5'd2 : !DMA_RA[24] ? ASR0.A1NW + 5'd2 : !DMA_RA[23] ? ASR1.A3NW + 5'd2 : '0;
+						ABUS_RFS <= 0;
 						ABUS_ST <= ABUS_DMA_READ_WAIT;
 					end
 				end
@@ -958,7 +977,8 @@ module SCU
 						AWRU_N <= 0;
 						ABUS_DATA_ACK = 1;
 						ABUS_WRITE_PROCESS <= 1;
-						ABUS_WAIT_CNT <= !DMA_RA[26] ? ASR0.A0NW + 6'd2 : !DMA_RA[24] ? ASR0.A1NW + 6'd2 : !DMA_RA[23] ? ASR1.A3NW + 6'd2 : '0;
+						ABUS_WAIT_CNT <= !DMA_WA[26] ? ASR0.A0NW + 5'd2 : !DMA_WA[25:24] ? ASR0.A1NW + 5'd2 : !DMA_WA[23] ? ASR1.A3NW + 5'd2 : '0;
+						ABUS_RFS <= 0;
 						ABUS_ST <= ABUS_DMA_WRITE_WAIT;
 					end
 				end
@@ -2929,6 +2949,7 @@ module SCU
 			T1MD <= T1MD_INIT;
 			ASR0 <= ASR0_INIT;
 			ASR1 <= ASR1_INIT;
+			AREF <= AREF_INIT;
 			RSEL <= RSEL_INIT;
 			
 			{REG_WWAIT,REG_WWAIT1,REG_WWAIT2,REG_RWAIT} <= '0;
@@ -2939,6 +2960,7 @@ module SCU
 			T1MD <= T1MD_INIT;
 			ASR0 <= ASR0_INIT;
 			ASR1 <= ASR1_INIT;
+			AREF <= AREF_INIT;
 			RSEL <= RSEL_INIT;
 		end else begin
 			if (REG_WR) begin
@@ -2975,6 +2997,7 @@ module SCU
 					end
 					8'hB0: ASR0 <= REG_WDI & ASR0_WMASK;
 					8'hB4: ASR1 <= REG_WDI & ASR1_WMASK;
+					8'hB8: AREF <= REG_WDI & AREF_WMASK;
 					8'hC4: RSEL <= REG_WDI[0] & RSEL_WMASK[0];
 					default:;
 				endcase
