@@ -75,6 +75,7 @@ module YGR019 (
 	bit  [2:0] FIFO_AMOUNT;
 	bit        FIFO_EMPTY;
 	bit        FIFO_FULL;
+	bit        FIFO_FIRST;
 	bit        FIFO_DREQ;
 	bit  [1:0] CDD_DREQ;
 	bit [15:0] CDD_DATA;
@@ -163,6 +164,7 @@ module YGR019 (
 				FIFO_AMOUNT <= '0;
 				FIFO_EMPTY <= 1;
 				FIFO_FULL <= 0;
+				FIFO_FIRST <= 0;
 				FIFO_DREQ_PEND <= 0;
 				FIFO_DREQ <= 0;
 				
@@ -250,9 +252,9 @@ module YGR019 (
 				if (CE_F) begin
 					if (ABUS_WAIT && !ABUS_WAIT_CNT && ABUS_DATA_PORT && !TRCTL[0] && (!FIFO_EMPTY || TRCTL[3])) begin
 						SCU_REG_DO <= FIFO_BUF[FIFO_RD_POS]; 
-						FIFO_RD_POS <= FIFO_RD_POS + 3'd1;
+						FIFO_RD_POS <= FIFO_RD_POS == 3'd5 ? 3'd0 : FIFO_RD_POS + 3'd1;
 						FIFO_DEC_AMOUNT <= 1;
-						if (FIFO_AMOUNT <= 7'd1) begin
+						if (FIFO_AMOUNT <= 3'd2) begin
 							FIFO_DREQ_PEND <= 1;
 						end
 						ABUS_WAIT <= 0;
@@ -262,9 +264,9 @@ module YGR019 (
 					end
 					if (ABUS_WAIT && !ABUS_WAIT_CNT && ABUS_DATA_PORT && TRCTL[0] && (!FIFO_FULL || TRCTL[3])) begin
 						FIFO_BUF[FIFO_WR_POS] <= ADI;
-						FIFO_WR_POS <= FIFO_WR_POS + 3'd1;
+						FIFO_WR_POS <= FIFO_WR_POS == 3'd5 ? 3'd0 : FIFO_WR_POS + 3'd1;
 						FIFO_INC_AMOUNT <= 1;
-						if (FIFO_AMOUNT >= 7'd5) begin
+						if (FIFO_AMOUNT >= 3'd4) begin
 							FIFO_DREQ_PEND <= 1;
 						end
 						ABUS_WAIT <= 0;
@@ -287,7 +289,7 @@ module YGR019 (
 								5'h00:  begin 
 									if (TRCTL[2] && !TRCTL[0]) begin
 										FIFO_BUF[FIFO_WR_POS] <= SDI;
-										FIFO_WR_POS <= FIFO_WR_POS + 3'd1;
+										FIFO_WR_POS <= FIFO_WR_POS == 3'd5 ? 3'd0 : FIFO_WR_POS + 3'd1;
 										FIFO_INC_AMOUNT <= 1;
 									end
 								end
@@ -300,6 +302,7 @@ module YGR019 (
 										FIFO_AMOUNT <= '0;
 										FIFO_FULL <= 0;
 										FIFO_EMPTY <= 1;
+										FIFO_FIRST <= 1;
 										FIFO_DREQ <= 0;
 									end
 								end
@@ -322,7 +325,7 @@ module YGR019 (
 							case ({SA[4:1],1'b0})
 								5'h00: begin
 									SH_REG_DO <= FIFO_BUF[FIFO_RD_POS]; 
-									FIFO_RD_POS <= FIFO_RD_POS + 3'd1;
+									FIFO_RD_POS <= FIFO_RD_POS == 3'd5 ? 3'd0 : FIFO_RD_POS + 3'd1;
 									FIFO_DEC_AMOUNT <= 1;
 									if (FIFO_RD_POS[1:0] == 2'd3) begin
 										FIFO_DREQ_PEND <= 1;
@@ -363,15 +366,16 @@ module YGR019 (
 					if (DACK1 && !DACK1_OLD) begin
 						if (TRCTL[2] && !TRCTL[0]) begin
 							FIFO_BUF[FIFO_WR_POS] <= BDI;
-							FIFO_WR_POS <= FIFO_WR_POS + 3'd1;
+							FIFO_WR_POS <= FIFO_WR_POS == 3'd5 ? 3'd0 : FIFO_WR_POS + 3'd1;
 							FIFO_INC_AMOUNT <= 1;
-							if (FIFO_AMOUNT > 7'd2 && FIFO_DREQ) begin
+							if (FIFO_AMOUNT >= (FIFO_FIRST ? 3'd2 : 3'd1) && FIFO_DREQ) begin
 								FIFO_DREQ <= 0;
+								FIFO_FIRST <= 0;
 							end
 						end else if (TRCTL[0]) begin
-							FIFO_RD_POS <= FIFO_RD_POS + 3'd1;
+							FIFO_RD_POS <= FIFO_RD_POS == 3'd5 ? 3'd0 : FIFO_RD_POS + 3'd1;
 							FIFO_DEC_AMOUNT <= 1;
-							if (FIFO_AMOUNT < 7'd5 && FIFO_DREQ) begin
+							if (FIFO_AMOUNT < 3'd5 && FIFO_DREQ) begin
 								FIFO_DREQ <= 0;
 							end
 						end
@@ -390,8 +394,8 @@ module YGR019 (
 					FIFO_DEC_AMOUNT <= 0;
 				end else if (FIFO_INC_AMOUNT) begin
 					FIFO_AMOUNT <= FIFO_AMOUNT + 3'd1;
-					if (FIFO_AMOUNT == 3'd7) FIFO_AMOUNT <= 3'd7;
-					if (FIFO_AMOUNT == 3'd6) FIFO_FULL <= 1;
+					if (FIFO_AMOUNT == 3'd7-2) FIFO_AMOUNT <= 3'd7-2;
+					if (FIFO_AMOUNT == 3'd6-2) FIFO_FULL <= 1;
 					FIFO_EMPTY <= 0;
 					FIFO_INC_AMOUNT <= 0;
 				end else if (FIFO_DEC_AMOUNT) begin
