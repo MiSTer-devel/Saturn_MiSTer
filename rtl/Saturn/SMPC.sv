@@ -652,22 +652,25 @@ module SMPC (
 					CS_INTBACK_STAT: begin
 						case (WAIT_CNT)
 							16'd0996: if (INTBACK_OPTIM_EN) WAIT_CNT <= WAIT_CNT - 16'd30;
-							16'd0932: begin OREG_RAM_WA <= 5'h00; OREG_RAM_D <= {STE,RESD,6'b000000};                                        OREG_RAM_WE <= '1; end
-							16'd0908: begin OREG_RAM_WA <= 5'h01; OREG_RAM_D <= RTC_YEAR[15:8];                                              OREG_RAM_WE <= '1; end
-							16'd0860: begin OREG_RAM_WA <= 5'h02; OREG_RAM_D <= RTC_YEAR[7:0];                                               OREG_RAM_WE <= '1; end
-							16'd0812: begin OREG_RAM_WA <= 5'h03; OREG_RAM_D <= {RTC_DAY,RTC_MONTH};                                         OREG_RAM_WE <= '1; end
-							16'd0764: begin OREG_RAM_WA <= 5'h04; OREG_RAM_D <= RTC_DAYS;                                                    OREG_RAM_WE <= '1; end
-							16'd0716: begin OREG_RAM_WA <= 5'h05; OREG_RAM_D <= RTC_HOUR;                                                    OREG_RAM_WE <= '1; end
-							16'd0668: begin OREG_RAM_WA <= 5'h06; OREG_RAM_D <= RTC_MIN;                                                     OREG_RAM_WE <= '1; end
-							16'd0620: begin OREG_RAM_WA <= 5'h07; OREG_RAM_D <= RTC_SEC;                                                     OREG_RAM_WE <= '1; end
-							16'd0571: begin OREG_RAM_WA <= 5'h08; OREG_RAM_D <= 8'h00;                                                       OREG_RAM_WE <= '1; end
-							16'd0521: begin OREG_RAM_WA <= 5'h09; OREG_RAM_D <= {4'b0000,AC};                                                OREG_RAM_WE <= '1; end
-							16'd0471: begin OREG_RAM_WA <= 5'h0A; OREG_RAM_D <= {1'b0,DOTSEL,1'b1,SSHRES_N,MSHNMI_N,1'b1,SYSRES_N,SNDRES_N}; OREG_RAM_WE <= '1; end
-							16'd0421: begin OREG_RAM_WA <= 5'h0B; OREG_RAM_D <= {1'b0,CDRES_N,6'b000010};                                    OREG_RAM_WE <= '1; end
-							16'd0368: begin OREG_RAM_WA <= 5'h0C; OREG_RAM_D <= SMEM_Q;                                                      OREG_RAM_WE <= '1; end
-							16'd0314: begin OREG_RAM_WA <= 5'h0D; OREG_RAM_D <= SMEM_Q;                                                      OREG_RAM_WE <= '1; end
-							16'd0259: begin OREG_RAM_WA <= 5'h0E; OREG_RAM_D <= SMEM_Q;                                                      OREG_RAM_WE <= '1; end
-							16'd0202: begin OREG_RAM_WA <= 5'h0F; OREG_RAM_D <= SMEM_Q;                                                      OREG_RAM_WE <= '1; end
+							16'd0932: begin OREG_RAM_WA <= 5'h00; OREG_RAM_D <= {STE,RESD,6'b000000};                                        OREG_RAM_WE <= 2'b11; end
+							16'd0908: begin OREG_RAM_WA <= 5'h01; OREG_RAM_D <= {RTC_YEAR[15:12],4'h0};                                      OREG_RAM_WE <= 2'b10; end
+							16'd0884: begin OREG_RAM_WA <= 5'h01; OREG_RAM_D <= {4'h0,RTC_YEAR[11:8]};                                       OREG_RAM_WE <= 2'b01; end
+							16'd0860: begin OREG_RAM_WA <= 5'h02; OREG_RAM_D <= {RTC_YEAR[7:4],4'h0};                                        OREG_RAM_WE <= 2'b10; end
+							16'd0836: begin OREG_RAM_WA <= 5'h02; OREG_RAM_D <= {4'h0,RTC_YEAR[3:0]};                                        OREG_RAM_WE <= 2'b01; end
+							16'd0812: begin OREG_RAM_WA <= 5'h03; OREG_RAM_D <= {RTC_DAY,4'h0};                                              OREG_RAM_WE <= 2'b10; end
+							16'd0788: begin OREG_RAM_WA <= 5'h03; OREG_RAM_D <= {4'h0,RTC_MONTH};                                            OREG_RAM_WE <= 2'b01; end
+							16'd0764: begin OREG_RAM_WA <= 5'h04; OREG_RAM_D <= RTC_DAYS;                                                    OREG_RAM_WE <= 2'b11; end
+							16'd0716: begin OREG_RAM_WA <= 5'h05; OREG_RAM_D <= RTC_HOUR;                                                    OREG_RAM_WE <= 2'b11; end
+							16'd0668: begin OREG_RAM_WA <= 5'h06; OREG_RAM_D <= RTC_MIN;                                                     OREG_RAM_WE <= 2'b11; end
+							16'd0620: begin OREG_RAM_WA <= 5'h07; OREG_RAM_D <= RTC_SEC;                                                     OREG_RAM_WE <= 2'b11; end
+							16'd0571: begin OREG_RAM_WA <= 5'h08; OREG_RAM_D <= 8'h00;                                                       OREG_RAM_WE <= 2'b11; end
+							16'd0521: begin OREG_RAM_WA <= 5'h09; OREG_RAM_D <= {4'b0000,AC};                                                OREG_RAM_WE <= 2'b11; end
+							16'd0471: begin OREG_RAM_WA <= 5'h0A; OREG_RAM_D <= {1'b0,DOTSEL,1'b1,SSHRES_N,MSHNMI_N,1'b1,SYSRES_N,SNDRES_N}; OREG_RAM_WE <= 2'b11; end
+							16'd0421: begin OREG_RAM_WA <= 5'h0B; OREG_RAM_D <= {1'b0,CDRES_N,6'b000010};                                    OREG_RAM_WE <= 2'b11; end
+							16'd0368: begin OREG_RAM_WA <= 5'h0C; OREG_RAM_D <= SMEM_Q;                                                      OREG_RAM_WE <= 2'b11; end
+							16'd0314: begin OREG_RAM_WA <= 5'h0D; OREG_RAM_D <= SMEM_Q;                                                      OREG_RAM_WE <= 2'b11; end
+							16'd0259: begin OREG_RAM_WA <= 5'h0E; OREG_RAM_D <= SMEM_Q;                                                      OREG_RAM_WE <= 2'b11; end
+							16'd0202: begin OREG_RAM_WA <= 5'h0F; OREG_RAM_D <= SMEM_Q;                                                      OREG_RAM_WE <= 2'b11; end
 							16'd0087: if (!IREG[1][3]) WAIT_CNT <= WAIT_CNT - 16'd24;
 							16'd0063: begin
 								SR[7:4] <= {1'b0,1'b1,1'b0,~SRES_N};
