@@ -16,6 +16,7 @@ set_global_assignment -name SYSTEMVERILOG_FILE rtl/ddram.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/vdp1_fb.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/hps2pad.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/ps2mouse.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/ps2keyboard.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/lightgun.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/cofi.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/jtframe_resync.v

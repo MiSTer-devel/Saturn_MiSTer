@@ -276,7 +276,7 @@ module emu
 	// 0         1         2         3          4         5         6   	   7         8         9
 	// 01234567890123456789012345678901 23456789012345678901234567890123 45678901234567890123456789012345
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXXXXXXXXXXXXXXX   XX          XXXXXXXXXXXXXXX XX XXXXXXXXXXXX    XX
+	// XXXX XXXXXXXXXXXXXX  XXXXXXXXXXX   XX      XXXXXXXXXXXXXXXXXXX XX XXXXXXXXXXXX    XX
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -327,14 +327,14 @@ module emu
 		"P2O[76],Swap Joysticks,No,Yes;",
 		"P2O[27],Pad 1 SNAC,OFF,ON;",
 		"P2-;",
-		"D5P2O[17:15],Pad 1,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Off;",
+		"D5P2O[18:15],Pad 1,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Keyboard,Off;",
 		"P2-;",
 		"D6P2O[46],LGun P1 XY Ctrl,Joy 1,Mouse;",
 		"D6P2O[47],LGun P1 Buttons,Joy 1,Mouse;",
 		"D6P2O[49:48],LGun P1 Crosshair,Small,Medium,Big,None;",
 		"P2-;",
 		"P2-;",
-		"D5P2O[20:18],Pad 2,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Off;",
+		"D5P2O[45:42],Pad 2,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Keyboard,Off;",
 		"P2-;",
 		"D7P2O[57],LGun P2 XY Ctrl,Joy 2,Mouse;",
 		"D7P2O[58],LGun P2 Buttons,Joy 2,Mouse;",
@@ -392,6 +392,13 @@ module emu
 	
 	wire         forced_scandoubler;
 	wire [ 10:0] ps2_key;
+`ifndef STV_BUILD
+	wire [  2:0] ps2_kbd_led_status;
+	wire [  2:0] ps2_kbd_led_use = 3'b111;
+`else
+	wire [  2:0] ps2_kbd_led_status = 3'b000;
+	wire [  2:0] ps2_kbd_led_use = 3'000;
+`endif
 	wire [ 24:0] ps2_mouse;
 	wire [ 15:0] ps2_mouse_ext;
 	
@@ -454,6 +461,8 @@ module emu
 		.sdram_sz(sdram_sz),
 	
 		.ps2_key(ps2_key),
+		.ps2_kbd_led_status(ps2_kbd_led_status),
+		.ps2_kbd_led_use(ps2_kbd_led_use),
 		.ps2_mouse(ps2_mouse),
 		.ps2_mouse_ext(ps2_mouse_ext),
 		
@@ -1173,11 +1182,13 @@ module emu
 		.JOY2_X2(joy1_x1),
 		.JOY2_Y2(joy1_y1),
 
-		.JOY1_TYPE(status[17:15]),
-		.JOY2_TYPE(status[20:18]),
+		.JOY1_TYPE(status[18:15]),
+		.JOY2_TYPE(status[45:42]),
 
 		.MOUSE(ps2_mouse),
 		.MOUSE_EXT(ps2_mouse_ext),
+		.PS2_KEY(ps2_key),
+		.PS2_LED(ps2_kbd_led_status),
 		
 		.LGUN_P1_TRIG(lg_p1_a),
 		.LGUN_P1_START(lg_p1_start),
@@ -1190,7 +1201,7 @@ module emu
 	
 	
 `ifndef DEBUG
-	wire lg_p1_ena = (status[17:15]==3'd1);
+	wire lg_p1_ena = (status[18:15]==4'd1);
 	
 	wire       lg_p1_sensor;
 	wire       lg_p1_a;
@@ -1247,7 +1258,7 @@ module emu
 	);
 
 
-	wire lg_p2_ena = (status[20:18]==3'd1);
+	wire lg_p2_ena = (status[45:42]==4'd1);
 	
 	wire       lg_p2_sensor;
 	wire       lg_p2_a;
