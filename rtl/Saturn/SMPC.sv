@@ -1206,11 +1206,11 @@ module SMPC (
 					end
 					
 					PS_ID5_4: begin
-						if (ID2 == 8'h02 || ID2 == 8'h13 || ID2 == 8'h15 || ID2 == 8'h16 || ID2 == 8'h19) begin//8'h13-wheel,8'h15-mission stick,8'h16-3dpad,8'h19-dual mission stick
+						if (ID2 == 8'h02 || ID2 == 8'h13 || ID2 == 8'h15 || ID2 == 8'h16 || ID2 == 8'h19 || ID2 == 8'h34) begin//8'h13-wheel,8'h15-mission stick,8'h16-3dpad,8'h19-dual mission stick,8'h34-keyboard
 							PERI_OREG_DATA <= 8'hF1;
 							PERI_OREG_WRITE <= 1;
 							PORT_ST <= PS_ANALOG_5;
-						end else begin //TODO: keyboard,multitap
+						end else begin //TODO: multitap
 							PORT_ST <= PS_NEXT;
 						end
 					end

@@ -22,11 +22,13 @@ module HPS2PAD (
    input      [ 7: 0] JOY2_X2,
    input      [ 7: 0] JOY2_Y2,
 
-   input      [ 2: 0] JOY1_TYPE,
-   input      [ 2: 0] JOY2_TYPE,
+   input      [ 3: 0] JOY1_TYPE,
+   input      [ 3: 0] JOY2_TYPE,
 
    input      [24: 0] MOUSE,
    input      [15: 0] MOUSE_EXT,
+   input      [10: 0] PS2_KEY,
+   output     [ 2: 0] PS2_LED,
 	
    input              LGUN_P1_TRIG,
    input              LGUN_P1_START,
@@ -98,7 +100,66 @@ module HPS2PAD (
 	parameter PAD_3D          = 4;
 	parameter PAD_DUALMISSION = 5;
 	parameter PAD_MOUSE       = 6;
-	parameter PAD_OFF         = 7;
+	parameter PAD_KEYBOARD    = 7;
+	parameter PAD_OFF         = 8;
+
+	// Keyboard
+	wire  [ 2:0] kbd_led;
+	wire  [ 3:0] kbd_nib_dpad;
+	wire  [ 3:0] kbd_nib_start_abc;
+	wire  [ 3:0] kbd_nib_rxyz;
+	wire  [ 3:0] kbd_nib_lxxx;
+	wire         kbd_ev_valid;
+	wire         kbd_ev_make;
+	wire  [ 7:0] kbd_ev_sc;
+	logic        kbd_ev_pop;
+	logic        kbd_pkt_ev_valid;
+	logic        kbd_pkt_ev_make;
+	logic [ 7:0] kbd_pkt_ev_sc;
+	wire         kbd_p1_req = (JOY1_TYPE == PAD_KEYBOARD);
+	wire         kbd_p2_req = (JOY2_TYPE == PAD_KEYBOARD);
+	wire         kbd_sel_p1 = kbd_p1_req;
+	wire         kbd_sel_p2 = kbd_p2_req & ~kbd_p1_req;
+	wire         kbd_ena    = kbd_sel_p1 | kbd_sel_p2;
+
+	wire  [ 6:0] kbd_port_o = kbd_sel_p2 ? PDR2O : PDR1O;
+	wire  [ 6:0] kbd_port_d = kbd_sel_p2 ? DDR2  : DDR1;
+	wire         kbd_tr = kbd_port_o[5];
+	wire         kbd_th = kbd_port_o[6];
+	wire         kbd_idle_cmd = kbd_tr & kbd_th;
+	wire         kbd_cfg_ok = (kbd_port_d[6:5] == 2'b11);
+	wire         kbd_id_ok  = (kbd_port_d[6:5] == 2'b10);
+	wire         kbd_active    = kbd_ena & kbd_cfg_ok;
+	wire         kbd_id_active = kbd_ena & kbd_id_ok;
+
+	logic        kbd_tr_d;
+	logic        kbd_in_packet;
+	logic        kbd_id2_done;
+	logic [ 3:0] kbd_nib_idx;
+	logic [ 3:0] kbd_nibble;
+	wire         kbd_tl = kbd_tr;
+
+	wire  [ 6:0] kbd_port_id_i  = {2'b11, 1'b1, 4'h1};
+	wire  [ 6:0] kbd_port_kbd_i = {2'b11, kbd_tl, kbd_nibble};
+	wire  [ 6:0] kbd_port_i = kbd_id_active ? kbd_port_id_i : kbd_port_kbd_i;
+
+	assign PS2_LED = kbd_ena ? kbd_led : 3'b000;
+
+	ps2keyboard keyboard (
+		.clk(CLK),
+		.reset(~RST_N),
+		.enable(kbd_ena),
+		.ps2_key(PS2_KEY),
+		.ps2_led(kbd_led),
+		.nib_dpad(kbd_nib_dpad),
+		.nib_start_abc(kbd_nib_start_abc),
+		.nib_rxyz(kbd_nib_rxyz),
+		.nib_lxxx(kbd_nib_lxxx),
+		.ev_valid(kbd_ev_valid),
+		.ev_make(kbd_ev_make),
+		.ev_sc(kbd_ev_sc),
+		.ev_pop(kbd_ev_pop)
+	);
 	
 	bit [ 3: 0] OUT1,OUT2;
 	bit         TL1,TL2;
@@ -294,6 +355,91 @@ module HPS2PAD (
 	end
 
 	always_comb begin
+		if(!kbd_in_packet) begin
+			if(kbd_active) kbd_nibble = kbd_tr ? 4'h4 : 4'h3;
+			else           kbd_nibble = 4'h1;
+		end else begin
+			case(kbd_nib_idx)
+				4'd0:  kbd_nibble = 4'h3;
+				4'd1:  kbd_nibble = 4'h4;
+				4'd2:  kbd_nibble = kbd_nib_dpad;
+				4'd3:  kbd_nibble = kbd_nib_start_abc;
+				4'd4:  kbd_nibble = kbd_nib_rxyz;
+				4'd5:  kbd_nibble = kbd_nib_lxxx;
+				4'd6:  kbd_nibble = {1'b0, kbd_led[0], kbd_led[1], kbd_led[2]};
+				4'd7:  kbd_nibble = {(kbd_pkt_ev_valid & kbd_pkt_ev_make), 1'b1, 1'b1, (kbd_pkt_ev_valid & ~kbd_pkt_ev_make)};
+				4'd8:  kbd_nibble = kbd_pkt_ev_sc[7:4];
+				4'd9:  kbd_nibble = kbd_pkt_ev_sc[3:0];
+				4'd10: kbd_nibble = 4'h0;
+				4'd11: kbd_nibble = 4'h1;
+				default: kbd_nibble = 4'h0;
+			endcase
+		end
+	end
+
+	always_ff @(posedge CLK or negedge RST_N) begin
+		if(!RST_N) begin
+			kbd_tr_d         <= 1'b1;
+			kbd_in_packet    <= 1'b0;
+			kbd_id2_done     <= 1'b0;
+			kbd_nib_idx      <= 4'd0;
+			kbd_pkt_ev_valid <= 1'b0;
+			kbd_pkt_ev_make  <= 1'b0;
+			kbd_pkt_ev_sc    <= 8'h00;
+			kbd_ev_pop       <= 1'b0;
+		end else begin
+			kbd_ev_pop <= 1'b0;
+
+			if(!kbd_ena) begin
+				kbd_tr_d         <= kbd_tr;
+				kbd_in_packet    <= 1'b0;
+				kbd_id2_done     <= 1'b0;
+				kbd_nib_idx      <= 4'd0;
+				kbd_pkt_ev_valid <= 1'b0;
+				kbd_pkt_ev_make  <= 1'b0;
+				kbd_pkt_ev_sc    <= 8'h00;
+			end else if(!(kbd_active || kbd_id_active)) begin
+				kbd_tr_d      <= kbd_tr;
+				kbd_in_packet <= 1'b0;
+				kbd_id2_done  <= 1'b0;
+				kbd_nib_idx   <= 4'd0;
+			end else begin
+				if(kbd_idle_cmd) begin
+					kbd_in_packet    <= 1'b0;
+					kbd_id2_done     <= 1'b0;
+					kbd_pkt_ev_valid <= 1'b0;
+				end
+
+				if(kbd_tr != kbd_tr_d) begin
+					kbd_tr_d    <= kbd_tr;
+
+					if(kbd_in_packet) begin
+						if(kbd_nib_idx != 4'd11) kbd_nib_idx <= kbd_nib_idx + 1'd1;
+					end else begin
+						if(!kbd_id2_done && kbd_tr_d == 1'b0 && kbd_tr == 1'b1) kbd_id2_done <= 1'b1;
+
+						if(kbd_tr_d == 1'b1 && kbd_tr == 1'b0 && !kbd_idle_cmd) begin
+							kbd_in_packet <= 1'b1;
+							kbd_nib_idx   <= kbd_id2_done ? 4'd2 : 4'd0;
+
+							if(kbd_ev_valid) begin
+								kbd_pkt_ev_valid <= 1'b1;
+								kbd_pkt_ev_make  <= kbd_ev_make;
+								kbd_pkt_ev_sc    <= kbd_ev_sc;
+								kbd_ev_pop       <= 1'b1;
+							end else begin
+								kbd_pkt_ev_valid <= 1'b0;
+								kbd_pkt_ev_make  <= 1'b0;
+								kbd_pkt_ev_sc    <= 8'h00;
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	always_comb begin
 		PDR1I = (PDR1O & DDR1) | ~DDR1;
 		case (JOY1_TYPE)
 			PAD_DIGITAL: begin
@@ -350,6 +496,10 @@ module HPS2PAD (
 			PAD_DUALMISSION: begin
 				PDR1I[4:0] = {TL1,OUT1};
 			end
+
+			PAD_KEYBOARD: begin
+				if (kbd_sel_p1) PDR1I[4:0] = kbd_port_i[4:0];
+			end
 			
 			//TODO
 			default: ;
@@ -384,6 +534,10 @@ module HPS2PAD (
 			PAD_3D,
 			PAD_DUALMISSION: begin
 				PDR2I[4:0] = {TL2,OUT2};
+			end
+
+			PAD_KEYBOARD: begin
+				if (kbd_sel_p2) PDR2I[4:0] = kbd_port_i[4:0];
 			end
 			
 			//TODO
