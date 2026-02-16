@@ -397,7 +397,7 @@ module emu
 	wire [  2:0] ps2_kbd_led_use = 3'b111;
 `else
 	wire [  2:0] ps2_kbd_led_status = 3'b000;
-	wire [  2:0] ps2_kbd_led_use = 3'000;
+	wire [  2:0] ps2_kbd_led_use = 3'b000;
 `endif
 	wire [ 24:0] ps2_mouse;
 	wire [ 15:0] ps2_mouse_ext;
@@ -2202,5 +2202,6 @@ module emu
 
 
 endmodule
+
 
 
