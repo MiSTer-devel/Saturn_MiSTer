@@ -339,7 +339,7 @@ package SH7604_PKG;
 		bit [ 4: 0] UNUSED;
 	} RSTCSR_t;
 	parameter bit [7:0] RSTCSR_WMASK = 8'hE0;
-	parameter bit [7:0] RSTCSR_RMASK = 8'hE0;
+	parameter bit [7:0] RSTCSR_RMASK = 8'hFF;
 	parameter bit [7:0] RSTCSR_INIT = 8'h1F;
 	
 	//DIVU
