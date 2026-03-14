@@ -75,7 +75,7 @@ module SH7604_WDT
 				if (WT_CE) begin
 					if (WTCNT == 8'hFF && WTCSR.WTIT) begin
 						WDTOVF_N <= 0;
-						WRES <= RSTCSR.RSTE & ~RSTCSR.RSTS;
+						WRES <= RSTCSR.RSTE;
 					end
 				end
 				
