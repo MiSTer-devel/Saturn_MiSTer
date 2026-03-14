@@ -259,8 +259,8 @@ package SH7604_PKG;
 		bit         OVIE;			//R/W
 		bit         UNUSED2;
 	} TIER_t;
-	parameter bit [7:0] TIER_WMASK = 8'hFE;
-	parameter bit [7:0] TIER_RMASK = 8'hFF;
+	parameter bit [7:0] TIER_WMASK = 8'h8E;
+	parameter bit [7:0] TIER_RMASK = 8'h8F;
 	parameter bit [7:0] TIER_INIT = 8'h00;
 	
 	typedef struct packed		//R/W;FFFFFE11
