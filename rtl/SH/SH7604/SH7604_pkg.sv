@@ -304,7 +304,7 @@ package SH7604_PKG;
 		bit         OLVLA;		//R/W
 		bit         OLVLB;		//R/W
 	} TOCR_t;
-	parameter bit [7:0] TOCR_WMASK = 8'h1F;
+	parameter bit [7:0] TOCR_WMASK = 8'h13;
 	parameter bit [7:0] TOCR_RMASK = 8'hFF;
 	parameter bit [7:0] TOCR_INIT = 8'h00;
 	
