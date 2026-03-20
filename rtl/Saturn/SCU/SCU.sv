@@ -305,10 +305,14 @@ module SCU
 	bit          CBUS_WAIT;
 	bit  [ 3: 0] CBUS_RFS;
 	
+	bit          ECWAIT_N_FF;
+	always @(posedge CLK) 
+		ECWAIT_N_FF <= ECWAIT_N;
+		
 	bit          CCACHE_FULL[2];
 	wire [ 2: 0] CCACHE_WADDR = CBUS_A[4:2];
 	wire [31: 0] CCACHE_DATA = ECDI;
-	wire         CCACHE_WREN = CBUS_ST == CBUS_READ && ECWAIT_N && !CCACHE_FULL[CBUS_A[4]] && CE_R;
+	wire         CCACHE_WREN = CBUS_ST == CBUS_READ && ECWAIT_N_FF && !CCACHE_FULL[CBUS_A[4]] && CE_R;
 	bit  [ 2: 0] CCACHE_RADDR;
 	bit  [31: 0] CCACHE_Q;
 	SCU_CBUS_CACHE CCACHE(CLK,CCACHE_WADDR,CCACHE_DATA,CCACHE_WREN,CCACHE_RADDR,CCACHE_Q);
@@ -1627,7 +1631,7 @@ module SCU
 				end
 				
 				CBUS_IND_READ: if (CE_R) begin
-					if (ECWAIT_N) begin
+					if (ECWAIT_N_FF) begin
 						CBUS_A <= CBUS_A + 27'd4;
 						CBUS_RD <= 1;
 						CBUS_IND_POS <= CBUS_IND_POS + 3'd1;
@@ -1644,7 +1648,7 @@ module SCU
 				end
 				
 				CBUS_READ: if (CE_R) begin
-					if (ECWAIT_N && !CCACHE_FULL[CBUS_A[4]]) begin
+					if (ECWAIT_N_FF && !CCACHE_FULL[CBUS_A[4]]) begin
 						if (CBUS_RFS_PEND) begin
 							CBUS_RFS <= CBUS_RFS + 4'd1;
 							if (CBUS_RFS == 4'd15) CBUS_RFS_PEND <= 0;
@@ -1684,7 +1688,7 @@ module SCU
 				end
 				
 				CBUS_READ_END: if (CE_R) begin
-					if (ECWAIT_N) begin
+					if (ECWAIT_N_FF) begin
 						if (CBUS_A[3:2] != 2'b11 && !RAMH_SLOW) begin
 							CBUS_A <= CBUS_A + 27'd4;
 							CBUS_RD <= 1;
