@@ -1,7 +1,4 @@
 module SH7034_ROM 
-#(
-	parameter rom_file = ""
-)
 (
 	input             CLK,
 	input             RST_N,
@@ -15,17 +12,17 @@ module SH7034_ROM
 	input             IBUS_WE,
 	input             IBUS_REQ,
 	output            IBUS_BUSY,
-	output            IBUS_ACT
+	output            IBUS_ACT,
+	
+	output     [15:0] ROM_A,
+	input      [31:0] ROM_Q,
+	output            ROM_CS
 );
 	
 	wire ROM_SEL = (IBUS_A[26:24] == 3'h0);
-	bit [31:0] ROM_Q;
-	CPU_ROM #(rom_file) cpu_rom
-	(
-		.clock(CLK),
-		.address(IBUS_A[15:2]),
-		.q(ROM_Q)
-	);
+
+	assign ROM_A = IBUS_A[15:0];
+	assign ROM_CS = ROM_SEL;
 	
 	assign IBUS_DO = ROM_Q;
 	assign IBUS_BUSY = 0;

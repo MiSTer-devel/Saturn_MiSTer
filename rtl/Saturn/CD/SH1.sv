@@ -48,7 +48,16 @@ module SH1
 	input             WAITN
 );
 
-	SH7034 #(.rom_file(rom_file), .UBC_DISABLE(1), .SCI0_DISABLE(0), .SCI1_DISABLE(1), .WDT_DISABLE(1)) sh7034
+	bit [15:0] ROM_A;
+	bit [31:0] ROM_Q;
+	
+	bit [11:0] RAM_A;
+	bit [31:0] RAM_D;
+	bit [ 3:0] RAM_WE;
+	bit [31:0] RAM_Q;
+	bit        RAM_CS;
+	
+	SH7034 #(.UBC_DISABLE(1), .SCI0_DISABLE(0), .SCI1_DISABLE(1), .WDT_DISABLE(1)) sh7034
 	(
 		.CLK(CLK),
 		.RST_N(RST_N),
@@ -147,8 +156,101 @@ module SH1
 		
 		.WDTOVF_N(),
 		
-		.MD(3'b010)
+		.MD(3'b010),
+		
+		.ROM_A(ROM_A),
+		.ROM_Q(ROM_Q),
+		.ROM_CS(),
+		
+		.RAM_A(RAM_A),
+		.RAM_Q(RAM_Q),
+		.RAM_D(RAM_D),
+		.RAM_WE(RAM_WE),
+		.RAM_CS(RAM_CS)
 	);
+	
+	
+	bit [31:0] MEM_Q;
+	SH1_MEM #(rom_file) mem
+	(
+		.clock(CLK),
+		.wraddress({4'hE,RAM_A[11:2]}),
+		.data(RAM_D),
+		.wren(RAM_WE & {4{RAM_CS&CE_R}}),
+		.rdaddress(RAM_CS ? {4'hE,RAM_A[11:2]} : ROM_A[15:2]),
+		.q(MEM_Q)
+	);
+	assign ROM_Q = ROM_A[15:12] == 4'hE ? 32'hFFFFFFFF : MEM_Q;
+	assign RAM_Q = MEM_Q;
 
+endmodule
+
+// synopsys translate_off
+`define SIM
+// synopsys translate_on
+
+module SH1_MEM #(parameter rom_file = "")
+(
+	data,
+	rdaddress,
+	clock,
+	wraddress,
+	wren,
+	q);
+
+	input	[31:0]  data;
+	input	[13:0]  rdaddress;
+	input	  clock;
+	input	[13:0]  wraddress;
+	input	[3:0] wren;
+	output	[31:0]  q;
+
+	wire [31:0] sub_wire0;
+	wire [31:0] q = sub_wire0;
+
+	altsyncram	altsyncram_component (
+				.address_a (wraddress),
+				.address_b (rdaddress),
+				.clock0 (clock),
+				.clock1 (clock),
+				.data_a (data),
+				.wren_a (|wren),
+				.q_b (sub_wire0),
+				.aclr0 (1'b0),
+				.aclr1 (1'b0),
+				.addressstall_a (1'b0),
+				.addressstall_b (1'b0),
+				.byteena_a (wren),
+				.byteena_b (1'b1),
+				.clocken0 (1'b1),
+				.clocken1 (1'b1),
+				.clocken2 (1'b1),
+				.clocken3 (1'b1),
+				.data_b ({32{1'b1}}),
+				.eccstatus (),
+				.q_a (),
+				.rden_a (1'b1),
+				.rden_b (1'b1),
+				.wren_b (1'b0));
+	defparam
+		altsyncram_component.address_aclr_b = "NONE",
+		altsyncram_component.address_reg_b = "CLOCK1",
+		altsyncram_component.clock_enable_input_a = "BYPASS",
+		altsyncram_component.clock_enable_input_b = "BYPASS",
+		altsyncram_component.clock_enable_output_b = "BYPASS",
+		altsyncram_component.init_file = rom_file,
+		altsyncram_component.intended_device_family = "Cyclone V",
+		altsyncram_component.lpm_type = "altsyncram",
+		altsyncram_component.numwords_a = 2**14,
+		altsyncram_component.numwords_b = 2**14,
+		altsyncram_component.operation_mode = "DUAL_PORT",
+		altsyncram_component.outdata_aclr_b = "NONE",
+		altsyncram_component.outdata_reg_b = "UNREGISTERED",
+		altsyncram_component.power_up_uninitialized = "FALSE",
+		altsyncram_component.widthad_a = 14,
+		altsyncram_component.widthad_b = 14,
+		altsyncram_component.width_a = 32,
+		altsyncram_component.width_b = 32,
+		altsyncram_component.width_byteena_a = 4;
 
 endmodule
