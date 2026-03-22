@@ -75,7 +75,7 @@ module SH7604_WDT
 				if (WT_CE) begin
 					if (WTCNT == 8'hFF && WTCSR.WTIT) begin
 						WDTOVF_N <= 0;
-						WRES <= RSTCSR.RSTE & ~RSTCSR.RSTS;
+						WRES <= RSTCSR.RSTE;
 					end
 				end
 				
@@ -221,7 +221,7 @@ module SH7604_WDT
 						3'h0: REG_DO <= (WTCSR | 8'h18) & WTCSR_RMASK;
 						3'h1: REG_DO <= WTCNT & WTCNT_RMASK;
 						3'h2: REG_DO <= '1;
-						3'h3: REG_DO <= RSTCSR & RSTCSR_RMASK;
+						3'h3: REG_DO <= (RSTCSR | 8'h1F) & RSTCSR_RMASK;
 						3'h4: REG_DO <= OPEN_BUS;
 						3'h5: REG_DO <= '1;
 						3'h6: REG_DO <= '1;
