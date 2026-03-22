@@ -276,7 +276,7 @@ module emu
 	// 0         1         2         3          4         5         6   	   7         8         9
 	// 01234567890123456789012345678901 23456789012345678901234567890123 45678901234567890123456789012345
 	// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-	// XXXX XXXXXXXXXXXXXX  XXXXXXXXXXX   XX      XXXXXXXXXXXXXXXXXXX XX XXXXXXXXXXXX    XX
+	// XXXXXXXXXXXXXXXXXXX  XXXXXXXXXXX   XX      XXXXXXXXXXXXXXXXXXX XX XXXXXXXXXXXX    XX
 	
 	`include "build_id.v"
 	localparam CONF_STR = {
@@ -285,6 +285,7 @@ module emu
 		"S0,CUECHD,Insert Disc;",
 		"FS2,BIN,Load bios;",
 		"FS3,BIN,Load cartridge;",
+		"O[4],Reset on insert,Yes,No;",
 		"-;",
 		"O[23:21],Cartridge,None,ROM 2M,DRAM 1M,DRAM 4M,DRAM 6M DEV,BACKUP;",
 		"O[35:33],Region,Japan,Taiwan,USA,Brazil,Korea,Asia,Europe,Auto;",
