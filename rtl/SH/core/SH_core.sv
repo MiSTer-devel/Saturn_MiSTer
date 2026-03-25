@@ -202,6 +202,7 @@ module SH_core
 	//**********************************************************
 	assign IF_STALL = BUS_STALL | INST_SPLIT | IFID_STALL;
 	
+	wire       INT_BLOCKED = PIPE.EX.DI.IBI;
 	IFtoID_t   SAVE_ID;
 	always @(posedge CLK or negedge RST_N) begin
 		bit [15: 0] SAVE_IR;
@@ -250,7 +251,7 @@ module SH_core
 			end
 			
 			if (!ID_STALL) begin
-				if (INT_REQ && !INT_REQ_LATCH) begin
+				if (INT_REQ && !INT_BLOCKED && !ID_DELAY_SLOT && !IFID_STALL && !INT_REQ_LATCH) begin
 					INT_REQ_LATCH <= 1;
 					INT_LVL_LATCH <= INT_LVL;
 				end else if (STATE == 3'd5 && INT_REQ_LATCH) begin
@@ -271,7 +272,7 @@ module SH_core
 	
 	wire ID_DELAY_SLOT = ~PIPE.EX.DI.BR.BI & (PIPE.EX.DI.BR.BT == CB | PIPE.EX.DI.BR.BT == UCB);
 	
-	wire [15:0] DEC_IR = (INT_REQ | INT_REQ_LATCH) && !ID_DELAY_SLOT && !IFID_STALL ? 16'hF100 : 
+	wire [15:0] DEC_IR = ((INT_REQ && !INT_BLOCKED) || INT_REQ_LATCH) && !ID_DELAY_SLOT && !IFID_STALL ? 16'hF100 : 
 							   PIPE.EX.DI.ILI ? 16'hF204 :
 								ID_DELAY_SLOT && !PIPE.EX.DI.BR.BD ? 16'h0009 :
 								IFID_STALL ? PIPE.EX.IR : PIPE.ID.IR;
@@ -816,7 +817,7 @@ module SH_core
 	assign MAC_WE = |PIPE.MA.DI.MAC.S & PIPE.MA.DI.MAC.W & MA_ACTIVE & ~MA_STALL;
 	
 	assign INT_MASK = SR.I;
-	assign INT_ACP = INT_REQ & ~INT_REQ_LATCH & ~ID_STALL;
+	assign INT_ACP = INT_REQ & ~INT_REQ_LATCH & ~INT_BLOCKED & ~ID_DELAY_SLOT & ~IFID_STALL & ~ID_STALL;
 	assign INT_ACK = PIPE.MA.DI.VECR & ~MA_STALL;
 	assign VECT_REQ = VECT_ACTIVE;
 	
