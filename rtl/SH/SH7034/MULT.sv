@@ -26,16 +26,15 @@ module SH7034_MULT (
 	bit  [9:0] MACH;
 	bit [15:0] MA;
 	bit [15:0] MB;
+	bit        SIGNED;
 	
-	wire [31:0] SRES =   $signed(MA) *   $signed(MB);
-	wire [31:0] URES = $unsigned(MA) * $unsigned(MB);
+	wire [32:0] SRES =   $signed({MA[15]&SIGNED,MA}) *   $signed({MB[15]&SIGNED,MB});
 	wire [41:0] ACC  = {MACH,MACL} + {{10{SRES[31]}},SRES};
 	
 	always @(posedge CLK or negedge RST_N) begin
 		bit        MUL_EXEC;
 		bit        MACW_EXEC;
 //		bit        SAT;
-		bit        SIGNED;
 		bit [15:0] DW;
 		
 		if (!RST_N) begin
@@ -85,8 +84,7 @@ module SH7034_MULT (
 			end
 			
 			if (MUL_EXEC) begin
-				if (SIGNED) MACL <= SRES[31:0];
-				else        MACL <= URES[31:0];
+				MACL <= SRES[31:0];
 				MUL_EXEC <= 0;
 			end
 			
