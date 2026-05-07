@@ -181,9 +181,14 @@ module emu
 	assign HDMI_FREEZE = 0;
 	assign VGA_DISABLE = 0;
 	
-	assign LED_DISK  = CD_BUF_RD;
-	assign LED_POWER = 0;
-	assign LED_USER  = bk_state;
+`ifndef STV_BUILD
+    assign LED_DISK  = CD_BUF_RD;
+    assign LED_USER  = bk_state;
+`else
+    assign LED_DISK  = 0;
+    assign LED_USER  = 0;
+`endif    
+    assign LED_POWER = 0;
 	assign VGA_SCALER= 0;
 	assign HDMI_BLACKOUT = 1;
 	assign HDMI_BOB_DEINT = status[29];
