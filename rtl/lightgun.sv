@@ -75,7 +75,7 @@ always @(posedge CLK) begin
 	reg [9:0] hcnt;
 	reg [8:0] vcnt;
 	reg [8:0] vtotal;
-	reg [15:0] hde_d;
+	reg [16:0] hde_d;
 	reg [9:0] xm,xp;
 	reg [8:0] ym,yp;
 	reg [8:0] cross_sz;
@@ -132,12 +132,13 @@ always @(posedge CLK) begin
 		else lg_y <= j_y - 9'd8;
 	end
 
-	if(CE_PIX) begin
-		hde_d <= {hde_d[14:0],HDE};
-		old_hde <= hde_d[15];
+	if(RESET) begin
+		hde_d <= '0;
+	end else if(CE_PIX) begin
+		hde_d <= {hde_d[15:0],HDE};
 		if(~&hcnt) hcnt <= hcnt + 1'd1;
-		if(~old_hde & ~HDE) hcnt <= 0;
-		if(old_hde & ~hde_d[15]) begin
+		if(~hde_d[16] & ~HDE) hcnt <= 0;
+		if(hde_d[16] & ~hde_d[15]) begin
 			if(~VDE) begin
 				vcnt <= 0;
 				if(vcnt) vtotal <= vcnt - 1'd1;
