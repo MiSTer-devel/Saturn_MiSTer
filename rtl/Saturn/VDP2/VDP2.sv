@@ -654,15 +654,15 @@ module VDP2 (
 	assign RSxREG = RSxRegs(REGS);
 	assign RPxREG = RPxRegs(REGS);
 	
+		bit [3:0] VCPA0; 
+		bit [3:0] VCPA1; 
+		bit [3:0] VCPB0; 
+		bit [3:0] VCPB1;
 	bit [1:0] RDBSA0; 
 	bit [1:0] RDBSA1; 
 	bit [1:0] RDBSB0; 
 	bit [1:0] RDBSB1;
 	always_comb begin
-		bit [3:0] VCPA0; 
-		bit [3:0] VCPA1; 
-		bit [3:0] VCPB0; 
-		bit [3:0] VCPB1;
 		
 		case (CELLX[2:0] & {~HRES[1],2'b11})
 			T0: begin VCPA0 = REGS.CYCA0L[15:12]; VCPA1 = REGS.RAMCTL.VRAMD ? REGS.CYCA1L[15:12] : REGS.CYCA0L[15:12]; 
@@ -682,7 +682,12 @@ module VDP2 (
 			T7: begin VCPA0 = REGS.CYCA0U[ 3: 0]; VCPA1 = REGS.RAMCTL.VRAMD ? REGS.CYCA1U[ 3: 0] : REGS.CYCA0U[ 3: 0]; 
 			          VCPB0 = REGS.CYCB0U[ 3: 0]; VCPB1 = REGS.RAMCTL.VRBMD ? REGS.CYCB1U[ 3: 0] : REGS.CYCB0U[ 3: 0]; end
 		endcase
-			
+		
+		RDBSA0 = REGS.RAMCTL.RDBSA0;
+		RDBSA1 = REGS.RAMCTL.VRAMD ? REGS.RAMCTL.RDBSA1 : REGS.RAMCTL.RDBSA0;
+		RDBSB0 = REGS.RAMCTL.RDBSB0;
+		RDBSB1 = REGS.RAMCTL.VRBMD ? REGS.RAMCTL.RDBSB1 : REGS.RAMCTL.RDBSB0;
+		
 		VA_PIPE[0].NxA0PN[0] = VCPA0 == VCP_N0PN                  & NPN_FETCH  & NSxREG[0].ON & (RDBSA0 == 2'b00 | !RSxREG[0].ON)                ;
 		VA_PIPE[0].NxA1PN[0] = VCPA1 == VCP_N0PN                  & NPN_FETCH  & NSxREG[0].ON & (RDBSA1 == 2'b00 | !RSxREG[0].ON)                ;
 		VA_PIPE[0].NxB0PN[0] = VCPB0 == VCP_N0PN                  & NPN_FETCH  & NSxREG[0].ON & (RDBSB0 == 2'b00 | !RSxREG[0].ON) & !RSxREG[1].ON;
@@ -795,6 +800,7 @@ module VDP2 (
 		VA_PIPE[0].RxY[1] = RxY[1].INT;
 	end
 	
+	bit  [ 7 : 0] NxPN_CYC_BY_T[4];
 	bit           NxPN_CYC[4];
 	always @(posedge CLK or negedge RST_N) begin
 		if (!RST_N) begin
@@ -808,29 +814,33 @@ module VDP2 (
 			VA_PIPE[3] <= VA_PIPE[2];
 			VA_PIPE[4] <= VA_PIPE[3];
 			
-			RDBSA0 <= REGS.RAMCTL.RDBSA0;
-			RDBSA1 <= REGS.RAMCTL.VRAMD ? REGS.RAMCTL.RDBSA1 : REGS.RAMCTL.RDBSA0;
-			RDBSB0 <= REGS.RAMCTL.RDBSB0;
-			RDBSB1 <= REGS.RAMCTL.VRBMD ? REGS.RAMCTL.RDBSB1 : REGS.RAMCTL.RDBSB0;
+			NxPN_CYC_BY_T[0][CELLX[2:0] & {~HRES[1],2'b11}] <= (VCPA0 == VCP_N0PN || VCPA1 == VCP_N0PN || VCPB0 == VCP_N0PN || VCPB1 == VCP_N0PN);
+			NxPN_CYC_BY_T[1][CELLX[2:0] & {~HRES[1],2'b11}] <= (VCPA0 == VCP_N1PN || VCPA1 == VCP_N1PN || VCPB0 == VCP_N1PN || VCPB1 == VCP_N1PN);
+			NxPN_CYC_BY_T[2][CELLX[2:0] & {~HRES[1],2'b11}] <= (VCPA0 == VCP_N2PN || VCPA1 == VCP_N2PN || VCPB0 == VCP_N2PN || VCPB1 == VCP_N2PN);
+			NxPN_CYC_BY_T[3][CELLX[2:0] & {~HRES[1],2'b11}] <= (VCPA0 == VCP_N3PN || VCPA1 == VCP_N3PN || VCPB0 == VCP_N3PN || VCPB1 == VCP_N3PN);
 			
-			NxPN_CYC[0] <=  (REGS.CYCA0L[15:12] == VCP_N0PN || REGS.CYCA0L[11:8] == VCP_N0PN || REGS.CYCA0L[7:4] == VCP_N0PN || REGS.CYCA0L[3:0] == VCP_N0PN || REGS.CYCA0U[15:12] == VCP_N0PN || REGS.CYCA0U[11:8] == VCP_N0PN || REGS.CYCA0U[7:4] == VCP_N0PN || REGS.CYCA0U[3:0] == VCP_N0PN) || 
-							   ((REGS.CYCA1L[15:12] == VCP_N0PN || REGS.CYCA1L[11:8] == VCP_N0PN || REGS.CYCA1L[7:4] == VCP_N0PN || REGS.CYCA1L[3:0] == VCP_N0PN || REGS.CYCA1U[15:12] == VCP_N0PN || REGS.CYCA1U[11:8] == VCP_N0PN || REGS.CYCA1U[7:4] == VCP_N0PN || REGS.CYCA1U[3:0] == VCP_N0PN) && REGS.RAMCTL.VRAMD) || 
-							 	 (REGS.CYCB0L[15:12] == VCP_N0PN || REGS.CYCB0L[11:8] == VCP_N0PN || REGS.CYCB0L[7:4] == VCP_N0PN || REGS.CYCB0L[3:0] == VCP_N0PN || REGS.CYCB0U[15:12] == VCP_N0PN || REGS.CYCB0U[11:8] == VCP_N0PN || REGS.CYCB0U[7:4] == VCP_N0PN || REGS.CYCB0U[3:0] == VCP_N0PN) || 
-							   ((REGS.CYCB1L[15:12] == VCP_N0PN || REGS.CYCB1L[11:8] == VCP_N0PN || REGS.CYCB1L[7:4] == VCP_N0PN || REGS.CYCB1L[3:0] == VCP_N0PN || REGS.CYCB1U[15:12] == VCP_N0PN || REGS.CYCB1U[11:8] == VCP_N0PN || REGS.CYCB1U[7:4] == VCP_N0PN || REGS.CYCB1U[3:0] == VCP_N0PN) && REGS.RAMCTL.VRBMD);
-			NxPN_CYC[1] <=  (REGS.CYCA0L[15:12] == VCP_N1PN || REGS.CYCA0L[11:8] == VCP_N1PN || REGS.CYCA0L[7:4] == VCP_N1PN || REGS.CYCA0L[3:0] == VCP_N1PN || REGS.CYCA0U[15:12] == VCP_N1PN || REGS.CYCA0U[11:8] == VCP_N1PN || REGS.CYCA0U[7:4] == VCP_N1PN || REGS.CYCA0U[3:0] == VCP_N1PN) ||
-							   ((REGS.CYCA1L[15:12] == VCP_N1PN || REGS.CYCA1L[11:8] == VCP_N1PN || REGS.CYCA1L[7:4] == VCP_N1PN || REGS.CYCA1L[3:0] == VCP_N1PN || REGS.CYCA1U[15:12] == VCP_N1PN || REGS.CYCA1U[11:8] == VCP_N1PN || REGS.CYCA1U[7:4] == VCP_N1PN || REGS.CYCA1U[3:0] == VCP_N1PN) && REGS.RAMCTL.VRAMD) || 
-								 (REGS.CYCB0L[15:12] == VCP_N1PN || REGS.CYCB0L[11:8] == VCP_N1PN || REGS.CYCB0L[7:4] == VCP_N1PN || REGS.CYCB0L[3:0] == VCP_N1PN || REGS.CYCB0U[15:12] == VCP_N1PN || REGS.CYCB0U[11:8] == VCP_N1PN || REGS.CYCB0U[7:4] == VCP_N1PN || REGS.CYCB0U[3:0] == VCP_N1PN) ||
-							   ((REGS.CYCB1L[15:12] == VCP_N1PN || REGS.CYCB1L[11:8] == VCP_N1PN || REGS.CYCB1L[7:4] == VCP_N1PN || REGS.CYCB1L[3:0] == VCP_N1PN || REGS.CYCB1U[15:12] == VCP_N1PN || REGS.CYCB1U[11:8] == VCP_N1PN || REGS.CYCB1U[7:4] == VCP_N1PN || REGS.CYCB1U[3:0] == VCP_N1PN) && REGS.RAMCTL.VRBMD);
-			NxPN_CYC[2] <=  (REGS.CYCA0L[15:12] == VCP_N2PN || REGS.CYCA0L[11:8] == VCP_N2PN || REGS.CYCA0L[7:4] == VCP_N2PN || REGS.CYCA0L[3:0] == VCP_N2PN || REGS.CYCA0U[15:12] == VCP_N2PN || REGS.CYCA0U[11:8] == VCP_N2PN || REGS.CYCA0U[7:4] == VCP_N2PN || REGS.CYCA0U[3:0] == VCP_N2PN) ||
-							   ((REGS.CYCA1L[15:12] == VCP_N2PN || REGS.CYCA1L[11:8] == VCP_N2PN || REGS.CYCA1L[7:4] == VCP_N2PN || REGS.CYCA1L[3:0] == VCP_N2PN || REGS.CYCA1U[15:12] == VCP_N2PN || REGS.CYCA1U[11:8] == VCP_N2PN || REGS.CYCA1U[7:4] == VCP_N2PN || REGS.CYCA1U[3:0] == VCP_N2PN) && REGS.RAMCTL.VRAMD) ||
-								 (REGS.CYCB0L[15:12] == VCP_N2PN || REGS.CYCB0L[11:8] == VCP_N2PN || REGS.CYCB0L[7:4] == VCP_N2PN || REGS.CYCB0L[3:0] == VCP_N2PN || REGS.CYCB0U[15:12] == VCP_N2PN || REGS.CYCB0U[11:8] == VCP_N2PN || REGS.CYCB0U[7:4] == VCP_N2PN || REGS.CYCB0U[3:0] == VCP_N2PN) ||
-							   ((REGS.CYCB1L[15:12] == VCP_N2PN || REGS.CYCB1L[11:8] == VCP_N2PN || REGS.CYCB1L[7:4] == VCP_N2PN || REGS.CYCB1L[3:0] == VCP_N2PN || REGS.CYCB1U[15:12] == VCP_N2PN || REGS.CYCB1U[11:8] == VCP_N2PN || REGS.CYCB1U[7:4] == VCP_N2PN || REGS.CYCB1U[3:0] == VCP_N2PN) && REGS.RAMCTL.VRBMD);
-			NxPN_CYC[3] <=  (REGS.CYCA0L[15:12] == VCP_N3PN || REGS.CYCA0L[11:8] == VCP_N3PN || REGS.CYCA0L[7:4] == VCP_N3PN || REGS.CYCA0L[3:0] == VCP_N3PN || REGS.CYCA0U[15:12] == VCP_N3PN || REGS.CYCA0U[11:8] == VCP_N3PN || REGS.CYCA0U[7:4] == VCP_N3PN || REGS.CYCA0U[3:0] == VCP_N3PN) ||
-							   ((REGS.CYCA1L[15:12] == VCP_N3PN || REGS.CYCA1L[11:8] == VCP_N3PN || REGS.CYCA1L[7:4] == VCP_N3PN || REGS.CYCA1L[3:0] == VCP_N3PN || REGS.CYCA1U[15:12] == VCP_N3PN || REGS.CYCA1U[11:8] == VCP_N3PN || REGS.CYCA1U[7:4] == VCP_N3PN || REGS.CYCA1U[3:0] == VCP_N3PN) && REGS.RAMCTL.VRAMD) ||
-								 (REGS.CYCB0L[15:12] == VCP_N3PN || REGS.CYCB0L[11:8] == VCP_N3PN || REGS.CYCB0L[7:4] == VCP_N3PN || REGS.CYCB0L[3:0] == VCP_N3PN || REGS.CYCB0U[15:12] == VCP_N3PN || REGS.CYCB0U[11:8] == VCP_N3PN || REGS.CYCB0U[7:4] == VCP_N3PN || REGS.CYCB0U[3:0] == VCP_N3PN) ||
-							   ((REGS.CYCB1L[15:12] == VCP_N3PN || REGS.CYCB1L[11:8] == VCP_N3PN || REGS.CYCB1L[7:4] == VCP_N3PN || REGS.CYCB1L[3:0] == VCP_N3PN || REGS.CYCB1U[15:12] == VCP_N3PN || REGS.CYCB1U[11:8] == VCP_N3PN || REGS.CYCB1U[7:4] == VCP_N3PN || REGS.CYCB1U[3:0] == VCP_N3PN) && REGS.RAMCTL.VRBMD);
+//			NxPN_CYC[0] <=  (REGS.CYCA0L[15:12] == VCP_N0PN || REGS.CYCA0L[11:8] == VCP_N0PN || REGS.CYCA0L[7:4] == VCP_N0PN || REGS.CYCA0L[3:0] == VCP_N0PN || REGS.CYCA0U[15:12] == VCP_N0PN || REGS.CYCA0U[11:8] == VCP_N0PN || REGS.CYCA0U[7:4] == VCP_N0PN || REGS.CYCA0U[3:0] == VCP_N0PN) || 
+//							   ((REGS.CYCA1L[15:12] == VCP_N0PN || REGS.CYCA1L[11:8] == VCP_N0PN || REGS.CYCA1L[7:4] == VCP_N0PN || REGS.CYCA1L[3:0] == VCP_N0PN || REGS.CYCA1U[15:12] == VCP_N0PN || REGS.CYCA1U[11:8] == VCP_N0PN || REGS.CYCA1U[7:4] == VCP_N0PN || REGS.CYCA1U[3:0] == VCP_N0PN) && REGS.RAMCTL.VRAMD) || 
+//							 	 (REGS.CYCB0L[15:12] == VCP_N0PN || REGS.CYCB0L[11:8] == VCP_N0PN || REGS.CYCB0L[7:4] == VCP_N0PN || REGS.CYCB0L[3:0] == VCP_N0PN || REGS.CYCB0U[15:12] == VCP_N0PN || REGS.CYCB0U[11:8] == VCP_N0PN || REGS.CYCB0U[7:4] == VCP_N0PN || REGS.CYCB0U[3:0] == VCP_N0PN) || 
+//							   ((REGS.CYCB1L[15:12] == VCP_N0PN || REGS.CYCB1L[11:8] == VCP_N0PN || REGS.CYCB1L[7:4] == VCP_N0PN || REGS.CYCB1L[3:0] == VCP_N0PN || REGS.CYCB1U[15:12] == VCP_N0PN || REGS.CYCB1U[11:8] == VCP_N0PN || REGS.CYCB1U[7:4] == VCP_N0PN || REGS.CYCB1U[3:0] == VCP_N0PN) && REGS.RAMCTL.VRBMD);
+//			NxPN_CYC[1] <=  (REGS.CYCA0L[15:12] == VCP_N1PN || REGS.CYCA0L[11:8] == VCP_N1PN || REGS.CYCA0L[7:4] == VCP_N1PN || REGS.CYCA0L[3:0] == VCP_N1PN || REGS.CYCA0U[15:12] == VCP_N1PN || REGS.CYCA0U[11:8] == VCP_N1PN || REGS.CYCA0U[7:4] == VCP_N1PN || REGS.CYCA0U[3:0] == VCP_N1PN) ||
+//							   ((REGS.CYCA1L[15:12] == VCP_N1PN || REGS.CYCA1L[11:8] == VCP_N1PN || REGS.CYCA1L[7:4] == VCP_N1PN || REGS.CYCA1L[3:0] == VCP_N1PN || REGS.CYCA1U[15:12] == VCP_N1PN || REGS.CYCA1U[11:8] == VCP_N1PN || REGS.CYCA1U[7:4] == VCP_N1PN || REGS.CYCA1U[3:0] == VCP_N1PN) && REGS.RAMCTL.VRAMD) || 
+//								 (REGS.CYCB0L[15:12] == VCP_N1PN || REGS.CYCB0L[11:8] == VCP_N1PN || REGS.CYCB0L[7:4] == VCP_N1PN || REGS.CYCB0L[3:0] == VCP_N1PN || REGS.CYCB0U[15:12] == VCP_N1PN || REGS.CYCB0U[11:8] == VCP_N1PN || REGS.CYCB0U[7:4] == VCP_N1PN || REGS.CYCB0U[3:0] == VCP_N1PN) ||
+//							   ((REGS.CYCB1L[15:12] == VCP_N1PN || REGS.CYCB1L[11:8] == VCP_N1PN || REGS.CYCB1L[7:4] == VCP_N1PN || REGS.CYCB1L[3:0] == VCP_N1PN || REGS.CYCB1U[15:12] == VCP_N1PN || REGS.CYCB1U[11:8] == VCP_N1PN || REGS.CYCB1U[7:4] == VCP_N1PN || REGS.CYCB1U[3:0] == VCP_N1PN) && REGS.RAMCTL.VRBMD);
+//			NxPN_CYC[2] <=  (REGS.CYCA0L[15:12] == VCP_N2PN || REGS.CYCA0L[11:8] == VCP_N2PN || REGS.CYCA0L[7:4] == VCP_N2PN || REGS.CYCA0L[3:0] == VCP_N2PN || REGS.CYCA0U[15:12] == VCP_N2PN || REGS.CYCA0U[11:8] == VCP_N2PN || REGS.CYCA0U[7:4] == VCP_N2PN || REGS.CYCA0U[3:0] == VCP_N2PN) ||
+//							   ((REGS.CYCA1L[15:12] == VCP_N2PN || REGS.CYCA1L[11:8] == VCP_N2PN || REGS.CYCA1L[7:4] == VCP_N2PN || REGS.CYCA1L[3:0] == VCP_N2PN || REGS.CYCA1U[15:12] == VCP_N2PN || REGS.CYCA1U[11:8] == VCP_N2PN || REGS.CYCA1U[7:4] == VCP_N2PN || REGS.CYCA1U[3:0] == VCP_N2PN) && REGS.RAMCTL.VRAMD) ||
+//								 (REGS.CYCB0L[15:12] == VCP_N2PN || REGS.CYCB0L[11:8] == VCP_N2PN || REGS.CYCB0L[7:4] == VCP_N2PN || REGS.CYCB0L[3:0] == VCP_N2PN || REGS.CYCB0U[15:12] == VCP_N2PN || REGS.CYCB0U[11:8] == VCP_N2PN || REGS.CYCB0U[7:4] == VCP_N2PN || REGS.CYCB0U[3:0] == VCP_N2PN) ||
+//							   ((REGS.CYCB1L[15:12] == VCP_N2PN || REGS.CYCB1L[11:8] == VCP_N2PN || REGS.CYCB1L[7:4] == VCP_N2PN || REGS.CYCB1L[3:0] == VCP_N2PN || REGS.CYCB1U[15:12] == VCP_N2PN || REGS.CYCB1U[11:8] == VCP_N2PN || REGS.CYCB1U[7:4] == VCP_N2PN || REGS.CYCB1U[3:0] == VCP_N2PN) && REGS.RAMCTL.VRBMD);
+//			NxPN_CYC[3] <=  (REGS.CYCA0L[15:12] == VCP_N3PN || REGS.CYCA0L[11:8] == VCP_N3PN || REGS.CYCA0L[7:4] == VCP_N3PN || REGS.CYCA0L[3:0] == VCP_N3PN || REGS.CYCA0U[15:12] == VCP_N3PN || REGS.CYCA0U[11:8] == VCP_N3PN || REGS.CYCA0U[7:4] == VCP_N3PN || REGS.CYCA0U[3:0] == VCP_N3PN) ||
+//							   ((REGS.CYCA1L[15:12] == VCP_N3PN || REGS.CYCA1L[11:8] == VCP_N3PN || REGS.CYCA1L[7:4] == VCP_N3PN || REGS.CYCA1L[3:0] == VCP_N3PN || REGS.CYCA1U[15:12] == VCP_N3PN || REGS.CYCA1U[11:8] == VCP_N3PN || REGS.CYCA1U[7:4] == VCP_N3PN || REGS.CYCA1U[3:0] == VCP_N3PN) && REGS.RAMCTL.VRAMD) ||
+//								 (REGS.CYCB0L[15:12] == VCP_N3PN || REGS.CYCB0L[11:8] == VCP_N3PN || REGS.CYCB0L[7:4] == VCP_N3PN || REGS.CYCB0L[3:0] == VCP_N3PN || REGS.CYCB0U[15:12] == VCP_N3PN || REGS.CYCB0U[11:8] == VCP_N3PN || REGS.CYCB0U[7:4] == VCP_N3PN || REGS.CYCB0U[3:0] == VCP_N3PN) ||
+//							   ((REGS.CYCB1L[15:12] == VCP_N3PN || REGS.CYCB1L[11:8] == VCP_N3PN || REGS.CYCB1L[7:4] == VCP_N3PN || REGS.CYCB1L[3:0] == VCP_N3PN || REGS.CYCB1U[15:12] == VCP_N3PN || REGS.CYCB1U[11:8] == VCP_N3PN || REGS.CYCB1U[7:4] == VCP_N3PN || REGS.CYCB1U[3:0] == VCP_N3PN) && REGS.RAMCTL.VRBMD);
 		end
 	end
+	assign NxPN_CYC[0] = |NxPN_CYC_BY_T[0];
+	assign NxPN_CYC[1] = |NxPN_CYC_BY_T[1];
+	assign NxPN_CYC[2] = |NxPN_CYC_BY_T[2];
+	assign NxPN_CYC[3] = |NxPN_CYC_BY_T[3];
 
 	
 	
@@ -1634,11 +1644,9 @@ module VDP2 (
 	always @(posedge CLK or negedge RST_N) begin
 		ScrollData_t CX[4];
 		bit  [31: 0] LS_WD;
-		bit          LS_RD[2];
+		bit          LS_RD;
+		bit          N2;
 		bit          SCYN_UPD[4];
-		
-		LS_RD[0] = ((WSCRNY[2:0] & NxLSSMask(NSxREG[0].LSS,1'b0) & {2'b11,~DDI}) == 3'b000);
-		LS_RD[1] = ((WSCRNY[2:0] & NxLSSMask(NSxREG[1].LSS,1'b0) & {2'b11,~DDI}) == 3'b000);
 		
 		if (!RST_N) begin
 			// synopsys translate_off
@@ -1676,7 +1684,15 @@ module VDP2 (
 					NVCSY[1] <= VS[1] & {19{NSxREG[1].VCSC&~NSxREG[1].MZE}};
 				end
 				
+				N2 = VA_PIPE[2].LS_POS[2];
 				if (VA_PIPE[2].LS) begin
+					if (VA_PIPE[2].LS_POS == 3'b000) begin
+						MOSAIC_VCNT <= MOSAIC_VCNT + 4'd1;
+						if (MOSAIC_VCNT == REGS.MZCTL.MZSZV || IS_LAST_LINE) begin
+							MOSAIC_VCNT <= '0;
+						end
+					end
+					
 					case (VRAM_BANK_2)
 						2'b00: LS_WD = RA0_BUF;
 						2'b01: LS_WD = RA1_BUF;
@@ -1684,77 +1700,39 @@ module VDP2 (
 						2'b11: LS_WD = RB1_BUF;
 					endcase
 					
-					case (VA_PIPE[2].LS_POS)
-						3'b000: begin
-							NX[0] <= '0;
-							if (!NSxREG[0].LSCX)             begin NSX[0] <= NSxREG[0].SCX; end
-							else if (LS_RD[0])               begin NSX[0] <= NSxREG[0].SCX + LS_WD[26:8]; end
+					LS_RD = ((WSCRNY[2:0] & NxLSSMask(NSxREG[{1'b0,N2}].LSS,1'b0) & {2'b11,~DDI}) == 3'b000);
+					case (VA_PIPE[2].LS_POS[1:0])
+						2'b00: begin
+							                                                NX[{1'b0,N2}] <= '0;
+							if (!NSxREG[{1'b0,N2}].LSCX)              begin NSX[{1'b0,N2}] <= NSxREG[{1'b0,N2}].SCX; end
+							else if (LS_RD)                           begin NSX[{1'b0,N2}] <= NSxREG[{1'b0,N2}].SCX + LS_WD[26:8]; end
 							
-							NX[2] <= '0;
-					      NSX[2] <= NSxREG[2].SCX;
-							
-							MOSAIC_VCNT <= MOSAIC_VCNT + 4'd1;
-							if (MOSAIC_VCNT == REGS.MZCTL.MZSZV || IS_LAST_LINE) begin
-								MOSAIC_VCNT <= '0;
-							end
+							                                                NX[{1'b1,N2}] <= '0;
+					                                                      NSX[{1'b1,N2}] <= NSxREG[{1'b1,N2}].SCX;
 						end
-						3'b001: begin
-							if (NSxREG[0].LSCY && LS_RD[0])  begin NSY[0] <= NSxREG[0].SCY + LS_WD[26:8]; 
-							                                       NY[0]  <= '0; end
+						2'b01: begin
+							if (NSxREG[{1'b0,N2}].LSCY && LS_RD)      begin NSY[{1'b0,N2}] <= NSxREG[{1'b0,N2}].SCY + LS_WD[26:8]; 
+							                                                NY[{1'b0,N2}]  <= '0; end
 							else 
-							if (IS_LAST_LINE || SCYN_UPD[0]) begin NSY[0] <= NSxREG[0].SCY;
-							                                       NY[0]  <= (!DDI || ODD ? '0 : NSxREG[0].ZMY); end
-							else                             begin NY[0]  <= NY[0] + (!DDI ? NSxREG[0].ZMY : NSxREG[0].ZMY<<1); end
-							SCYN_UPD[0] <= 0;
+							if (IS_LAST_LINE || SCYN_UPD[{1'b0,N2}])  begin NSY[{1'b0,N2}] <= NSxREG[{1'b0,N2}].SCY;
+							                                                NY[{1'b0,N2}]  <= (!DDI || ODD ? '0 : NSxREG[{1'b0,N2}].ZMY); end
+							else                                      begin NY[{1'b0,N2}]  <= NY[{1'b0,N2}] + (!DDI ? NSxREG[{1'b0,N2}].ZMY : NSxREG[{1'b0,N2}].ZMY<<1); end
+							SCYN_UPD[{1'b0,N2}] <= 0;
 							
-							if (IS_LAST_LINE || SCYN_UPD[2]) begin NSY[2] <= NSxREG[2].SCY;
-							                                       NY[2]  <= (!DDI || ODD ? '0 : 19'h00100); end
-					      else                             begin NY[2]  <= NY[2] + (!DDI ? 19'h00100 : 19'h00200); end
-							SCYN_UPD[2] <= 0;
+							if (IS_LAST_LINE || SCYN_UPD[{1'b1,N2}])  begin NSY[{1'b1,N2}] <= NSxREG[{1'b1,N2}].SCY;
+							                                                NY[{1'b1,N2}]  <= (!DDI || ODD ? '0 : 19'h00100); end
+					      else                                      begin NY[{1'b1,N2}]  <= NY[{1'b1,N2}] + (!DDI ? 19'h00100 : 19'h00200); end
+							SCYN_UPD[{1'b1,N2}] <= 0;
 						end
-						3'b010: begin
-							if (!NSxREG[0].LZMX)             begin LZMX[0] <= NSxREG[0].ZMX; end
-							else if (LS_RD[0])               begin LZMX[0] <= LS_WD[18:8]; end
+						2'b10: begin
+							if (!NSxREG[{1'b0,N2}].LZMX)              begin LZMX[{1'b0,N2}] <= NSxREG[{1'b0,N2}].ZMX; end
+							else if (LS_RD)                           begin LZMX[{1'b0,N2}] <= LS_WD[18:8]; end
 							
-							if (!MOSAIC_VCNT || !NSxREG[0].MZE || IS_LAST_LINE) begin
-								NMOSY[0] <= NY[0] + NSY[0];
+							if (!MOSAIC_VCNT || !NSxREG[{1'b0,N2}].MZE || IS_LAST_LINE) begin
+								NMOSY[{1'b0,N2}] <= NY[{1'b0,N2}] + NSY[{1'b0,N2}];
 							end
-							if (!MOSAIC_VCNT || !NSxREG[2].MZE || IS_LAST_LINE) begin
-								NMOSY[2] <= NY[2] + NSY[2];
-							end
-						end
-						
-						3'b100: begin
-							NX[1] <= '0;
-							if (!NSxREG[1].LSCX)             begin NSX[1] <= NSxREG[1].SCX; end
-							else if (LS_RD[1])               begin NSX[1] <= NSxREG[1].SCX + LS_WD[26:8]; end
-							
-							NX[3] <= '0;
-					      NSX[3] <= NSxREG[3].SCX;
-						end
-						3'b101: begin
-							if (NSxREG[1].LSCY && LS_RD[1])  begin NSY[1] <= NSxREG[1].SCY + LS_WD[26:8];
-							                                       NY[1]  <= '0; end
-							else 
-							if (IS_LAST_LINE || SCYN_UPD[1]) begin NSY[1] <= NSxREG[1].SCY;
-							                                       NY[1]  <= (!DDI || ODD ? '0 : NSxREG[1].ZMY); end     
-							else                             begin NY[1]  <= NY[1] + (!DDI ? NSxREG[1].ZMY : NSxREG[1].ZMY<<1); end
-							SCYN_UPD[1] <= 0;
-							
-							if (IS_LAST_LINE || SCYN_UPD[3]) begin NSY[3] <= NSxREG[3].SCY;
-							                                       NY[3]  <= (!DDI || ODD ? '0 : 19'h00100); end
-					      else                             begin NY[3]  <= NY[3] + (!DDI ? 19'h00100 : 19'h00200); end
-							SCYN_UPD[3] <= 0;
-						end
-						3'b110: begin
-							if (!NSxREG[1].LZMX)             begin LZMX[1] <= NSxREG[1].ZMX; end
-							else if (LS_RD[1])               begin LZMX[1] <= LS_WD[18:8]; end
-							
-							if (!MOSAIC_VCNT || !NSxREG[1].MZE || IS_LAST_LINE) begin
-								NMOSY[1] <= NY[1] + NSY[1];
-							end
-							if (!MOSAIC_VCNT || !NSxREG[3].MZE || IS_LAST_LINE) begin
-								NMOSY[3] <= NY[3] + NSY[3];
+							if (!MOSAIC_VCNT || !NSxREG[{1'b1,N2}].MZE || IS_LAST_LINE) begin
+								NMOSY[{1'b1,N2}] <= NY[{1'b1,N2}] + NSY[{1'b1,N2}];
 							end
 						end
 					endcase
