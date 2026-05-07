@@ -1039,7 +1039,7 @@ module SMPC (
 							PORT_ST <= PS_MOUSE_0;
 						else if (MD_ID == 4'h5)
 							PORT_ST <= PS_ID5_0;
-						else if (MD_ID == 4'hF || 4'hA)
+						else if (MD_ID == 4'hF || MD_ID == 4'hA)
 							PORT_ST <= PS_NOTHING_STUNNER;
 						else 
 							PORT_ST <= PS_END;
