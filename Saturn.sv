@@ -181,9 +181,9 @@ module emu
 	assign HDMI_FREEZE = 0;
 	assign VGA_DISABLE = 0;
 	
-	assign LED_DISK  = 0;
+	assign LED_DISK  = CD_BUF_RD;
 	assign LED_POWER = 0;
-	assign LED_USER  = bios_download;
+	assign LED_USER  = bk_state;
 	assign VGA_SCALER= 0;
 	assign HDMI_BLACKOUT = 1;
 	assign HDMI_BOB_DEINT = status[29];
