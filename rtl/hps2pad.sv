@@ -54,8 +54,8 @@ module HPS2PAD (
 		if (!RST_N) begin
 			PORT_SEL <= 0;
 		end else if (SMPC_CE) begin
-			if (PDR1O[6:5] == 2'b11) begin PORT_SEL <= 0; end
-			if (PDR2O[6:5] == 2'b11) begin PORT_SEL <= 1; end
+			if (DDR1[6:5] == 2'b10 && PDR1O[6:5] == 2'b11) begin PORT_SEL <= 0; end
+			if (DDR2[6:5] == 2'b10 && PDR2O[6:5] == 2'b11) begin PORT_SEL <= 1; end
 		end
 	end
 	wire [ 6: 0] PORT_PDRxO = !PORT_SEL ? PDR1O : PDR2O;
