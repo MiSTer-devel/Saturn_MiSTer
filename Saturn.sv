@@ -306,6 +306,10 @@ module emu
 `endif
 		"D0O[26],Autosave,Off,On;", 
 		"-;",
+`ifdef SATURN_CHEAT_POC
+		"C,Cheats;",
+		"-;",
+`endif
 
 		"P1,Audio & Video;",
 		"P1-;",
@@ -1418,6 +1422,27 @@ module emu
 	wire [26: 1] IO_ADDR = cart_download ? {1'b1,ioctl_addr[25:1]} : {8'b00000000,ioctl_addr[18:1]};
 	wire [15: 0] IO_DATA = {ioctl_data[7:0],ioctl_data[15:8]};
 	wire         IO_WR = (bios_download | cart_download) & ioctl_wr;
+
+`ifdef SATURN_CHEAT_POC
+	///////////////////////////////////////////////////
+	// Stage 1 cheat POC: read replacement for aligned 32-bit CPU byte
+	// addresses in canonical high work RAM (0x06000000-0x060FFFFF) only.
+	// Byte and word cheats are intentionally not supported yet.
+	wire [31:0] ramh_read_data;
+	wire [31:0] ramh_read_data_cheat;
+
+	saturn_cheat_poc cheat_poc
+	(
+		.clk(clk_sys),
+		.code_download(ioctl_download && ioctl_index == 8'hFF),
+		.ioctl_wr(ioctl_wr),
+		.ioctl_addr(ioctl_addr),
+		.ioctl_data(ioctl_data),
+		.access_addr({12'h060,MEM_A[19:0]}),
+		.read_data(ramh_read_data),
+		.read_data_cheat(ramh_read_data_cheat)
+	);
+`endif
 	
 `ifndef STV_BUILD
 	reg  [31: 0] ramh_din;
@@ -1615,7 +1640,12 @@ module emu
 	
 `ifdef MISTER_DUAL_SDRAM
 
+`ifdef SATURN_CHEAT_POC
+	assign ramh_read_data = sdr2_do;
+	assign MEM_DI     = !RAMH_CS_N ? ramh_read_data_cheat :
+`else
 	assign MEM_DI     = !RAMH_CS_N ? sdr2_do : 
+`endif
 `ifdef STV_BUILD
 	                    !STVIO_CS_N ? {24'hFFFFFF,STVIO_DO} : 
 `endif
@@ -1628,7 +1658,12 @@ module emu
 							  
 `else
 
+`ifdef SATURN_CHEAT_POC
+	assign ramh_read_data = ramh_do;
+	assign MEM_DI     = !RAMH_CS_N ? ramh_read_data_cheat :
+`else
 	assign MEM_DI     = !RAMH_CS_N ? ramh_do : 
+`endif
 `ifdef STV_BUILD
 	                    !STVIO_CS_N ? {24'hFFFFFF,STVIO_DO} : 
 `endif
@@ -2208,6 +2243,71 @@ module emu
 
 
 endmodule
+
+
+`ifdef SATURN_CHEAT_POC
+module saturn_cheat_poc
+(
+	input             clk,
+	input             code_download,
+	input             ioctl_wr,
+	input      [25: 0] ioctl_addr,
+	input      [15: 0] ioctl_data,
+	input      [31: 0] access_addr,
+	input      [31: 0] read_data,
+	output reg [31: 0] read_data_cheat
+);
+
+	localparam ENTRY_COUNT = 8;
+
+	reg [31:0] flags   [ENTRY_COUNT];
+	reg [31:0] address [ENTRY_COUNT];
+	reg [31:0] compare [ENTRY_COUNT];
+	reg [31:0] replace [ENTRY_COUNT];
+	reg        valid   [ENTRY_COUNT];
+
+	initial begin
+		integer i;
+		for (i = 0; i < ENTRY_COUNT; i = i + 1) valid[i] = 0;
+	end
+
+	always @(posedge clk) begin
+		integer i;
+		if (code_download && ioctl_wr) begin
+			if (ioctl_addr == 0) begin
+				for (i = 0; i < ENTRY_COUNT; i = i + 1) valid[i] <= 0;
+			end
+
+			if (!ioctl_addr[25:7]) begin
+				case (ioctl_addr[3:0])
+					4'h0: flags[ioctl_addr[6:4]][15: 0] <= ioctl_data;
+					4'h2: flags[ioctl_addr[6:4]][31:16] <= ioctl_data;
+					4'h4: address[ioctl_addr[6:4]][15: 0] <= ioctl_data;
+					4'h6: address[ioctl_addr[6:4]][31:16] <= ioctl_data;
+					4'h8: compare[ioctl_addr[6:4]][15: 0] <= ioctl_data;
+					4'hA: compare[ioctl_addr[6:4]][31:16] <= ioctl_data;
+					4'hC: replace[ioctl_addr[6:4]][15: 0] <= ioctl_data;
+					4'hE: begin
+						replace[ioctl_addr[6:4]][31:16] <= ioctl_data;
+						valid[ioctl_addr[6:4]] <= 1;
+					end
+				endcase
+			end
+		end
+	end
+
+	always @(*) begin
+		integer i;
+		read_data_cheat = read_data;
+		for (i = 0; i < ENTRY_COUNT; i = i + 1) begin
+			if (valid[i] && address[i][31:20] == 12'h060 && !address[i][1:0] && address[i] == access_addr) begin
+				if (!flags[i][0] || read_data == compare[i]) read_data_cheat = replace[i];
+			end
+		end
+	end
+
+endmodule
+`endif
 
 
 
