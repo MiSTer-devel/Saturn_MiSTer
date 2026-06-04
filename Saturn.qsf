@@ -65,3 +65,4 @@ set_global_assignment -name SEED 9
 set_global_assignment -name VERILOG_MACRO "MISTER_DISABLE_YC=1"
 set_global_assignment -name VERILOG_MACRO "MISTER_DISABLE_ADAPTIVE=1"
 set_global_assignment -name VERILOG_MACRO "SATURN_CHEAT_POC=1"
+source sys/pll_q25.qip
