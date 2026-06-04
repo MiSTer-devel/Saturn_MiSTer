@@ -307,7 +307,7 @@ module emu
 		"D0O[26],Autosave,Off,On;", 
 		"-;",
 `ifdef SATURN_CHEAT_POC
-		"C,Cheats;",
+		"F8,CHT,Load patch table;",
 		"-;",
 `endif
 
@@ -319,8 +319,10 @@ module emu
 //		"P1O[3:1],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 		"P1-;",
 //		"P1O[12],Border,No,Yes;",
+`ifndef SATURN_DISABLE_COMPOSITE_BLEND
 		"P1o[50],Composite Blend,Off,On;",
 		"P1-;",
+`endif
 		"P1o[64],Horizontal Crop,Off,On;",
 		"D8P1o[81:80],Vertical Crop,Disabled,216p(5x),224p;",
 		"D8P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
@@ -337,18 +339,46 @@ module emu
 		"P2O[76],Swap Joysticks,No,Yes;",
 		"P2O[27],Pad 1 SNAC,OFF,ON;",
 		"P2-;",
+`ifdef SATURN_DISABLE_LIGHTGUN
+`ifdef SATURN_DISABLE_SATURN_MOUSE_KEYBOARD
+		"D5P2O[18:15],Pad 1,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission,Off,Off,Off;",
+`else
+		"D5P2O[18:15],Pad 1,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Keyboard,Off;",
+`endif
+`else
+`ifdef SATURN_DISABLE_SATURN_MOUSE_KEYBOARD
+		"D5P2O[18:15],Pad 1,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Off,Off,Off;",
+`else
 		"D5P2O[18:15],Pad 1,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Keyboard,Off;",
+`endif
+`endif
 		"P2-;",
+`ifndef SATURN_DISABLE_LIGHTGUN
 		"D6P2O[46],LGun P1 XY Ctrl,Joy 1,Mouse;",
 		"D6P2O[47],LGun P1 Buttons,Joy 1,Mouse;",
 		"D6P2O[49:48],LGun P1 Crosshair,Small,Medium,Big,None;",
 		"P2-;",
+`endif
 		"P2-;",
+`ifdef SATURN_DISABLE_LIGHTGUN
+`ifdef SATURN_DISABLE_SATURN_MOUSE_KEYBOARD
+		"D5P2O[45:42],Pad 2,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission,Off,Off,Off;",
+`else
+		"D5P2O[45:42],Pad 2,Digital,Off,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Keyboard,Off;",
+`endif
+`else
+`ifdef SATURN_DISABLE_SATURN_MOUSE_KEYBOARD
+		"D5P2O[45:42],Pad 2,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Off,Off,Off;",
+`else
 		"D5P2O[45:42],Pad 2,Digital,Virt LGun,Wheel,Mission Stick,3D Pad,Dual Mission,Mouse,Keyboard,Off;",
+`endif
+`endif
 		"P2-;",
+`ifndef SATURN_DISABLE_LIGHTGUN
 		"D7P2O[57],LGun P2 XY Ctrl,Joy 2,Mouse;",
 		"D7P2O[58],LGun P2 Buttons,Joy 2,Mouse;",
 		"D7P2O[60:59],LGun P2 Crosshair,Small,Medium,Big,None;",
+`endif
 `else
 		
 `endif
@@ -491,6 +521,9 @@ module emu
 	wire cart_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] == 2'h3);
 	wire save_download = ioctl_download & (ioctl_index[5:2] == 4'b0001);
 	wire save_upload = ioctl_upload & (ioctl_index[5:2] == 4'b0001);
+`ifdef SATURN_CHEAT_POC
+	wire cht_download = ioctl_download & (ioctl_index == 8'h08);
+`endif
 `ifndef STV_BUILD
 	wire cdd_download = ioctl_download & (ioctl_index[5:2] == 4'b0010);
 	wire cdboot_download = ioctl_download & (ioctl_index[5:2] == 4'b0011);
@@ -1167,6 +1200,25 @@ module emu
 	assign USERJOYSTICKOUT = SMPC_PDR1O;	
 	
 `ifndef STV_BUILD
+	wire [3:0] joy1_type_raw = status[18:15];
+	wire [3:0] joy2_type_raw = status[45:42];
+	wire [3:0] joy1_type =
+`ifdef SATURN_DISABLE_LIGHTGUN
+		(joy1_type_raw == 4'd1) ? 4'd0 :
+`endif
+`ifdef SATURN_DISABLE_SATURN_MOUSE_KEYBOARD
+		((joy1_type_raw == 4'd6) || (joy1_type_raw == 4'd7)) ? 4'd0 :
+`endif
+		joy1_type_raw;
+	wire [3:0] joy2_type =
+`ifdef SATURN_DISABLE_LIGHTGUN
+		(joy2_type_raw == 4'd1) ? 4'd0 :
+`endif
+`ifdef SATURN_DISABLE_SATURN_MOUSE_KEYBOARD
+		((joy2_type_raw == 4'd6) || (joy2_type_raw == 4'd7)) ? 4'd0 :
+`endif
+		joy2_type_raw;
+
 	HPS2PAD PAD
 	(
 		.CLK(clk_sys),
@@ -1192,8 +1244,8 @@ module emu
 		.JOY2_X2(joy1_x1),
 		.JOY2_Y2(joy1_y1),
 
-		.JOY1_TYPE(status[18:15]),
-		.JOY2_TYPE(status[45:42]),
+		.JOY1_TYPE(joy1_type),
+		.JOY2_TYPE(joy2_type),
 
 		.MOUSE(ps2_mouse),
 		.MOUSE_EXT(ps2_mouse_ext),
@@ -1210,6 +1262,7 @@ module emu
 	);
 	
 	
+`ifndef SATURN_DISABLE_LIGHTGUN
 `ifndef DEBUG
 	wire lg_p1_ena = (status[18:15]==4'd1);
 	
@@ -1330,6 +1383,21 @@ module emu
 	wire lg_p1_sensor = 0;
 	wire [2:0] lg_p1_target = '0;
 	wire [1:0] gun_p1_cross_size = '0;
+
+	wire lg_p2_ena = 0;
+	wire lg_p2_a = 0;
+	wire lg_p2_start = 0;
+	wire lg_p2_sensor = 0;
+	wire [2:0] lg_p2_target = '0;
+	wire [1:0] gun_p2_cross_size = '0;
+`endif
+`else
+	wire lg_p1_ena = 0;
+	wire lg_p1_a = 0;
+	wire lg_p1_start = 0;
+	wire lg_p1_sensor = 0;
+	wire [2:0] lg_p1_target = '0;
+	wire [1:0] gun_p1_cross_size = '0;
 		
 	wire lg_p2_ena = 0;
 	wire lg_p2_a = 0;
@@ -1425,22 +1493,27 @@ module emu
 
 `ifdef SATURN_CHEAT_POC
 	///////////////////////////////////////////////////
-	// Stage 1 cheat POC: read replacement for aligned 32-bit CPU byte
-	// addresses in canonical high work RAM (0x06000000-0x060FFFFF) only.
-	// Byte and word cheats are intentionally not supported yet.
-	wire [31:0] ramh_read_data;
-	wire [31:0] ramh_read_data_cheat;
+	// Fallback cheat POC: load a tiny .CHT patch table and inject aligned
+	// 32-bit writes into canonical high work RAM (0x06000000-0x060FFFFF).
+	// File format is big-endian bytes: "SCHT", u32 count, then u32 addr/data
+	// pairs. This area-test variant only uses the first valid record.
+	// Compare, freeze, byte/word writes, and read substitution are not supported.
+	wire [17:0] cheat_patch_addr;
+	wire [31:0] cheat_patch_data;
+	wire        cheat_patch_req;
+	wire        cheat_patch_ack;
 
 	saturn_cheat_poc cheat_poc
 	(
 		.clk(clk_sys),
-		.code_download(ioctl_download && ioctl_index == 8'hFF),
+		.cht_download(cht_download),
 		.ioctl_wr(ioctl_wr),
 		.ioctl_addr(ioctl_addr),
 		.ioctl_data(ioctl_data),
-		.access_addr({12'h060,MEM_A[19:0]}),
-		.read_data(ramh_read_data),
-		.read_data_cheat(ramh_read_data_cheat)
+		.patch_addr(cheat_patch_addr),
+		.patch_data(cheat_patch_data),
+		.patch_req(cheat_patch_req),
+		.patch_ack(cheat_patch_ack)
 	);
 `endif
 	
@@ -1464,6 +1537,76 @@ module emu
 	wire [15:0] cdram_do,raml_do,vdp1vram_do,vdp1fb_do,cdbuf_do,cart_do,eeprom_do,bsram_do,rax_do;
 	wire [31:0] ramh_do;
 	wire        cdram_busy,raml_busy,ramh_busy,vdp1vram_busy,vdp1fb_busy,cdbuf_busy,cart_busy,eeprom_busy,bios_busy,bsram_busy,rax_busy;
+`ifdef MISTER_DUAL_SDRAM
+	wire        sdr2_busy;
+`endif
+
+`ifdef SATURN_CHEAT_POC
+	///////////////////////////////////////////////////
+	// Registered RAMH patch injection. Uploaded patch data remains stable until
+	// acknowledged. The cooldown cycle gives the RAMH write edge detector a
+	// low cycle between injected writes.
+	reg         cheat_patch_req_meta = 0;
+	reg         cheat_patch_req_sync = 0;
+	reg         cheat_patch_req_seen = 0;
+	reg         cheat_patch_ack_ram = 0;
+	reg  [ 2:0] cheat_patch_state = 0;
+	reg  [17:0] cheat_patch_addr_ram;
+	reg  [31:0] cheat_patch_data_ram;
+	reg         cheat_patch_wr = 0;
+	reg         cheat_patch_hold = 0;
+
+`ifdef MISTER_DUAL_SDRAM
+	wire cheat_patch_backend_busy = sdr2_busy;
+`else
+	wire cheat_patch_backend_busy = ramh_busy;
+`endif
+	assign cheat_patch_ack = cheat_patch_ack_ram;
+
+	always @(posedge clk_ram) begin
+		cheat_patch_req_meta <= cheat_patch_req;
+		cheat_patch_req_sync <= cheat_patch_req_meta;
+		cheat_patch_wr <= 0;
+
+		case (cheat_patch_state)
+			0: begin
+				if (cheat_patch_req_sync != cheat_patch_req_seen) cheat_patch_state <= 1;
+			end
+
+			1: begin
+				if (RAMH_CS_N && !cheat_patch_backend_busy && !(|ramh_wr)) begin
+					cheat_patch_hold <= 1;
+					cheat_patch_state <= 2;
+				end
+			end
+
+			2: begin
+				if (!RAMH_CS_N || cheat_patch_backend_busy || |ramh_wr) begin
+					cheat_patch_hold <= 0;
+					cheat_patch_state <= 1;
+				end
+				else begin
+					cheat_patch_addr_ram <= cheat_patch_addr;
+					cheat_patch_data_ram <= cheat_patch_data;
+					cheat_patch_wr <= 1;
+					cheat_patch_state <= 3;
+				end
+			end
+
+			3: begin
+				cheat_patch_state <= 4;
+			end
+
+			4: begin
+				cheat_patch_req_seen <= cheat_patch_req_sync;
+				cheat_patch_ack_ram <= cheat_patch_req_sync;
+				cheat_patch_hold <= 0;
+				cheat_patch_state <= 0;
+			end
+		endcase
+	end
+`endif
+
 	ddram ddram
 	(
 		.*,
@@ -1477,10 +1620,27 @@ module emu
 		.ramh_wr  ('0),
 		.ramh_rd  (0),
 `else
-		.ramh_addr(MEM_A[19:2]),
-		.ramh_din (ramh_din),
-		.ramh_wr  (ramh_wr),
-		.ramh_rd  (~RAMH_CS_N & ~MEM_RD_N),
+		.ramh_addr(
+`ifdef SATURN_CHEAT_POC
+			cheat_patch_wr ? cheat_patch_addr_ram :
+`endif
+			MEM_A[19:2]),
+		.ramh_din (
+`ifdef SATURN_CHEAT_POC
+			cheat_patch_wr ? cheat_patch_data_ram :
+`endif
+			ramh_din),
+		.ramh_wr  (
+`ifdef SATURN_CHEAT_POC
+			cheat_patch_wr ? 4'hF :
+			cheat_patch_hold ? 4'h0 :
+`endif
+			ramh_wr),
+		.ramh_rd  (~RAMH_CS_N & ~MEM_RD_N
+`ifdef SATURN_CHEAT_POC
+		           & ~cheat_patch_hold
+`endif
+		          ),
 `endif
 		.ramh_dout(ramh_do),
 		.ramh_busy(ramh_busy),
@@ -1611,7 +1771,6 @@ module emu
 
 `ifdef MISTER_DUAL_SDRAM
 	//SDRAM2
-	wire sdr2_busy;
 	wire [31:0] sdr2_do;
 	sdram2 sdram2
 	(
@@ -1627,10 +1786,27 @@ module emu
 		.init(rst_ram),
 		.clk(clk_ram),
 		
-		.addr(MEM_A[19:2]),
-		.din(ramh_din),
-		.wr(ramh_wr),
-		.rd(~RAMH_CS_N & ~MEM_RD_N),
+		.addr(
+`ifdef SATURN_CHEAT_POC
+			cheat_patch_wr ? cheat_patch_addr_ram :
+`endif
+			MEM_A[19:2]),
+		.din(
+`ifdef SATURN_CHEAT_POC
+			cheat_patch_wr ? cheat_patch_data_ram :
+`endif
+			ramh_din),
+		.wr(
+`ifdef SATURN_CHEAT_POC
+			cheat_patch_wr ? 4'hF :
+			cheat_patch_hold ? 4'h0 :
+`endif
+			ramh_wr),
+		.rd(~RAMH_CS_N & ~MEM_RD_N
+`ifdef SATURN_CHEAT_POC
+		    & ~cheat_patch_hold
+`endif
+		   ),
 		.burst(RAMH_BURST),
 		.dout(sdr2_do),
 		.rfs(~RAMH_CS_N & RAMH_RFS),
@@ -1640,17 +1816,16 @@ module emu
 	
 `ifdef MISTER_DUAL_SDRAM
 
-`ifdef SATURN_CHEAT_POC
-	assign ramh_read_data = sdr2_do;
-	assign MEM_DI     = !RAMH_CS_N ? ramh_read_data_cheat :
-`else
-	assign MEM_DI     = !RAMH_CS_N ? sdr2_do : 
-`endif
+	assign MEM_DI     = !RAMH_CS_N ? sdr2_do :
 `ifdef STV_BUILD
-	                    !STVIO_CS_N ? {24'hFFFFFF,STVIO_DO} : 
+	                    !STVIO_CS_N ? {24'hFFFFFF,STVIO_DO} :
 `endif
 							  raml_do;
-	assign MEM_WAIT_N = !RAMH_CS_N ? ~sdr2_busy : 
+	assign MEM_WAIT_N = !RAMH_CS_N ? (~sdr2_busy
+`ifdef SATURN_CHEAT_POC
+	                                 & ~cheat_patch_hold
+`endif
+	                                ) :
 `ifdef STV_BUILD
 	                    !STVIO_CS_N ? 1'b1 : 
 `endif
@@ -1658,17 +1833,16 @@ module emu
 							  
 `else
 
-`ifdef SATURN_CHEAT_POC
-	assign ramh_read_data = ramh_do;
-	assign MEM_DI     = !RAMH_CS_N ? ramh_read_data_cheat :
-`else
-	assign MEM_DI     = !RAMH_CS_N ? ramh_do : 
-`endif
+	assign MEM_DI     = !RAMH_CS_N ? ramh_do :
 `ifdef STV_BUILD
-	                    !STVIO_CS_N ? {24'hFFFFFF,STVIO_DO} : 
+	                    !STVIO_CS_N ? {24'hFFFFFF,STVIO_DO} :
 `endif
 							  raml_do;
-	assign MEM_WAIT_N = !RAMH_CS_N ? ~ramh_busy : 
+	assign MEM_WAIT_N = !RAMH_CS_N ? (~ramh_busy
+`ifdef SATURN_CHEAT_POC
+	                                 & ~cheat_patch_hold
+`endif
+	                                ) :
 `ifdef STV_BUILD
 	                    !STVIO_CS_N ? 1'b1 : 
 `endif
@@ -2099,6 +2273,7 @@ module emu
 	wire [7:0] cofi_r, cofi_g, cofi_b;
 	wire       cofi_hs, cofi_vs, cofi_hbl, cofi_vbl;
 
+`ifndef SATURN_DISABLE_COMPOSITE_BLEND
 	cofi coffee (
 		.clk(clk_sys),
 		.pix_ce(DCLK),          
@@ -2119,12 +2294,22 @@ module emu
 		.blue_out(cofi_b)
 	);
 `else
+	assign cofi_r = R;
+	assign cofi_g = G;
+	assign cofi_b = B;
+	assign cofi_hs = ~HS_N;
+	assign cofi_vs = ~VS_N;
+	assign cofi_hbl = ~HBL_N;
+	assign cofi_vbl = ~VBL_N;
+`endif
+`else
 	wire [7:0] cofi_r = R, cofi_g = G, cofi_b = B;
 	wire cofi_hs = ~HS_N, cofi_vs = ~VS_N;
 	wire cofi_hbl = ~HBL_N, cofi_vbl = ~VBL_N;
 `endif
 
 `ifndef STV_BUILD
+`ifndef SATURN_DISABLE_LIGHTGUN
 	wire lg_p1_targ_draw = (|lg_p1_target) && lg_p1_ena && (gun_p1_cross_size < 2'd3);
 	wire lg_p2_targ_draw = (|lg_p2_target) && lg_p2_ena && (gun_p2_cross_size < 2'd3);
 	wire [7:0] mixer_r = lg_p1_targ_draw ? {8{lg_p1_target[0]}} : lg_p2_targ_draw ? {8{lg_p2_target[0]}} : cofi_r;
@@ -2133,6 +2318,11 @@ module emu
 	wire [7:0] crop_r = (hcrop_en && hcrop_blank) ? 8'd0 : mixer_r;
 	wire [7:0] crop_g = (hcrop_en && hcrop_blank) ? 8'd0 : mixer_g;
 	wire [7:0] crop_b = (hcrop_en && hcrop_blank) ? 8'd0 : mixer_b;
+`else
+	wire [7:0] crop_r = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_r;
+	wire [7:0] crop_g = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_g;
+	wire [7:0] crop_b = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_b;
+`endif
 `else
 	wire [7:0] crop_r = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_r;
 	wire [7:0] crop_g = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_g;
@@ -2249,59 +2439,63 @@ endmodule
 module saturn_cheat_poc
 (
 	input             clk,
-	input             code_download,
+	input             cht_download,
 	input             ioctl_wr,
 	input      [25: 0] ioctl_addr,
 	input      [15: 0] ioctl_data,
-	input      [31: 0] access_addr,
-	input      [31: 0] read_data,
-	output reg [31: 0] read_data_cheat
+	output reg [17: 0] patch_addr,
+	output reg [31: 0] patch_data,
+	output reg         patch_req,
+	input              patch_ack
 );
 
-	localparam ENTRY_COUNT = 8;
+	localparam [31:0] CHT_MAGIC = 32'h53434854; // ASCII bytes "SCHT"
 
-	reg [31:0] flags   [ENTRY_COUNT];
-	reg [31:0] address [ENTRY_COUNT];
-	reg [31:0] compare [ENTRY_COUNT];
-	reg [31:0] replace [ENTRY_COUNT];
-	reg        valid   [ENTRY_COUNT];
+	reg        magic_ok = 0;
+	reg [15:0] u32_hi = 0;
+	reg [31:0] record_addr = 0;
+	reg        patch_ack_meta = 0;
+	reg        patch_ack_sync = 0;
+	reg        request_active = 0;
+
+	wire [15:0] file_word = {ioctl_data[7:0],ioctl_data[15:8]};
+	wire [31:0] u32_value = {u32_hi,file_word};
+	wire        valid_record_addr = record_addr[31:20] == 12'h060 && !record_addr[1:0];
 
 	initial begin
-		integer i;
-		for (i = 0; i < ENTRY_COUNT; i = i + 1) valid[i] = 0;
+		patch_req = 0;
 	end
 
 	always @(posedge clk) begin
-		integer i;
-		if (code_download && ioctl_wr) begin
-			if (ioctl_addr == 0) begin
-				for (i = 0; i < ENTRY_COUNT; i = i + 1) valid[i] <= 0;
-			end
+		patch_ack_meta <= patch_ack;
+		patch_ack_sync <= patch_ack_meta;
 
-			if (!ioctl_addr[25:7]) begin
-				case (ioctl_addr[3:0])
-					4'h0: flags[ioctl_addr[6:4]][15: 0] <= ioctl_data;
-					4'h2: flags[ioctl_addr[6:4]][31:16] <= ioctl_data;
-					4'h4: address[ioctl_addr[6:4]][15: 0] <= ioctl_data;
-					4'h6: address[ioctl_addr[6:4]][31:16] <= ioctl_data;
-					4'h8: compare[ioctl_addr[6:4]][15: 0] <= ioctl_data;
-					4'hA: compare[ioctl_addr[6:4]][31:16] <= ioctl_data;
-					4'hC: replace[ioctl_addr[6:4]][15: 0] <= ioctl_data;
-					4'hE: begin
-						replace[ioctl_addr[6:4]][31:16] <= ioctl_data;
-						valid[ioctl_addr[6:4]] <= 1;
-					end
-				endcase
+		if (request_active) begin
+			if (patch_ack_sync == patch_req) begin
+				request_active <= 0;
 			end
 		end
-	end
 
-	always @(*) begin
-		integer i;
-		read_data_cheat = read_data;
-		for (i = 0; i < ENTRY_COUNT; i = i + 1) begin
-			if (valid[i] && address[i][31:20] == 12'h060 && !address[i][1:0] && address[i] == access_addr) begin
-				if (!flags[i][0] || read_data == compare[i]) read_data_cheat = replace[i];
+		if (cht_download && ioctl_wr && !request_active) begin
+			if (ioctl_addr == 0) begin
+				magic_ok <= 0;
+				record_addr <= 0;
+			end
+
+			if (!ioctl_addr[1]) begin
+				u32_hi <= file_word;
+			end
+			else begin
+				case (ioctl_addr[3:2])
+					2'd0: magic_ok <= u32_value == CHT_MAGIC;
+					2'd2: if (magic_ok) record_addr <= u32_value;
+					2'd3: if (magic_ok && valid_record_addr) begin
+						patch_addr <= record_addr[19:2];
+						patch_data <= u32_value;
+						patch_req <= ~patch_req;
+						request_active <= 1;
+					end
+				endcase
 			end
 		end
 	end
