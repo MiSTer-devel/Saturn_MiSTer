@@ -37,3 +37,29 @@ c5_pin_model_dump.txt
 *.xml
 *_netlist
 *.cdf
+
+# Quartus generated/build artifacts
+db/
+incremental_db/
+output_files/
+build_results/
+*.rpt
+*.summary
+*.sof
+*.pof
+*.jdi
+*.qws
+*.bak
+*.smsg
+*.pin
+*.done
+*.rbf
+*.fit.*
+*.sta.*
+*.asm.*
+*.flow.*
+*.map.*
+
+# Local logs
+quartus_*.log
+
