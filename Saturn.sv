@@ -1683,7 +1683,46 @@ module emu
 `endif
 		endcase
 	end
+
+	wire        cheat_ramh_hold = cheat_patch_hold;
+	wire [17:0] cheat_ramh_addr = cheat_patch_addr_ram;
+	wire [31:0] cheat_ramh_din  = cheat_patch_data_ram;
+	wire [ 3:0] cheat_ramh_wr   = cheat_patch_wr ? 4'hF : 4'h0;
+	wire        cheat_ramh_rd   =
+`ifdef SATURN_CHEAT_RMW_POC
+		cheat_patch_rd;
+`else
+		1'b0;
 `endif
+`endif
+
+	wire [17:0] ramh_addr_bus =
+`ifdef SATURN_CHEAT_POC
+		cheat_ramh_hold ? cheat_ramh_addr :
+`endif
+		MEM_A[19:2];
+
+	wire [31:0] ramh_din_bus =
+`ifdef SATURN_CHEAT_POC
+		cheat_patch_wr ? cheat_ramh_din :
+`endif
+		ramh_din;
+
+	wire [ 3:0] ramh_wr_bus =
+`ifdef SATURN_CHEAT_POC
+		cheat_patch_wr ? cheat_ramh_wr :
+		cheat_ramh_hold ? 4'h0 :
+`endif
+		ramh_wr;
+
+	wire ramh_rd_bus = (~RAMH_CS_N & ~MEM_RD_N
+`ifdef SATURN_CHEAT_POC
+	                    & ~cheat_ramh_hold
+`ifdef SATURN_CHEAT_RMW_POC
+	                    | cheat_ramh_rd
+`endif
+`endif
+	                   );
 
 	ddram ddram
 	(
@@ -1698,30 +1737,10 @@ module emu
 		.ramh_wr  ('0),
 		.ramh_rd  (0),
 `else
-		.ramh_addr(
-`ifdef SATURN_CHEAT_POC
-			cheat_patch_hold ? cheat_patch_addr_ram :
-`endif
-			MEM_A[19:2]),
-		.ramh_din (
-`ifdef SATURN_CHEAT_POC
-			cheat_patch_wr ? cheat_patch_data_ram :
-`endif
-			ramh_din),
-		.ramh_wr  (
-`ifdef SATURN_CHEAT_POC
-			cheat_patch_wr ? 4'hF :
-			cheat_patch_hold ? 4'h0 :
-`endif
-			ramh_wr),
-		.ramh_rd  (~RAMH_CS_N & ~MEM_RD_N
-`ifdef SATURN_CHEAT_POC
-		           & ~cheat_patch_hold
-`ifdef SATURN_CHEAT_RMW_POC
-		           | cheat_patch_rd
-`endif
-`endif
-		          ),
+		.ramh_addr(ramh_addr_bus),
+		.ramh_din (ramh_din_bus),
+		.ramh_wr  (ramh_wr_bus),
+		.ramh_rd  (ramh_rd_bus),
 `endif
 		.ramh_dout(ramh_do),
 		.ramh_busy(ramh_busy),
@@ -1867,30 +1886,10 @@ module emu
 		.init(rst_ram),
 		.clk(clk_ram),
 		
-		.addr(
-`ifdef SATURN_CHEAT_POC
-			cheat_patch_hold ? cheat_patch_addr_ram :
-`endif
-			MEM_A[19:2]),
-		.din(
-`ifdef SATURN_CHEAT_POC
-			cheat_patch_wr ? cheat_patch_data_ram :
-`endif
-			ramh_din),
-		.wr(
-`ifdef SATURN_CHEAT_POC
-			cheat_patch_wr ? 4'hF :
-			cheat_patch_hold ? 4'h0 :
-`endif
-			ramh_wr),
-		.rd(~RAMH_CS_N & ~MEM_RD_N
-`ifdef SATURN_CHEAT_POC
-		    & ~cheat_patch_hold
-`ifdef SATURN_CHEAT_RMW_POC
-		    | cheat_patch_rd
-`endif
-`endif
-		   ),
+		.addr(ramh_addr_bus),
+		.din(ramh_din_bus),
+		.wr(ramh_wr_bus),
+		.rd(ramh_rd_bus),
 		.burst(RAMH_BURST),
 		.dout(sdr2_do),
 		.rfs(~RAMH_CS_N & RAMH_RFS),
@@ -1907,7 +1906,7 @@ module emu
 							  raml_do;
 	assign MEM_WAIT_N = !RAMH_CS_N ? (~sdr2_busy
 `ifdef SATURN_CHEAT_POC
-	                                 & ~cheat_patch_hold
+	                                 & ~cheat_ramh_hold
 `endif
 	                                ) :
 `ifdef STV_BUILD
@@ -1924,7 +1923,7 @@ module emu
 							  raml_do;
 	assign MEM_WAIT_N = !RAMH_CS_N ? (~ramh_busy
 `ifdef SATURN_CHEAT_POC
-	                                 & ~cheat_patch_hold
+	                                 & ~cheat_ramh_hold
 `endif
 	                                ) :
 `ifdef STV_BUILD
