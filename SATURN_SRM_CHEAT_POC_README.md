@@ -4,6 +4,10 @@
 
 This is an experimental MiSTer Saturn cheat proof-of-concept. It adds parser-compatible Saturn SRMW/SRMR/SRMC cheat records and provides a tested RBF plus the full currently supported single-record cheat pack.
 
+This proof RBF was built and tested for HDMI output. It is not intended to represent a full-feature replacement for the official MiSTer Saturn core. Some optional video/output features were stripped or may be disabled/untested to make room for the cheat proof-of-concept and improve timing closure.
+
+Use the official MiSTer Saturn release for normal everyday play or for features outside this proof package. The test environment was HDMI-focused; analog, composite, and YC paths should be considered disabled or untested for this proof package.
+
 This is not an official MiSTer-devel release.
 
 ## What is included
@@ -60,6 +64,15 @@ Unsupported code types are intentionally not included.
 
 ## Limitations
 
+Core/build limitations:
+
+- HDMI-focused and HDMI-tested proof RBF.
+- Analog, composite, and YC output paths are not validated for this proof package.
+- Optional video/output extras may be disabled or untested.
+- Use the official MiSTer Saturn release for normal everyday play or features outside this proof package.
+
+Cheat limitations:
+
 - No master/enabler support.
 - No conditional code support.
 - No unsupported prefix support.
@@ -73,7 +86,7 @@ Unsupported code types are intentionally not included.
 
 The broad pack has not been fully tested. Some cheats may do nothing, crash, behave incorrectly, or be unsafe as refresh cheats.
 
-Alien Trilogy and Mega Man X4 had successful tests. Die Hard Arcade showed cheat effect then crash and is currently believed to be code-specific or unsafe, not a general engine failure.
+Hardware testing confirmed that the SRMW/SRMR/SRMC paths work in several tested cases with no noticeable input lag after controller mode was corrected. The broad cheat pack has not been fully validated. Some individual cheats may do nothing, behave incorrectly, or crash because of code-specific behavior or unsafe refresh targets.
 
 Earlier lag was traced to the 8BitDo Bluetooth mode/RF path. XInput Bluetooth mode and USB wired had no noticeable lag.
 

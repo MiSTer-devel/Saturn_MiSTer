@@ -2,6 +2,10 @@
 
 This package is a MiSTer Sega Saturn SRMW/SRMR/SRMC cheat proof-of-concept release. It contains a tested experimental Saturn RBF plus the currently generated supported single-record cheat pack in an A-Z/game-folder layout.
 
+This proof RBF was built and tested for HDMI output. It is not intended to represent a full-feature replacement for the official MiSTer Saturn core. Some optional video/output features were stripped or may be disabled/untested to make room for the cheat proof-of-concept and improve timing closure.
+
+Use the official MiSTer Saturn release for normal everyday play or for features outside this proof package. The test environment was HDMI-focused; analog, composite, and YC paths should be considered disabled or untested for this proof package.
+
 ## Install Paths
 
 Copy these files and folders to your MiSTer SD card:
@@ -29,6 +33,15 @@ This package includes currently generated supported single-record cheats only. T
 
 ## Limitations
 
+Core/build limitations:
+
+- HDMI-focused and HDMI-tested proof RBF.
+- Analog, composite, and YC output paths are not validated for this proof package.
+- Optional video/output extras may be disabled or untested.
+- Use the official MiSTer Saturn release for normal everyday play or features outside this proof package.
+
+Cheat limitations:
+
 - No master/enabler support.
 - No conditional code support.
 - No unsupported prefix support.
@@ -41,9 +54,7 @@ This package includes currently generated supported single-record cheats only. T
 
 The broad cheat pack has not been fully tested. Some cheats may do nothing, crash, behave incorrectly, or be unsafe as refresh cheats.
 
-Die Hard Arcade showed a cheat effect and then a crash; this is believed likely code-specific/unsafe rather than a general engine failure.
-
-Alien Trilogy and Mega Man X4 had working cheat tests with no noticeable lag using 8BitDo XInput Bluetooth and USB wired.
+Hardware testing confirmed that the SRMW/SRMR/SRMC paths work in several tested cases with no noticeable input lag after controller mode was corrected. The broad cheat pack has not been fully validated. Some individual cheats may do nothing, behave incorrectly, or crash because of code-specific behavior or unsafe refresh targets.
 
 ## Tested RBF Checksum
 
