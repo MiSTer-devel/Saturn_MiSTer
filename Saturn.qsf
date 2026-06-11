@@ -55,6 +55,7 @@ set_global_assignment -name VERILOG_MACRO "SATURN_DISABLE_LIGHTGUN=1"
 set_global_assignment -name VERILOG_MACRO "SATURN_DISABLE_SATURN_MOUSE_KEYBOARD=1"
 set_global_assignment -name VERILOG_MACRO "SATURN_DISABLE_COMPOSITE_BLEND=1"
 set_global_assignment -name VERILOG_MACRO "MISTER_DISABLE_SHADOWMASK=1"
+set_global_assignment -name VERILOG_MACRO "MISTER_DISABLE_GAMMA=1"
 
 source sys/sys.tcl
 source sys/sys_analog.tcl

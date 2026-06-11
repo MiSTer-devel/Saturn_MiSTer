@@ -2413,7 +2413,13 @@ module emu
 	wire [7:0] crop_b = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_b;
 `endif
 
-	video_mixer #(.LINE_LENGTH((352*2)+8), .HALF_DEPTH(0), .GAMMA(1)) video_mixer
+	video_mixer #(.LINE_LENGTH((352*2)+8), .HALF_DEPTH(0), .GAMMA(
+`ifdef MISTER_DISABLE_GAMMA
+		0
+`else
+		1
+`endif
+	)) video_mixer
 	(
 		.*,
 	
