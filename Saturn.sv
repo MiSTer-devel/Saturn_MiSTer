@@ -1497,11 +1497,23 @@ module emu
 	// 32-bit writes into canonical high work RAM (0x06000000-0x060FFFFF).
 	// File format is big-endian bytes: "SCHT", u32 count, then u32 addr/data
 	// pairs. This area-test variant only uses the first valid record.
-	// Compare, freeze, byte/word writes, and read substitution are not supported.
+	// Compare, freeze, and read substitution are not supported.
+`ifdef SATURN_CHEAT_RMW_POC
+	// Experimental "SRMW", u32 address, u32 value files issue one aligned
+	// full-word read-modify-write; only value[15:0] is used.
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+	// Experimental "SRMR" retains one SRMW record and refreshes it every
+	// sixtieth vblank. "SRMC" clears the retained refresh record.
+`endif
+`endif
 	wire [17:0] cheat_patch_addr;
 	wire [31:0] cheat_patch_data;
 	wire        cheat_patch_req;
 	wire        cheat_patch_ack;
+`ifdef SATURN_CHEAT_RMW_POC
+	wire        cheat_patch_rmw;
+	wire        cheat_patch_half;
+`endif
 
 	saturn_cheat_poc cheat_poc
 	(
@@ -1510,9 +1522,16 @@ module emu
 		.ioctl_wr(ioctl_wr),
 		.ioctl_addr(ioctl_addr),
 		.ioctl_data(ioctl_data),
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+		.vbl_n(VBL_N),
+`endif
 		.patch_addr(cheat_patch_addr),
 		.patch_data(cheat_patch_data),
 		.patch_req(cheat_patch_req),
+`ifdef SATURN_CHEAT_RMW_POC
+		.patch_rmw(cheat_patch_rmw),
+		.patch_half(cheat_patch_half),
+`endif
 		.patch_ack(cheat_patch_ack)
 	);
 `endif
@@ -1550,16 +1569,27 @@ module emu
 	reg         cheat_patch_req_sync = 0;
 	reg         cheat_patch_req_seen = 0;
 	reg         cheat_patch_ack_ram = 0;
-	reg  [ 2:0] cheat_patch_state = 0;
+	reg  [ 3:0] cheat_patch_state = 0;
 	reg  [17:0] cheat_patch_addr_ram;
 	reg  [31:0] cheat_patch_data_ram;
 	reg         cheat_patch_wr = 0;
 	reg         cheat_patch_hold = 0;
+`ifdef SATURN_CHEAT_RMW_POC
+	reg         cheat_patch_rd = 0;
+	reg         cheat_patch_half_ram;
+	reg  [31:0] cheat_patch_read_data;
+`endif
 
 `ifdef MISTER_DUAL_SDRAM
 	wire cheat_patch_backend_busy = sdr2_busy;
+`ifdef SATURN_CHEAT_RMW_POC
+	wire [31:0] cheat_patch_backend_data = sdr2_do;
+`endif
 `else
 	wire cheat_patch_backend_busy = ramh_busy;
+`ifdef SATURN_CHEAT_RMW_POC
+	wire [31:0] cheat_patch_backend_data = ramh_do;
+`endif
 `endif
 	assign cheat_patch_ack = cheat_patch_ack_ram;
 
@@ -1567,6 +1597,9 @@ module emu
 		cheat_patch_req_meta <= cheat_patch_req;
 		cheat_patch_req_sync <= cheat_patch_req_meta;
 		cheat_patch_wr <= 0;
+`ifdef SATURN_CHEAT_RMW_POC
+		cheat_patch_rd <= 0;
+`endif
 
 		case (cheat_patch_state)
 			0: begin
@@ -1587,9 +1620,20 @@ module emu
 				end
 				else begin
 					cheat_patch_addr_ram <= cheat_patch_addr;
+`ifdef SATURN_CHEAT_RMW_POC
+					cheat_patch_half_ram <= cheat_patch_half;
+					if (cheat_patch_rmw) begin
+						cheat_patch_rd <= 1;
+						cheat_patch_state <= 5;
+					end
+					else begin
+`endif
 					cheat_patch_data_ram <= cheat_patch_data;
 					cheat_patch_wr <= 1;
 					cheat_patch_state <= 3;
+`ifdef SATURN_CHEAT_RMW_POC
+					end
+`endif
 				end
 			end
 
@@ -1603,6 +1647,40 @@ module emu
 				cheat_patch_hold <= 0;
 				cheat_patch_state <= 0;
 			end
+
+`ifdef SATURN_CHEAT_RMW_POC
+			5: begin
+				// Mandatory cycle after the injected read edge so a backend
+				// cache miss has time to assert busy.
+				cheat_patch_state <= 6;
+			end
+
+			6: begin
+				if (!cheat_patch_backend_busy) cheat_patch_state <= 7;
+			end
+
+			7: begin
+				// Allow one cycle after busy clears for registered cache data.
+				cheat_patch_state <= 8;
+			end
+
+			8: begin
+				cheat_patch_read_data <= cheat_patch_backend_data;
+				cheat_patch_state <= 9;
+			end
+
+			9: begin
+				cheat_patch_data_ram <= cheat_patch_half_ram ?
+					{cheat_patch_read_data[31:16],cheat_patch_data[15:0]} :
+					{cheat_patch_data[15:0],cheat_patch_read_data[15:0]};
+				cheat_patch_wr <= 1;
+				cheat_patch_state <= 10;
+			end
+
+			10: begin
+				cheat_patch_state <= 4;
+			end
+`endif
 		endcase
 	end
 `endif
@@ -1622,7 +1700,7 @@ module emu
 `else
 		.ramh_addr(
 `ifdef SATURN_CHEAT_POC
-			cheat_patch_wr ? cheat_patch_addr_ram :
+			cheat_patch_hold ? cheat_patch_addr_ram :
 `endif
 			MEM_A[19:2]),
 		.ramh_din (
@@ -1639,6 +1717,9 @@ module emu
 		.ramh_rd  (~RAMH_CS_N & ~MEM_RD_N
 `ifdef SATURN_CHEAT_POC
 		           & ~cheat_patch_hold
+`ifdef SATURN_CHEAT_RMW_POC
+		           | cheat_patch_rd
+`endif
 `endif
 		          ),
 `endif
@@ -1788,7 +1869,7 @@ module emu
 		
 		.addr(
 `ifdef SATURN_CHEAT_POC
-			cheat_patch_wr ? cheat_patch_addr_ram :
+			cheat_patch_hold ? cheat_patch_addr_ram :
 `endif
 			MEM_A[19:2]),
 		.din(
@@ -1805,6 +1886,9 @@ module emu
 		.rd(~RAMH_CS_N & ~MEM_RD_N
 `ifdef SATURN_CHEAT_POC
 		    & ~cheat_patch_hold
+`ifdef SATURN_CHEAT_RMW_POC
+		    | cheat_patch_rd
+`endif
 `endif
 		   ),
 		.burst(RAMH_BURST),
@@ -2443,15 +2527,41 @@ module saturn_cheat_poc
 	input             ioctl_wr,
 	input      [25: 0] ioctl_addr,
 	input      [15: 0] ioctl_data,
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+	input             vbl_n,
+`endif
 	output reg [17: 0] patch_addr,
 	output reg [31: 0] patch_data,
 	output reg         patch_req,
+`ifdef SATURN_CHEAT_RMW_POC
+	output reg         patch_rmw,
+	output reg         patch_half,
+`endif
 	input              patch_ack
 );
 
 	localparam [31:0] CHT_MAGIC = 32'h53434854; // ASCII bytes "SCHT"
+`ifdef SATURN_CHEAT_RMW_POC
+	localparam [31:0] RMW_MAGIC = 32'h53524D57; // ASCII bytes "SRMW"
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+	localparam [31:0] RMR_MAGIC = 32'h53524D52; // ASCII bytes "SRMR"
+	localparam [31:0] RMC_MAGIC = 32'h53524D43; // ASCII bytes "SRMC"
+`endif
+`endif
 
 	reg        magic_ok = 0;
+`ifdef SATURN_CHEAT_RMW_POC
+	reg        rmw_magic_ok = 0;
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+	reg        rmr_magic_ok = 0;
+	reg        refresh_valid = 0;
+	reg [17:0] refresh_addr = 0;
+	reg [15:0] refresh_data = 0;
+	reg        refresh_half = 0;
+	reg [ 5:0] refresh_div = 0;
+	reg        old_vbl_n = 1;
+`endif
+`endif
 	reg [15:0] u32_hi = 0;
 	reg [31:0] record_addr = 0;
 	reg        patch_ack_meta = 0;
@@ -2461,9 +2571,16 @@ module saturn_cheat_poc
 	wire [15:0] file_word = {ioctl_data[7:0],ioctl_data[15:8]};
 	wire [31:0] u32_value = {u32_hi,file_word};
 	wire        valid_record_addr = record_addr[31:20] == 12'h060 && !record_addr[1:0];
+`ifdef SATURN_CHEAT_RMW_POC
+	wire        valid_rmw_addr = record_addr[31:20] == 12'h060 && !record_addr[0];
+`endif
 
 	initial begin
 		patch_req = 0;
+`ifdef SATURN_CHEAT_RMW_POC
+		patch_rmw = 0;
+		patch_half = 0;
+`endif
 	end
 
 	always @(posedge clk) begin
@@ -2476,9 +2593,21 @@ module saturn_cheat_poc
 			end
 		end
 
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+		if (cht_download && ioctl_wr && ioctl_addr[1] && ioctl_addr[3:2] == 2'd0 && u32_value == RMC_MAGIC) begin
+			refresh_valid <= 0;
+		end
+`endif
+
 		if (cht_download && ioctl_wr && !request_active) begin
 			if (ioctl_addr == 0) begin
 				magic_ok <= 0;
+`ifdef SATURN_CHEAT_RMW_POC
+				rmw_magic_ok <= 0;
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+				rmr_magic_ok <= 0;
+`endif
+`endif
 				record_addr <= 0;
 			end
 
@@ -2487,17 +2616,68 @@ module saturn_cheat_poc
 			end
 			else begin
 				case (ioctl_addr[3:2])
-					2'd0: magic_ok <= u32_value == CHT_MAGIC;
-					2'd2: if (magic_ok) record_addr <= u32_value;
+					2'd0: begin
+						magic_ok <= u32_value == CHT_MAGIC;
+`ifdef SATURN_CHEAT_RMW_POC
+						rmw_magic_ok <= u32_value == RMW_MAGIC;
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+						rmr_magic_ok <= u32_value == RMR_MAGIC;
+`endif
+`endif
+					end
+					2'd2: if (magic_ok
+`ifdef SATURN_CHEAT_RMW_POC
+					             || rmw_magic_ok
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+					             || rmr_magic_ok
+`endif
+`endif
+					        ) record_addr <= u32_value;
 					2'd3: if (magic_ok && valid_record_addr) begin
 						patch_addr <= record_addr[19:2];
 						patch_data <= u32_value;
+`ifdef SATURN_CHEAT_RMW_POC
+						patch_rmw <= 0;
+						patch_half <= 0;
+`endif
 						patch_req <= ~patch_req;
 						request_active <= 1;
 					end
+`ifdef SATURN_CHEAT_RMW_POC
+					else if (rmw_magic_ok && valid_rmw_addr) begin
+						patch_addr <= record_addr[19:2];
+						patch_data <= {16'h0000,u32_value[15:0]};
+						patch_rmw <= 1;
+						patch_half <= record_addr[1];
+						patch_req <= ~patch_req;
+						request_active <= 1;
+					end
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+					else if (rmr_magic_ok && valid_rmw_addr) begin
+						refresh_valid <= 1;
+						refresh_addr <= record_addr[19:2];
+						refresh_data <= u32_value[15:0];
+						refresh_half <= record_addr[1];
+					end
+`endif
+`endif
 				endcase
 			end
 		end
+
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+		old_vbl_n <= vbl_n;
+		if (old_vbl_n && !vbl_n) refresh_div <= refresh_div == 6'd59 ? 6'd0 : refresh_div + 1'd1;
+
+		if (!cht_download && !request_active && refresh_valid && old_vbl_n && !vbl_n && refresh_div == 6'd59) begin
+			patch_addr <= refresh_addr;
+			patch_data <= {16'h0000,refresh_data};
+			patch_rmw <= 1;
+			patch_half <= refresh_half;
+			patch_req <= ~patch_req;
+			request_active <= 1;
+		end
+`endif
 	end
 
 endmodule

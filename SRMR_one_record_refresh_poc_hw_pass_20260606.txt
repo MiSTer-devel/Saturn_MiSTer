@@ -1,0 +1,264 @@
+SRMR one-record refresh POC hardware-pass metadata
+Date: 2026-06-06
+Branch: feature/cheat-support-poc
+
+Core tested:
+TEST_SRMR_REFRESH_Saturn_20260606.rbf
+
+RBF SHA256:
+BB73045D6F28301D77480518C3D297F7B5BF2C6387023C70EFAA8549BBAF8343
+
+Local build output:
+C:\MiSTer-Work\Saturn_MiSTer-q25-chtloader-wrappercut-test\output_files\Saturn.rbf
+Local build RBF size: 4618400
+Local build RBF SHA256: BB73045D6F28301D77480518C3D297F7B5BF2C6387023C70EFAA8549BBAF8343
+
+Purpose:
+Guarded SRMW read-modify-write POC plus guarded one-record SRMR refresh POC.
+Functionally proven for one-shot 16-bit RMW and refreshed single-record 16-bit RMW.
+
+Diff stat:
+ Saturn.qsf |   8 +-
+ Saturn.sv  | 244 +++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ 2 files changed, 217 insertions(+), 35 deletions(-)
+
+Diff numstat:
+5	3	Saturn.qsf
+212	32	Saturn.sv
+
+Git status at preservation time:
+## feature/cheat-support-poc
+ M Saturn.qsf
+ M Saturn.sv
+?? SC16_attempt2_failed_q25_opt_arm_carry_20260604.patch
+?? SC16_attempt2_failed_q25_opt_arm_carry_20260604.txt
+?? SC16_one_record_failed_hw_unsupported_disc_20260604.patch
+?? SC16_one_record_failed_hw_unsupported_disc_20260604.txt
+?? SCHT_v2_failed_refresh_internal_error.patch
+?? SCHT_v2_one_record_uncommitted.patch
+?? SCHT_v2_phaseA_internal_error.patch
+?? SCHT_v2_phaseA_uncommitted.patch
+?? SCHT_v2_uncommitted.patch
+?? SRMR_one_record_refresh_poc_hw_pass_20260606.patch
+?? SRMR_one_record_refresh_poc_unbuilt_20260606.patch
+?? SRMR_one_record_refresh_poc_unbuilt_20260606.txt
+?? SRMW_one_record_rmw_poc_unbuilt_20260605.patch
+?? SRMW_one_record_rmw_poc_unbuilt_20260605.txt
+?? build_results/
+?? quartus_q25_checkpoint_rebuild_20260604.log
+?? quartus_q25_sc16_attempt2_seed9_20260604.log
+?? quartus_q25_sc16_seed9_20260604.log
+?? quartus_q25_srmr_refresh_seed9_20260606.log
+?? quartus_q25_srmw_seed9_20260605.log
+
+Timing/utilization from output_files/Saturn.fit.summary:
+Fitter Status : Successful - Sat Jun  6 10:23:53 2026
+Quartus Prime Version : 25.1std.0 Build 1129 10/21/2025 SC Standard Edition
+Revision Name : Saturn
+Top-level Entity Name : sys_top
+Family : Cyclone V
+Device : 5CSEBA6U23I7
+Timing Models : Final
+Logic utilization (in ALMs) : 40,462 / 41,910 ( 97 % )
+Total registers : 42099
+Total pins : 145 / 314 ( 46 % )
+Total virtual pins : 0
+Total block memory bits : 4,010,393 / 5,662,720 ( 71 % )
+Total RAM Blocks : 543 / 553 ( 98 % )
+Total DSP Blocks : 57 / 112 ( 51 % )
+Total HSSI RX PCSs : 0
+Total HSSI PMA RX Deserializers : 0
+Total HSSI TX PCSs : 0
+Total HSSI PMA TX Serializers : 0
+Total PLLs : 3 / 6 ( 50 % )
+Total DLLs : 0 / 4 ( 0 % )
+
+Timing analyzer summary from output_files/Saturn.sta.summary:
+------------------------------------------------------------
+Timing Analyzer Summary
+------------------------------------------------------------
+
+Type  : Setup 'pll_hdmi|pll_hdmi_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : -0.576
+TNS   : -14.085
+
+Type  : Setup 'emu|pll|pll_inst|altera_pll_i|cyclonev_pll|counter[1].output_counter|divclk'
+Slack : 0.002
+TNS   : 0.000
+
+Type  : Setup 'emu|pll|pll_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : 0.222
+TNS   : 0.000
+
+Type  : Setup 'sysmem|fpga_interfaces|clocks_resets|h2f_user0_clk'
+Slack : 2.725
+TNS   : 0.000
+
+Type  : Setup 'altera_reserved_tck'
+Slack : 5.160
+TNS   : 0.000
+
+Type  : Setup 'FPGA_CLK2_50'
+Slack : 5.690
+TNS   : 0.000
+
+Type  : Setup 'FPGA_CLK1_50'
+Slack : 7.626
+TNS   : 0.000
+
+Type  : Setup 'pll_audio|pll_audio_inst|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk'
+Slack : 11.685
+TNS   : 0.000
+
+Type  : Hold 'emu|pll|pll_inst|altera_pll_i|cyclonev_pll|counter[1].output_counter|divclk'
+Slack : -0.353
+TNS   : -1.508
+
+Type  : Hold 'pll_hdmi|pll_hdmi_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : 0.193
+TNS   : 0.000
+
+Type  : Hold 'emu|pll|pll_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : 0.244
+TNS   : 0.000
+
+Type  : Hold 'pll_audio|pll_audio_inst|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk'
+Slack : 0.271
+TNS   : 0.000
+
+Type  : Hold 'FPGA_CLK1_50'
+Slack : 0.289
+TNS   : 0.000
+
+Type  : Hold 'altera_reserved_tck'
+Slack : 0.335
+TNS   : 0.000
+
+Type  : Hold 'sysmem|fpga_interfaces|clocks_resets|h2f_user0_clk'
+Slack : 0.340
+TNS   : 0.000
+
+Type  : Hold 'FPGA_CLK2_50'
+Slack : 0.380
+TNS   : 0.000
+
+Type  : Recovery 'pll_hdmi|pll_hdmi_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : 4.259
+TNS   : 0.000
+
+Type  : Recovery 'emu|pll|pll_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : 5.912
+TNS   : 0.000
+
+Type  : Recovery 'sysmem|fpga_interfaces|clocks_resets|h2f_user0_clk'
+Slack : 6.523
+TNS   : 0.000
+
+Type  : Recovery 'FPGA_CLK1_50'
+Slack : 15.727
+TNS   : 0.000
+
+Type  : Recovery 'FPGA_CLK2_50'
+Slack : 16.887
+TNS   : 0.000
+
+Type  : Recovery 'altera_reserved_tck'
+Slack : 27.092
+TNS   : 0.000
+
+Type  : Removal 'altera_reserved_tck'
+Slack : 1.080
+TNS   : 0.000
+
+Type  : Removal 'pll_hdmi|pll_hdmi_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : 1.140
+TNS   : 0.000
+
+Type  : Removal 'FPGA_CLK2_50'
+Slack : 1.157
+TNS   : 0.000
+
+Type  : Removal 'FPGA_CLK1_50'
+Slack : 1.162
+TNS   : 0.000
+
+Type  : Removal 'sysmem|fpga_interfaces|clocks_resets|h2f_user0_clk'
+Slack : 1.572
+TNS   : 0.000
+
+Type  : Removal 'emu|pll|pll_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : 2.224
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'emu|pll|pll_inst|altera_pll_i|cyclonev_pll|fpll_0|fpll|vcoph[0]'
+Slack : 1.091
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'pll_hdmi|pll_hdmi_inst|altera_pll_i|cyclonev_pll|fpll_0|fpll|vcoph[0]'
+Slack : 1.122
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'pll_audio|pll_audio_inst|altera_pll_i|general[0].gpll~FRACTIONAL_PLL|vcoph[0]'
+Slack : 1.196
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'pll_hdmi|pll_hdmi_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : 1.932
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'emu|pll|pll_inst|altera_pll_i|cyclonev_pll|counter[1].output_counter|divclk'
+Slack : 2.920
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'sysmem|fpga_interfaces|clocks_resets|h2f_user0_clk'
+Slack : 3.589
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'emu|pll|pll_inst|altera_pll_i|cyclonev_pll|counter[0].output_counter|divclk'
+Slack : 7.293
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'FPGA_CLK1_50'
+Slack : 9.210
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'FPGA_CLK2_50'
+Slack : 9.215
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'FPGA_CLK3_50'
+Slack : 9.730
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'altera_reserved_tck'
+Slack : 14.671
+TNS   : 0.000
+
+Type  : Minimum Pulse Width 'pll_audio|pll_audio_inst|altera_pll_i|general[0].gpll~PLL_OUTPUT_COUNTER|divclk'
+Slack : 18.921
+TNS   : 0.000
+
+------------------------------------------------------------
+
+Hardware test summary:
+- Base Saturn boots correctly in 4:3 after global MiSTer video_mode correction.
+- SRMR test core boots.
+- OSD/controller responsive.
+- Normal CHD boot works.
+- Sonic R SRMW parser16 regression works.
+- Alien Trilogy SRMR refresh works.
+
+Known video-mode correction:
+Invalid format/fullscreen issue was caused by global MiSTer video_mode=12 / 1920x1440, not SRMR core.
+Setting video_mode/video_mode_ntsc/video_mode_pal to 8 restored standard 1080p output and 4:3 Saturn display.
+
+Safety confirmations:
+- ddram.sv and sdram2.sv untouched.
+- RAMH read-to-MEM_DI remains direct.
+- No direct byte-enable injection.
+- No patch_be plumbing.
+- No ioctl_wait.
+- v1 SCHT one-shot path preserved.
+- SRMW one-shot parser16 path preserved.
+- SRMR refresh is one retained record behind SATURN_CHEAT_RMW_REFRESH_POC.
+- SRMC clears refresh_valid; one already-accepted RAM-domain request may still complete once.
