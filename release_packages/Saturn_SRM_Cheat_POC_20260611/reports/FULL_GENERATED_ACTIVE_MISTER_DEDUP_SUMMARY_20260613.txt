@@ -1,0 +1,38 @@
+Full generated Saturn SRMW/SRMR active MiSTer dedupe summary
+Generated: 2026-06-14T13:29:00
+
+Backup:
+- Backup folder path: C:\MiSTer-Work\Saturn_Cheat_Sources\ACTIVE_MISTER_SATURN_CHEATS_BACKUP_BEFORE_DEDUP_20260613
+- Backup zip path: C:\MiSTer-Work\Saturn_Cheat_Sources\ACTIVE_MISTER_SATURN_CHEATS_BACKUP_BEFORE_DEDUP_20260613.zip
+- Backup zip SHA256: FB72B353B72CAC15D6FE6C44764EF7B7F9D96C51F25514DE610C033E30625DAD
+- Backup Cheats_Trigger .CHT count: 2130
+- Backup Cheats_60Frames .CHT count: 2130
+
+Counts:
+- Active SRMW count before: 2130
+- Active SRMW count after: 1120
+- Active SRMR count before: 2130
+- Active SRMR count after: 1120
+- Generated SRMW count: 1120
+- Generated SRMR normal count: 1120
+- Generated SRMR folder total .CHT count including generated SRMC: 1121
+- Manual split files kept offline: 597
+- Report SRMW rows: 1120
+- Report SRMR rows: 1120
+
+Validation:
+- Every active SRMW/SRMR .CHT is 16 bytes: True
+- Active manual-named split files found: 0
+- SRMC clear file exists: True
+- SRMC clear file length: 16
+- SRMC clear timestamp: 06/06/2026 13:33:32
+- SRMC clear SHA256: EF72445E6AE2E4E22735830DAA3EF4ADABDF37E1A0D8E35F6937AAFA537E57F1
+- SRMC untouched: True
+- Manual split files not copied: True
+- Princess Crown present: True
+- Saturn Bomberman present: True
+
+Safety notes:
+- Cleared active .CHT files only under \\MiSTer\sdcard\games\Saturn\Cheats_Trigger and \\MiSTer\sdcard\games\Saturn\Cheats_60Frames after backup zip was created.
+- Did not delete or rewrite \\MiSTer\sdcard\games\Saturn\SRMC_Clear_Refresh.CHT.
+- Did not copy C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_manual_multirecord_parts to active normal folders.

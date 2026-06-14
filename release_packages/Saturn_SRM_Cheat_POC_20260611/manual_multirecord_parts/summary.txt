@@ -1,0 +1,58 @@
+SRMW/SRMR parser-compatible 16-byte pack generation summary
+Generated: 2026-06-14T09:42:28
+
+Input:
+C:\MiSTer-Work\Saturn_Cheat_Sources\mister_library_classification_20260613\supported_16bit.csv
+
+Output folders:
+C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_pack
+C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack
+C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_manual_multirecord_parts
+
+Report files:
+C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_srmr_manifest.csv
+C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_srmr_unsupported_or_skipped.csv
+C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_srmr_summary.txt
+
+Counts:
+- Single-record 16-bit cheats converted: 1120
+- SRMW files generated: 1120
+- SRMR files generated: 1120
+- Multi-record simple cheats split into manual parts: 202
+- Manual part files generated: 597
+- Skipped/unsupported rows reported: 1281
+- Invalid supported_16bit rows skipped during generation: 0
+- SRMC clear files generated: 1
+
+Format:
+- SRMW: 0x00 magic "SRMW", 0x04 reserved 0, 0x08 address, 0x0C value
+- SRMR: 0x00 magic "SRMR", 0x04 reserved 0, 0x08 address, 0x0C value
+- SRMC: 0x00 magic "SRMC", remaining words zero
+- All fields are big-endian.
+
+Notes:
+- Only simple 16-bit RAMH writes are emitted.
+- 8-bit writes, conditionals, master/enabler codes, unknown values/modifiers, and RetroArch address/value-style entries are skipped.
+- Multi-record simple cheats are split into manual one-record SRMR parts only. They are not combined into one usable cheat yet and need future multi-slot refresh support.
+
+Top 20 recommended single-record SRMR cheats to test:
+- libretro-sega-saturn Alien Trilogy: Flamer Fuel [0x0606CE3A = 0x001E] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Alien Trilogy - Flamer Fuel - 0x0606CE3A - SRMR.CHT
+- libretro-sega-saturn Alien Trilogy: Infinite Bullets [0x0606CE2E = 0x000F] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Alien Trilogy - Infinite Bullets - 0x0606CE2E - SRMR.CHT
+- libretro-sega-saturn Alien Trilogy: Infinite Charges [0x0606CE40 = 0x0002] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Alien Trilogy - Infinite Charges - 0x0606CE40 - SRMR.CHT
+- libretro-sega-saturn Alien Trilogy: Infinite Grenades [0x0606CE38 = 0x0005] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Alien Trilogy - Infinite Grenades - 0x0606CE38 - SRMR.CHT
+- libretro-sega-saturn Alien Trilogy: Infinite Health [0x0606CE28 = 0x0064] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Alien Trilogy - Infinite Health - 0x0606CE28 - SRMR.CHT
+- libretro-sega-saturn Alien Trilogy: Pulse Rifle Ammo [0x0606CE34 = 0x0040] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Alien Trilogy - Pulse Rifle Ammo - 0x0606CE34 - SRMR.CHT
+- libretro-sega-saturn Alien Trilogy: Shotgun Ammo [0x0606CE32 = 0x0028] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Alien Trilogy - Shotgun Ammo - 0x0606CE32 - SRMR.CHT
+- libretro-sega-saturn Alien Trilogy: Smart Gun Ammo [0x0606CE3C = 0x0064] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Alien Trilogy - Smart Gun Ammo - 0x0606CE3C - SRMR.CHT
+- libretro-sega-saturn Andretti Racing: Infinite Fuel P1 [0x060B37A6 = 0x2CDA] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Andretti Racing - Infinite Fuel P1 - 0x060B37A6 - SRMR.CHT
+- libretro-sega-saturn Andretti Racing: Infinite Fuel P2 [0x060B3C06 = 0x3D40] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Andretti Racing - Infinite Fuel P2 - 0x060B3C06 - SRMR.CHT
+- libretro-sega-saturn Andretti Racing: Lap Time = 0:00:000 P1 [0x060B3786 = 0x0000] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Andretti Racing - Lap Time = 0 00 000 P1 - 0x060B3786 - SRMR.CHT
+- libretro-sega-saturn Andretti Racing: Lap Time = 0:00:000 P2 [0x060B3BE6 = 0x0000] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Andretti Racing - Lap Time = 0 00 000 P2 - 0x060B3BE6 - SRMR.CHT
+- libretro-sega-saturn Andretti Racing: Time Elapsed = 00:00:00 P1 [0x060B39A4 = 0x0000] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Andretti Racing - Time Elapsed = 00 00 00 P1 - 0x060B39A4 - SRMR.CHT
+- libretro-sega-saturn Andretti Racing: Time Elapsed = 00:00:00 P2 [0x060B3BEE = 0x0000] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Andretti Racing - Time Elapsed = 00 00 00 P2 - 0x060B3BEE - SRMR.CHT
+- libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack: Infinite Energy P1 [0x060723A2 = 0x0200] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack - Infinite Energy P1 - 0x060723A2 - SRMR.CHT
+- libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack: Infinite Energy P2 [0x0607476E = 0x0200] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack - Infinite Energy P2 - 0x0607476E - SRMR.CHT
+- libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack: Infinite Time [0x06074FA4 = 0x4650] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack - Infinite Time - 0x06074FA4 - SRMR.CHT
+- libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack: No Energy P1 [0x060723A2 = 0x0000] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack - No Energy P1 - 0x060723A2 - SRMR.CHT
+- libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack: No Energy P2 [0x0607476E = 0x0000] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack - No Energy P2 - 0x0607476E - SRMR.CHT
+- libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack: Timer Is Set To 00 [0x060575E8 = 0x0002] -> C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack\libretro-sega-saturn Battle Arena Toshinden Ultimate Revenge Attack - Timer Is Set To 00 - 0x060575E8 - SRMR.CHT

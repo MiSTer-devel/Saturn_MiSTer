@@ -1,0 +1,87 @@
+MiSTer library Saturn SRMW/SRMR expansion summary
+Generated: 2026-06-14T10:44:38
+
+Inputs:
+- MiSTer Saturn root: \\MiSTer\sdcard\games\Saturn
+- Targets: C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_SATURN_LIBRARY_TARGETS_20260613.csv
+- Queue: C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_LIBRARY_CHEAT_ACQUISITION_QUEUE_20260613.csv
+- Checkpoint: C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_LIBRARY_ACQUISITION_CHECKPOINT_20260613.csv
+
+Counts:
+- MiSTer Saturn games detected: 608
+- Target games needing source/check: 521
+- Target games processed: 144
+- Source files imported/checkpoint imported rows: 136
+- Unique manual source files currently present: 120
+- Unavailable/blocked/no-code pages: 8
+- Games represented before: 154
+- Games represented after: 237
+- SRMW count before: 729
+- SRMW count after: 1120
+- SRMR pack .CHT count before: 730
+- SRMR pack .CHT count after: 1121
+- Manual split count before: 323
+- Manual split count after: 597
+- Active MiSTer games added/present from this library run: 154
+- Active MiSTer SRMW files present from this library run: 779
+- Active MiSTer SRMR files present from this library run: 779
+- Active files newly copied during final resume: 686
+- Active files already present from earlier copy attempts: 872
+- Duplicate converted report rows: 28
+- Copied active .CHT with non-16-byte length: 0
+- SRMC clear file present: True
+- SRMC clear file length: 16
+- SRMC clear file timestamp: 06/06/2026 13:33:32
+
+Checkpoint status counts:
+- imported: 136
+- no_codes: 8
+
+Skipped category counts:
+- skipped malformed/unknown: 348
+- skipped master/enabler: 176
+- skipped 8-bit write: 158
+- supported multi-record 16-bit but manual split only: 122
+- skipped conditional: 118
+- skipped odd alignment: 3
+- skipped out-of-range: 2
+
+Top active games by copied/present file count:
+- X-Men vs. Street Fighter: 48 files
+- Crusader - No Remorse: 48 files
+- Battle Arena Toshinden URA - Ultimate Revenge Attack: 48 files
+- NBA Live 97: 44 files
+- Ultimate Mortal Kombat 3: 44 files
+- Doom: 32 files
+- Andretti Racing: 30 files
+- Mass Destruction: 28 files
+- Alien Trilogy: 28 files
+- Street Fighter Alpha 2: 26 files
+- Hexen: 26 files
+- Star Fighter: 24 files
+- Maximum Force: 24 files
+- Fighting Vipers: 22 files
+- Darius Gaiden: 22 files
+- Impact Racing: 22 files
+- Daytona USA: 20 files
+- Virtua Fighter 2: 20 files
+- Mega Man X3: 20 files
+- Powerslave: 20 files
+- F1 Challenge: 20 files
+- Guardian Heroes: 18 files
+- NBA Jam Extreme: 18 files
+- Contra - Legacy of War: 18 files
+- Madden NFL 97: 18 files
+
+Reports:
+- Converted: C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_LIBRARY_CONVERTED_20260613.csv
+- Skipped: C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_LIBRARY_SKIPPED_20260613.csv
+- Duplicates: C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_LIBRARY_DUPLICATES_20260613.csv
+- Active copy: C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_LIBRARY_ACTIVE_COPY_REPORT_20260613.csv
+
+Safety notes:
+- Only normal single-record SRMW/SRMR files were copied to active MiSTer folders.
+- Manual multi-record split parts were not copied to active normal folders.
+- Princess Crown and Saturn Bomberman active folders were left undisturbed.
+- SRMC_Clear_Refresh.CHT was read for validation only.
+- No build, stage, commit, release package, hq2x, RTL, RBF, or Saturn.sv operations were performed.

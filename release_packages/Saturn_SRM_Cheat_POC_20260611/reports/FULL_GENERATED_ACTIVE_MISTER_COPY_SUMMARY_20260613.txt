@@ -1,0 +1,36 @@
+Full generated Saturn SRMW/SRMR active MiSTer copy summary
+Generated: 2026-06-14T11:55:06
+
+Paths:
+- Generated SRMW: C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_pack
+- Generated SRMR: C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack
+- Active SRMW: \\MiSTer\sdcard\games\Saturn\Cheats_Trigger
+- Active SRMR: \\MiSTer\sdcard\games\Saturn\Cheats_60Frames
+- Manual split reference only: C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_manual_multirecord_parts
+
+Counts:
+- Active SRMW count before: 1508
+- Active SRMW count after: 2130
+- Active SRMR count before: 1508
+- Active SRMR count after: 2130
+- Generated normal SRMW count: 1120
+- Generated normal SRMR count: 1120
+- Manual split files kept offline: 597
+- Copied/report SRMW rows: 1120
+- Copied/report SRMR rows: 1120
+
+Validation:
+- Every generated .CHT copied was 16 bytes: True
+- Every copied active .CHT is 16 bytes: True
+- SRMC clear file exists: True
+- SRMC clear file length before/after: 16 / 16
+- SRMC clear timestamp before/after: 06/06/2026 13:33:32 / 06/06/2026 13:33:32
+- SRMC clear hash before/after: EF72445E6AE2E4E22735830DAA3EF4ADABDF37E1A0D8E35F6937AAFA537E57F1 / EF72445E6AE2E4E22735830DAA3EF4ADABDF37E1A0D8E35F6937AAFA537E57F1
+- SRMC untouched: True
+- Manual split files not copied to active normal folders: True
+- Princess Crown present: True
+- Saturn Bomberman present: True
+
+Note:
+- Active recursive counts can exceed 1120 because existing active files were not deleted, per instruction.
+- The report rows represent the full generated normal set installed by this pass.

@@ -1,6 +1,6 @@
 # MiSTer Saturn SRMW/SRMR/SRMC Cheat Proof-of-Concept Package
 
-This package is a MiSTer Sega Saturn SRMW/SRMR/SRMC cheat proof-of-concept release. It contains a tested experimental Saturn RBF plus the currently generated supported single-record cheat pack in an A-Z/game-folder layout.
+This package is a MiSTer Sega Saturn SRMW/SRMR/SRMC cheat proof-of-concept release. It contains a tested experimental Saturn RBF plus the expanded clean generated compatible cheat library in an A-Z/game-folder layout.
 
 This proof RBF was built and tested for HDMI output. It is not intended to represent a full-feature replacement for the official MiSTer Saturn core. Some optional video/output features were stripped or may be disabled/untested to make room for the cheat proof-of-concept and improve timing closure.
 
@@ -15,11 +15,21 @@ Copy these files and folders to your MiSTer SD card:
 - Copy `games/Saturn/Cheats_60Frames` to `/media/fat/games/Saturn/`
 - Copy `games/Saturn/SRMC_Clear_Refresh.CHT` to `/media/fat/games/Saturn/`
 
+## Cheat Library Contents
+
+- Full clean compatible active/generated SRMW one-shot files: 1120.
+- Full clean compatible active/generated SRMR normal refresh files: 1120.
+- Manual multi-record split/reference files: 597 in `manual_multirecord_parts`.
+- The active MiSTer install was deduped from the prior additive install and now matches the full generated compatible set: 1120 SRMW and 1120 SRMR.
+- Princess Crown and Saturn Bomberman were added and user-tested successfully.
+
 ## Folder Meanings
 
 - `Cheats_Trigger`: SRMW one-shot trigger cheats.
 - `Cheats_60Frames`: SRMR retained refresh cheats applied every 60 vblanks.
 - `SRMC_Clear_Refresh.CHT`: clears/stops the currently active SRMR refresh cheat.
+- `manual_multirecord_parts`: offline/reference-only split records for compatible multi-record source cheats. These are not true grouped active cheats and are not copied to the active normal folders.
+- `reports`: conversion, skipped-code, dedupe, and active-copy reports for this expanded package update.
 
 ## How To Use
 
@@ -29,7 +39,19 @@ Copy these files and folders to your MiSTer SD card:
 
 ## Why Only These Cheats Are Included
 
-This package includes currently generated supported single-record cheats only. These are codes the current SRMW/SRMR/SRMC engine can represent.
+This package includes currently generated supported direct 16-bit write cheats only. These are codes the current SRMW/SRMR/SRMC engine can represent.
+
+Unsupported normal active cheat types remain unsupported:
+
+- 8-bit writes.
+- 32-bit writes.
+- Conditionals.
+- Master/enabler codes.
+- Odd-aligned writes.
+- Out-of-range writes.
+- True grouped multi-record cheats.
+
+Manual multi-record split files are included only for reference/manual experimentation, not as true grouped active cheats.
 
 ## Limitations
 
@@ -46,6 +68,7 @@ Cheat limitations:
 - No conditional code support.
 - No unsupported prefix support.
 - No 8-bit write support yet.
+- No 32-bit write support yet.
 - No true multi-record cheat group support.
 - Only one active SRMR refresh record at a time.
 - No hotkey retrigger of last SRMW cheat yet.
@@ -54,7 +77,7 @@ Cheat limitations:
 
 The broad cheat pack has not been fully tested. Some cheats may do nothing, crash, behave incorrectly, or be unsafe as refresh cheats.
 
-Hardware testing confirmed that the SRMW/SRMR/SRMC paths work in several tested cases with no noticeable input lag after controller mode was corrected. The broad cheat pack has not been fully validated. Some individual cheats may do nothing, behave incorrectly, or crash because of code-specific behavior or unsafe refresh targets.
+Hardware testing confirmed that the SRMW/SRMR/SRMC paths work in several tested cases with no noticeable input lag after controller mode was corrected. Princess Crown and Saturn Bomberman were added and user-tested successfully.
 
 ## Tested RBF Checksum
 
