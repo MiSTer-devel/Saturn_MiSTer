@@ -35,7 +35,7 @@ module SH7604_MULT (
 	wire [32:0] ACC32  = $signed({MACL[31],MACL}) + $signed(SRES[32:0]);
 	
 	always @(posedge CLK or negedge RST_N) begin
-		bit [ 1: 0] MM_CYC;
+		bit [ 2: 0] MM_CYC;
 		bit         MUL_EXEC;
 		bit         DMUL_EXEC;
 		bit         MACW_EXEC;
@@ -72,13 +72,13 @@ module SH7604_MULT (
 					4'b0001,				//MUL.L
 					4'b0010,				//DMULU.L
 					4'b0011: begin		//DMULS.L
-						if (MAC_SEL[0]) MA <= CBUS_DI;
-						if (MAC_SEL[1]) begin
+						if (MAC_SEL[1]) MA <= CBUS_DI;
+						if (MAC_SEL[0]) begin
 							MB <= CBUS_DI;
 							MUL_EXEC <= ~MAC_OP[1];
 							DMUL_EXEC <= MAC_OP[1];
 							SIGNED <= MAC_OP[0] & MAC_OP[1];
-							MM_CYC <= 2'd3;
+							MM_CYC <= 3'd4;
 							MM_DONE <= 0;
 						end
 					end
@@ -88,7 +88,7 @@ module SH7604_MULT (
 						MB <= {{16{CBUS_DI[31]&MAC_OP[0]}},CBUS_DI[31:16]};
 						MUL_EXEC <= MAC_SEL[1];
 						SIGNED <= MAC_OP[0];
-						MM_CYC <= 2'd1;
+						MM_CYC <= 3'd1;
 						MM_DONE <= 0;
 					end
 					4'b1001: begin		//MAC.L @Rm+,@Rn+
@@ -98,7 +98,7 @@ module SH7604_MULT (
 							MACL_EXEC <= 1;
 							SIGNED <= MAC_OP[0];
 							SAT <= MAC_S;
-							MM_CYC <= 2'd3;
+							MM_CYC <= 3'd4;
 							MM_DONE <= 0;
 						end
 					end
@@ -110,7 +110,7 @@ module SH7604_MULT (
 							MACW_EXEC <= 1;
 							SIGNED <= MAC_OP[0];
 							SAT <= MAC_S;
-							MM_CYC <= 2'd1;
+							MM_CYC <= 3'd2;
 							MM_DONE <= 0;
 						end
 					end
@@ -120,8 +120,8 @@ module SH7604_MULT (
 			end
 			
 			if (!MM_DONE && CE_R) begin
-				if (MM_CYC != 2'd0) MM_CYC <= MM_CYC - 2'd1;
-				if (MM_CYC == 2'd1) MM_DONE <= 1;
+				if (MM_CYC != 3'd0) MM_CYC <= MM_CYC - 3'd1;
+				if (MM_CYC == 3'd1) MM_DONE <= 1;
 			end
 			
 			if (MUL_EXEC) begin
@@ -165,6 +165,6 @@ module SH7604_MULT (
 	end
 	
 	assign CBUS_DO = MAC_SEL[1] ? MACH : MACL;
-	assign CBUS_BUSY = ~MM_DONE && |MAC_SEL;
+	assign CBUS_BUSY = ~MM_DONE && (!MAC_OP[2] ? MAC_SEL[0] : |MAC_SEL);
 
 endmodule

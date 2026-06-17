@@ -202,7 +202,8 @@ module SH7604_CACHE (
 	end
 	
 	always_comb begin	
-		bit [3:0] DIRTY;
+		bit [ 3: 0] DIRTY;
+		bit [31: 0] CACHE_ADDR_AREA_DATA;
 		
 		DIRTY[0] = TAG_DIRTY[0][CBUS_A[9:4]];
 		DIRTY[1] = TAG_DIRTY[1][CBUS_A[9:4]];
@@ -219,13 +220,18 @@ module SH7604_CACHE (
 		WAY_HIT[2] = WAY_TAG[2] & CVALID_Q[2] & ~DIRTY[2];
 		WAY_HIT[3] = WAY_TAG[3] & CVALID_Q[3] & ~DIRTY[3];
 		
-		if (CACHE_ADDR_AREA) 
+		if (CACHE_ADDR_AREA) begin
 			case (CCR.W)
-				2'b00: CACHE_DATA = {3'b000, CTAG_Q[0], LRU_DATA, 1'b0, CVALID_Q[0] & ~DIRTY[0], 2'b00};
-				2'b01: CACHE_DATA = {3'b000, CTAG_Q[1], LRU_DATA, 1'b0, CVALID_Q[1] & ~DIRTY[1], 2'b00};
-				2'b10: CACHE_DATA = {3'b000, CTAG_Q[2], LRU_DATA, 1'b0, CVALID_Q[2] & ~DIRTY[2], 2'b00};
-				2'b11: CACHE_DATA = {3'b000, CTAG_Q[3], LRU_DATA, 1'b0, CVALID_Q[3] & ~DIRTY[3], 2'b00};
+				2'b00: CACHE_ADDR_AREA_DATA = {3'b000, CTAG_Q[0], LRU_DATA, 1'b0, CVALID_Q[0] & ~DIRTY[0], 2'b00};
+				2'b01: CACHE_ADDR_AREA_DATA = {3'b000, CTAG_Q[1], LRU_DATA, 1'b0, CVALID_Q[1] & ~DIRTY[1], 2'b00};
+				2'b10: CACHE_ADDR_AREA_DATA = {3'b000, CTAG_Q[2], LRU_DATA, 1'b0, CVALID_Q[2] & ~DIRTY[2], 2'b00};
+				2'b11: CACHE_ADDR_AREA_DATA = {3'b000, CTAG_Q[3], LRU_DATA, 1'b0, CVALID_Q[3] & ~DIRTY[3], 2'b00};
 			endcase
+			case (CBUS_BA)
+				4'b1111: CACHE_DATA = CACHE_ADDR_AREA_DATA;
+				default: CACHE_DATA = {2{CACHE_ADDR_AREA_DATA[15:0]}};
+			endcase
+		end
 		else
 			CACHE_DATA = CRAM_Q;
 	end
