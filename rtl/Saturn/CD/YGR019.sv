@@ -394,8 +394,8 @@ module YGR019 (
 					FIFO_DEC_AMOUNT <= 0;
 				end else if (FIFO_INC_AMOUNT) begin
 					FIFO_AMOUNT <= FIFO_AMOUNT + 3'd1;
-					if (FIFO_AMOUNT == 3'd7-2) FIFO_AMOUNT <= 3'd7-2;
-					if (FIFO_AMOUNT == 3'd6-2) FIFO_FULL <= 1;
+					if (FIFO_AMOUNT == 3'd7-3'd2) FIFO_AMOUNT <= 3'd7-3'd2;
+					if (FIFO_AMOUNT == 3'd6-3'd2) FIFO_FULL <= 1;
 					FIFO_EMPTY <= 0;
 					FIFO_INC_AMOUNT <= 0;
 				end else if (FIFO_DEC_AMOUNT) begin
