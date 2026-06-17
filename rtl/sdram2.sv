@@ -23,8 +23,10 @@ module sdram2
 	input              burst,
 	output     [31: 0] dout,
 	input              rfs,
-	output             busy,
-	
+	output             busy
+
+`ifdef DEBUG
+	                   ,
 	output             dbg_rfs_timeout,
 
 	output [1:0] dbg_ctrl_bank,
@@ -40,7 +42,8 @@ module sdram2
 	output       dbg_out1_read,
 	output [1:0] dbg_out1_bank,
 	
-	output reg [15:0] dbg_sdram_d
+	output reg [23:0] dbg_numrfs_in_64ms
+`endif
 );
 
 	localparam RASCAS_DELAY   = 3'd3; // tRCD=20ns -> 2 cycles@85MHz
@@ -125,35 +128,43 @@ module sdram2
 	reg [31: 0] wr_data;
 	reg [ 3: 0] wr_be;
 	
+	reg old_rd, old_wr, old_rfs;
+	reg [ 1: 0] burst_cnt;
+	reg cont, first;
 	always @(posedge clk) begin
-		reg old_rd, old_wr, old_rfs;
-		reg cont;
-		reg [ 1: 0] burst_cnt;
+`ifdef DEBUG
 		reg [10: 0] rfs_wait_cnt;
+`endif
 		
 		if (!init_done) begin
-			st_num <= 4'd11;
+			st_num <= 4'd15;
 			{is_read,is_write,is_refresh} <= '0;
 			cont <= 0;
 			{rd_busy,wr_busy} <= '0;
 			burst_cnt <= '0;
+`ifdef DEBUG
 			dbg_rfs_timeout <= 0;
+`endif
 		end else begin
 			if (is_read || is_write || is_refresh) st_num <= st_num + 4'd1;
 			
+`ifdef DEBUG
 			rfs_wait_cnt <= rfs_wait_cnt + 1'd1;
 			if (rfs_wait_cnt == 11'h7FF) dbg_rfs_timeout <= 1;
+`endif
 			
 			old_rd <= rd;
 			old_wr <= |wr;
 			old_rfs <= rfs;
 			if (rd && !old_rd) begin
+				first <= 0;
 				burst_cnt <= burst_cnt + 2'd1;
 				if (burst_cnt == 2'd0 && !cont) begin
 					address <= addr;
+					first <= 1;
 					rd_busy <= 1;
 					is_read <= 1;
-					st_num <= 4'd0;
+					st_num <= 4'd1;
 				end
 				if (burst_cnt == 2'd1 && cont && burst) begin
 					address <= address + 18'd4;
@@ -169,25 +180,27 @@ module sdram2
 				wr_be <= wr;
 				wr_busy <= 1;
 				is_write <= 1;
-				st_num <= 4'd0;
+				st_num <= 4'd1;
 			end
 			else if (rfs && !old_rfs) begin
 				is_refresh <= 1;
-				st_num <= 4'd0;
+				st_num <= 4'd1;
+`ifdef DEBUG
 				rfs_wait_cnt <= '0;
 				dbg_rfs_timeout <= 0;
+`endif
 			end
 			
-			if (is_refresh && st_num == 4'd6) is_refresh <= 0;
-			if (is_read && st_num == 4'd10) rd_busy <= 0;
+			if (is_refresh && st_num == 4'd6) begin is_refresh <= 0; st_num <= 4'd15; end
+			if (is_read && st_num == 4'd9) rd_busy <= 0;
 			if (is_write && st_num == 4'd4) wr_busy <= 0;
-			if (is_read && st_num == 4'd10) is_read <= 0;
-			if (is_write && st_num == 4'd6) is_write <= 0;
+			if (is_read && st_num == 4'd10) begin is_read <= 0; st_num <= 4'd15; end
+			if (is_write && st_num == 4'd6) begin is_write <= 0; st_num <= 4'd15; end
 		end
 		
 	end
 	
-	always @(posedge clk) begin
+	always_comb begin
 		state[0] <= '0;
 		if (!init_done) begin
 			state[0].CMD <= init_state == STATE_START ? CTRL_RAS : 
@@ -196,45 +209,52 @@ module sdram2
 			state[0].RFS <= 1;
 		end else begin
 			case (st_num[3:0])
-				4'd0: begin state[0].CMD  <=                       CTRL_RAS;
-								state[0].ADDR <= {address[19:2],1'b0};
-								state[0].BANK <= '0;
-								state[0].RFS  <= is_refresh; end
-
-				4'd3: begin state[0].CMD  <= is_read || is_write ? CTRL_CAS : CTRL_IDLE;
-								state[0].ADDR <= is_read             ? {address[19:4],address[3:2]+2'd0,1'b0} : {address[19:2],1'b0};
-								state[0].DATA <= wr_data[31:16];
-				            state[0].RD   <= is_read;
-								state[0].WE   <= is_write;
-								state[0].BE   <= wr_be[3:2];
-								state[0].BANK <= '0; end
+				4'd15: begin state[0].CMD  <= (rd && !old_rd && burst_cnt == 2'd0 && !cont) || (wr && !old_wr) || (rfs && !old_rfs) ? CTRL_RAS : CTRL_IDLE;
+								 state[0].ADDR <= {addr[19:2],1'b0};
+								 state[0].BANK <= '0;
+								 state[0].RFS  <= rfs; end
 								
-				4'd4: begin state[0].CMD  <= is_write            ? CTRL_CAS                         : CTRL_IDLE;
-								state[0].ADDR <=                                                          {address[19:2],1'b1};
-								state[0].DATA <= wr_data[15:0];
-				            state[0].RD   <= 0;
-								state[0].WE   <= is_write;
-								state[0].BE   <= wr_be[1:0];
-								state[0].BANK <= '0; end
+				4'd0 : begin state[0].CMD  <=                       CTRL_RAS;
+								 state[0].ADDR <= {address[19:2],1'b0};
+								 state[0].BANK <= '0;
+								 state[0].RFS  <= is_refresh; end
 
-				4'd5: begin state[0].CMD  <= is_read             ? CTRL_CAS                         : CTRL_IDLE;
-								state[0].ADDR <=                       {address[19:4],address[3:2]+2'd1,1'b0};
-				            state[0].RD   <= is_read;
-								state[0].BANK <= '0; end
+				4'd3 : begin state[0].CMD  <= is_read || is_write ? CTRL_CAS : CTRL_IDLE;
+								 state[0].ADDR <= is_read             ? {address[19:4],address[3:2]+2'd0,1'b0} : {address[19:2],1'b0};
+								 state[0].DATA <= wr_data[31:16];
+				             state[0].RD   <= is_read;
+							 	 state[0].WE   <= is_write;
+							 	 state[0].BE   <= wr_be[3:2];
+								 state[0].BANK <= '0; end
+								
+				4'd4 : begin state[0].CMD  <= is_write            ? CTRL_CAS                         : CTRL_IDLE;
+								 state[0].ADDR <=                                                          {address[19:2],1'b1};
+								 state[0].DATA <= wr_data[15:0];
+				             state[0].RD   <= 0;
+								 state[0].WE   <= is_write;
+								 state[0].BE   <= wr_be[1:0];
+								 state[0].BANK <= '0; end
 
-				4'd7: begin state[0].CMD  <= is_read             ? CTRL_CAS : CTRL_IDLE;
-								state[0].ADDR <=                       {address[19:4],address[3:2]+2'd2,1'b0};
-				            state[0].RD   <= is_read;
-								state[0].BANK <= '0; end
+				4'd5 : begin state[0].CMD  <= is_read             ? CTRL_CAS                         : CTRL_IDLE;
+								 state[0].ADDR <=                       {address[19:4],address[3:2]+2'd1,1'b0};
+				             state[0].RD   <= is_read;
+							 	 state[0].BANK <= '0; end
 
-				4'd9: begin state[0].CMD  <= is_read             ? CTRL_CAS : CTRL_IDLE;
-								state[0].ADDR <=                       {address[19:4],address[3:2]+2'd3,1'b0};
-				            state[0].RD   <= is_read;
-								state[0].LAST <= 1;
-								state[0].BANK <= '0; end
+				4'd7 : begin state[0].CMD  <= is_read             ? CTRL_CAS : CTRL_IDLE;
+								 state[0].ADDR <=                       {address[19:4],address[3:2]+2'd2,1'b0};
+				             state[0].RD   <= is_read;
+								 state[0].BANK <= '0; end
+
+				4'd9 : begin state[0].CMD  <= is_read             ? CTRL_CAS : CTRL_IDLE;
+								 state[0].ADDR <=                       {address[19:4],address[3:2]+2'd3,1'b0};
+				             state[0].RD   <= is_read;
+								 state[0].LAST <= 1;
+								 state[0].BANK <= '0; end
 				default:;
 			endcase
 		end
+	end
+	always @(posedge clk) begin
 		state[1] <= state[0];
 		state[2] <= state[1];
 		state[3] <= state[2];
@@ -253,15 +273,15 @@ module sdram2
 	wire        ctrl_rfs   = state[0].RFS;
 	wire        ctrl_last  = state[0].LAST;
 	
-	wire       data0_read = state[4].RD;
+//	wire       data0_read = state[4].RD;
 	wire       out0_read  = state[5].RD;
 	wire [2:0] out0_addr  = state[5].ADDR[4:2];
-	wire [1:0] out0_bank  = state[5].BANK;
+//	wire [1:0] out0_bank  = state[5].BANK;
 	
-	wire       data1_read = state[5].RD;
+//	wire       data1_read = state[5].RD;
 	wire       out1_read  = state[6].RD;
 	wire [2:0] out1_addr  = state[6].ADDR[4:2];
-	wire [1:0] out1_bank  = state[6].BANK;
+//	wire [1:0] out1_bank  = state[6].BANK;
 	
 	reg [15:0] rbuf;
 	reg [31:0] dout_buf[8];
@@ -271,8 +291,8 @@ module sdram2
 		if (out0_read) dout_buf[out0_addr][31:16] <= rbuf;
 		if (out1_read) dout_buf[out1_addr][15: 0] <= rbuf;
 	end
-		
-	assign dout = dout_buf[addr[4:2]];
+	wire [31:0] temp = dout_buf[addr[4:2]];
+	assign dout = first && st_num <= 4'd9 ? {temp[31:16],rbuf} : temp;
 	assign busy = rd_busy | wr_busy;
 	
 
@@ -310,7 +330,7 @@ module sdram2
 		
 		SDRAM_DQ <= 'Z;
 		casex({init_done,ctrl_rfs,we,mode,ctrl_cmd})
-			{3'b101, MODE_NORMAL, CTRL_CAS}: begin SDRAM_DQ <= d; dbg_sdram_d <= d; end
+			{3'b101, MODE_NORMAL, CTRL_CAS}: begin SDRAM_DQ <= d; end
 										   default: ;
 		endcase
 
@@ -330,6 +350,20 @@ module sdram2
 	assign {SDRAM_DQMH,SDRAM_DQML} = SDRAM_A[12:11];
 	
 	
+`ifdef DEBUG
+	always @(posedge clk) begin
+		reg [31: 0] div_cnt;
+		reg [23: 0] num_cnt;
+		
+		if (ctrl_rfs) num_cnt <= num_cnt + 24'd1;
+		
+		div_cnt <= div_cnt + 1;
+		if (div_cnt == 6879769) begin
+			div_cnt <= '0;
+			dbg_numrfs_in_64ms <= num_cnt;
+			num_cnt <= '0;
+		end
+	end
 	
 	assign dbg_ctrl_bank = ctrl_bank;
 	assign dbg_ctrl_cmd = ctrl_cmd;
@@ -341,6 +375,7 @@ module sdram2
 	assign dbg_data1_read = data1_read;
 	assign dbg_out1_read = out1_read;
 	assign dbg_out1_bank = out1_bank;
+`endif
 
 	altddio_out
 	#(
