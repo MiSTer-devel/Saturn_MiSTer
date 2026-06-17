@@ -374,7 +374,7 @@ module emu
 	wire [ 13:0] joystick_0,joystick_1,joystick_2,joystick_3,joystick_4;
 	wire [  7:0] joy0_x0,joy0_y0,joy0_x1,joy0_y1,joy1_x0,joy1_y0,joy1_x1,joy1_y1;
 	wire         ioctl_download,ioctl_upload;
-	wire         ioctl_upload_req;
+	wire         ioctl_upload_req = 0;
 	wire         ioctl_wr,ioctl_rd;
 	wire [ 25:0] ioctl_addr;
 	wire [ 15:0] ioctl_data,ioctl_din;
@@ -827,24 +827,33 @@ module emu
 	                    (!SMPC_DOTSEL ? 53375000 : 56875000);
 
 	
-	wire SMPC_CE;		//SMPC clock 4.0000MHz
-	CEGen SMPC_CEGen
-	(
-		.CLK(clk_sys),
-		.RST_N(1),
-		.IN_CLK(in_clk),
-		.OUT_CLK(4000000),
-		.CE(SMPC_CE)
-	);
-	
-	wire SCSP_CE;		//SCSP clock 22.5792MHz
+	wire SCSP_2X_CE;
 	CEGen SCSP_CEGen
 	(
 		.CLK(clk_sys),
 		.RST_N(1),
 		.IN_CLK(in_clk),
-		.OUT_CLK(22579200),
-		.CE(SCSP_CE)
+		.IN_CE(1),
+		.OUT_CLK(22579200*2),
+		.CE(SCSP_2X_CE)
+	);
+	
+	wire SCSP_CE;		//SCSP clock 22.5792MHz
+	wire SCSP_DIV;
+	always @(posedge clk_sys) 
+		if (SCSP_2X_CE) SCSP_DIV <= ~SCSP_DIV;
+		
+	assign SCSP_CE = SCSP_2X_CE & SCSP_DIV;
+		
+	wire SMPC_CE;		//SMPC clock 4.0000MHz
+	CEGen SMPC_CEGen
+	(
+		.CLK(clk_sys),
+		.RST_N(1),
+		.IN_CLK(22579200*2),
+		.IN_CE(SCSP_2X_CE),
+		.OUT_CLK(4000000),
+		.CE(SMPC_CE)
 	);
 	
 	wire CD_CE;			//CD clock freq 20.000MHz
@@ -852,7 +861,8 @@ module emu
 	(
 		.CLK(clk_sys),
 		.RST_N(1),
-		.IN_CLK(in_clk),
+		.IN_CLK(22579200*2),
+		.IN_CE(SCSP_2X_CE),
 		.OUT_CLK(20000000*2),
 		.CE(CD_CE)
 	);
@@ -862,7 +872,8 @@ module emu
 	(
 		.CLK(clk_sys),
 		.RST_N(1),
-		.IN_CLK(in_clk),
+		.IN_CLK(22579200*2),
+		.IN_CE(SCSP_2X_CE),
 		.OUT_CLK(44100*2*2),
 		.CE(CDD_2X_CE)
 	);
@@ -2104,7 +2115,7 @@ module emu
 	wire [7:0] crop_b = (hcrop_en && hcrop_blank) ? 8'd0 : cofi_b;
 `endif
 
-	video_mixer #(.LINE_LENGTH((352*2)+8), .HALF_DEPTH(0), .GAMMA(1)) video_mixer
+	video_mixer #(.LINE_LENGTH(8), .HALF_DEPTH(0), .GAMMA(1)) video_mixer
 	(
 		.*,
 	
