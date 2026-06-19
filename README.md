@@ -9,7 +9,7 @@
 
 ## Status
 
-Current status is WIP/Beta
+The core has matured substantially, with many games tested over the course of development.
 
-Known issues:
+Known issues and limitations are tracked in this repository's issue list rather than in a game-by-game list here.
 
