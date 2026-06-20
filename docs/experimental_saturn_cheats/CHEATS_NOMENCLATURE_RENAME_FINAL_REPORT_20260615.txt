@@ -1,0 +1,35 @@
+Saturn Cheat Nomenclature Rename Final Report - 20260615
+Generated: 2026-06-16T04:06:05
+
+Execution summary:
+files renamed: 23
+files unchanged: 4852
+errors: 0
+missing destination files after rename: 0
+old source paths still present after rename: 0
+hash/size mismatches after rename: 0
+
+Final counts by folder:
+Constant: 2266
+Trigger: 2265
+Experimental_Grouped: 305
+Experimental_06TEST: 39
+Total .CHT files under clean Cheats root: 4875
+bad-size count: 0
+
+Clear Active Refresh verification:
+path: \\MiSTer\sdcard\games\Saturn\Cheats\Constant\G\Global\Clear Active Refresh.CHT
+size: 16
+sha256: EF72445E6AE2E4E22735830DAA3EF4ADABDF37E1A0D8E35F6937AAFA537E57F1
+verified: True
+
+Rollback/backup manifest:
+C:\MiSTer-Work\Saturn_Cheat_Sources\CHEATS_NOMENCLATURE_RENAME_ROLLBACK_20260616_035821.csv
+Execution report:
+C:\MiSTer-Work\Saturn_Cheat_Sources\CHEATS_NOMENCLATURE_RENAME_EXECUTION_REPORT_20260616_035821.txt
+
+Scope confirmation:
+Only the 23 manifest-approved filename renames were executed.
+No files were moved between folders, deleted, copied, or content-modified.
+Clear Active Refresh.CHT was not renamed.
+No build, RTL edit, git stage, git commit, or release package change was performed.

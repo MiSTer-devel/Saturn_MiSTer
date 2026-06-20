@@ -1,0 +1,216 @@
+Experimental All Cheats Saturn Hardware Test Results
+Date: 2026-06-16
+
+CORE UNDER TEST
+---------------
+Core:
+\MiSTer\sdcard_Console\Experimental_AllCheats_Saturn.rbf
+
+SHA256:
+EBF0F7C4ADA647C371E2868244E0EE48DEC1FD9C672D9EEFE08B169293D0B6A6
+
+
+CLEAN CHEAT LAYOUT
+------------------
+Path:
+\MiSTer\sdcard\games\Saturn\Cheats
+
+Counts:
+Constant:             2266
+Trigger:              2265
+Experimental_Grouped:  305
+Experimental_06TEST:    39
+Total:                4875
+Bad-size files:          0
+
+
+HARDWARE RESULTS
+----------------
+
+1. Core boot / ROM boot
+
+- Experimental_AllCheats_Saturn.rbf boots.
+- Multiple ROMs boot.
+- No noticeable OSD lag.
+- No noticeable game lag.
+- Princess Crown save data visible in previous core builds was not present in
+  this core. Avoid save testing until that is investigated separately.
+
+
+2. Stable 16-bit cheat behavior
+
+- Normal 16-bit cheat test passed.
+- Cheats worked.
+- No lag or crash reported.
+
+
+3. 8-bit cheat behavior
+
+- 8-bit cheat test passed.
+- Cheats worked as intended.
+- No lag or crash reported.
+
+
+4. SRMG grouped test
+
+ROM:
+Sonic 3D Blast
+
+Location:
+Cheats -> Experimental_Grouped -> S -> Sonic 3D Blast
+
+Cheat:
+Gives Sonic 999 Rings - Grouped
+
+Result:
+- Works.
+- No noticeable OSD lag.
+- No noticeable game lag.
+- No noticeable glitches during 60 seconds of gameplay.
+
+Note:
+This is a one-shot cheat. The maximum is 999 rings, and collecting one more
+ring rolls the count to 001. It is therefore not useful as a constant cheat,
+but it validates SRMG grouped one-shot behavior.
+
+
+5. Constant refresh test
+
+ROM:
+Sonic 3D Blast
+
+Location:
+Cheats -> Constant -> S -> Sonic 3D Blast
+
+Cheat:
+Invincible / Invincibility Refresh
+
+Result:
+- Works.
+- No lag or crash reported.
+
+
+6. 06TEST test
+
+ROM:
+Bug!
+
+Location:
+Cheats -> Experimental_06TEST -> B -> Bug!
+
+Cheat:
+Unlimited Energy
+
+Result:
+- Works.
+- Baseline with no cheat: damage was taken normally.
+- After loading the cheat: no damage was taken.
+- After reboot/reload with no cheat: damage was taken normally again.
+- No lag or crash reported.
+
+Note:
+Clear Refresh did not visibly restore damage-taking during this test. The game
+state may already have been changed, or the value may not naturally decrease
+again until reset.
+
+
+7. Constant refresh and Clear Active Refresh
+
+ROM:
+Bug!
+
+Location:
+Cheats -> Constant -> B -> Bug
+
+Cheat:
+256 Gems Per Level - Refresh
+
+Result:
+- Works.
+- Gems stayed fixed at 256 after collecting additional gems.
+
+Clear operation:
+Cheats -> Constant -> G -> Global -> Clear Active Refresh
+
+Result after clear:
+- Gems initially remained at 256.
+- Collecting additional gems then increased the count normally.
+- No lag or crash reported.
+
+Interpretation:
+Clear Active Refresh works. It stops the refresh operation but does not undo
+the last value written by the cheat.
+
+
+8. Trigger test
+
+ROM:
+Sonic 3D Blast
+
+Location:
+Cheats -> Trigger -> S -> Sonic 3D Blast
+
+Cheat:
+Invincibility (Sonic Flasher...) - Trigger
+
+Result:
+- Works.
+- Invincibility turns on and then wears off as expected.
+- The cheat is not useful as a long-term effect, but it confirms trigger
+  behavior.
+- No lag or crash reported.
+
+
+9. Additional Trigger test
+
+ROM:
+Bug!
+
+Location:
+Cheats -> Trigger -> B -> Bug
+
+Result:
+- Works.
+- No lag or crash reported.
+
+
+TEST SUMMARY
+------------
+Boot:            PASS
+Trigger:         PASS
+Constant:        PASS
+Grouped SRMG:    PASS
+06TEST:          PASS
+Clear Refresh:   PASS
+Multiple games:  PASS
+Lag/crash:       None reported in tested cases
+
+
+OVERALL INTERPRETATION
+----------------------
+
+- The Experimental_AllCheats core is functionally promising.
+- The clean cheat layout is usable.
+- Trigger, Constant, Experimental_Grouped, and Experimental_06TEST paths all
+  have successful hardware tests.
+- No noticeable lag or crashes were reported in the tested cases.
+
+
+REMAINING CAUTIONS
+------------------
+
+- Build timing remains experimental because hold slack was negative.
+- The Princess Crown save visibility issue needs separate investigation.
+- Opcode 06 support is promising but remains test-only.
+- Conditionals are deferred.
+- F6/B6 master/enabler runtime support is deferred.
+- Low-work-RAM 10/30 support is deferred.
+- 32-bit support is deferred.
+- Mixed/grouped 8-bit support is deferred.
+
+
+NEXT SEPARATE INVESTIGATION
+---------------------------
+
+Investigate Princess Crown save visibility before pursuing additional cheat
+features.

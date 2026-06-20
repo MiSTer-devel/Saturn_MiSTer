@@ -1,0 +1,43 @@
+Saturn Cheat Layout Repair Resume Report - 20260613
+Generated: 2026-06-15T22:18:55
+backup_path_used: C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_SATURN_CHEATS_LAYOUT_BACKUP_20260615_194034
+dry_run_manifest_path_used: C:\MiSTer-Work\Saturn_Cheat_Sources\CHEAT_LAYOUT_REPAIR_DRYRUN_MANIFEST_20260613.csv
+copied_new_files_count: 77
+skipped_already_matching_files_count: 4798
+mismatch_count: 0
+error_count: 0
+processed_manifest_rows: 4875 of 4875
+
+final_constant_count: 2266
+final_trigger_count: 2265
+final_experimental_grouped_count: 305
+final_experimental_06test_count: 39
+bad_size_count: 0
+bad_size_constant: 0
+bad_size_trigger: 0
+bad_size_experimental_grouped: 0
+bad_size_experimental_06test: 0
+
+old_folders_preserved: True
+- Cheats_Grouped_Experimental count=181, expected=181, ok=True
+- Cheats_Trigger_8bit count=164, expected=164, ok=True
+- Cheats_06TEST_Experimental count=39, expected=39, ok=True
+- Cheats_60Frames count=1120, expected=1120, ok=True
+- Cheats_Master_SubOnly_Experimental count=2086, expected=2086, ok=True
+- Cheats_60Frames_8bit count=164, expected=164, ok=True
+- Cheats_Trigger count=1120, expected=1120, ok=True
+
+original_srmc_hash: EF72445E6AE2E4E22735830DAA3EF4ADABDF37E1A0D8E35F6937AAFA537E57F1
+original_srmc_unchanged: True
+new_srmc_hash: EF72445E6AE2E4E22735830DAA3EF4ADABDF37E1A0D8E35F6937AAFA537E57F1
+new_srmc_copy_verified: True
+
+mismatches:
+- none
+errors:
+- none
+
+incomplete_items:
+- none
+
+confirmation: no build, no RTL edit, no git stage/commit, no release package changes

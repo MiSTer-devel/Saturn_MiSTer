@@ -1501,6 +1501,8 @@ module emu
 `ifdef SATURN_CHEAT_RMW_POC
 	// Experimental "SRMW", u32 address, u32 value files issue one aligned
 	// full-word read-modify-write; only value[15:0] is used.
+	// "SRMG" buffers up to four embedded SRMW records and applies them as a
+	// one-shot direct-write sequence after the .CHT upload completes.
 `ifdef SATURN_CHEAT_RMW_REFRESH_POC
 	// Experimental "SRMR" retains one SRMW record and refreshes it every
 	// sixtieth vblank. "SRMC" clears the retained refresh record.
@@ -1513,6 +1515,8 @@ module emu
 `ifdef SATURN_CHEAT_RMW_POC
 	wire        cheat_patch_rmw;
 	wire        cheat_patch_half;
+	wire        cheat_patch_byte;
+	wire [ 1:0] cheat_patch_byte_lane;
 `endif
 
 	saturn_cheat_poc cheat_poc
@@ -1531,6 +1535,8 @@ module emu
 `ifdef SATURN_CHEAT_RMW_POC
 		.patch_rmw(cheat_patch_rmw),
 		.patch_half(cheat_patch_half),
+		.patch_byte(cheat_patch_byte),
+		.patch_byte_lane(cheat_patch_byte_lane),
 `endif
 		.patch_ack(cheat_patch_ack)
 	);
@@ -1577,6 +1583,8 @@ module emu
 `ifdef SATURN_CHEAT_RMW_POC
 	reg         cheat_patch_rd = 0;
 	reg         cheat_patch_half_ram;
+	reg         cheat_patch_byte_ram;
+	reg  [ 1:0] cheat_patch_byte_lane_ram;
 	reg  [31:0] cheat_patch_read_data;
 `endif
 
@@ -1622,6 +1630,8 @@ module emu
 					cheat_patch_addr_ram <= cheat_patch_addr;
 `ifdef SATURN_CHEAT_RMW_POC
 					cheat_patch_half_ram <= cheat_patch_half;
+					cheat_patch_byte_ram <= cheat_patch_byte;
+					cheat_patch_byte_lane_ram <= cheat_patch_byte_lane;
 					if (cheat_patch_rmw) begin
 						cheat_patch_rd <= 1;
 						cheat_patch_state <= 5;
@@ -1670,9 +1680,19 @@ module emu
 			end
 
 			9: begin
-				cheat_patch_data_ram <= cheat_patch_half_ram ?
-					{cheat_patch_read_data[31:16],cheat_patch_data[15:0]} :
-					{cheat_patch_data[15:0],cheat_patch_read_data[15:0]};
+				if (cheat_patch_byte_ram) begin
+					case (cheat_patch_byte_lane_ram)
+						2'd0: cheat_patch_data_ram <= {cheat_patch_data[7:0],cheat_patch_read_data[23:0]};
+						2'd1: cheat_patch_data_ram <= {cheat_patch_read_data[31:24],cheat_patch_data[7:0],cheat_patch_read_data[15:0]};
+						2'd2: cheat_patch_data_ram <= {cheat_patch_read_data[31:16],cheat_patch_data[7:0],cheat_patch_read_data[7:0]};
+						2'd3: cheat_patch_data_ram <= {cheat_patch_read_data[31:8],cheat_patch_data[7:0]};
+					endcase
+				end
+				else begin
+					cheat_patch_data_ram <= cheat_patch_half_ram ?
+						{cheat_patch_read_data[31:16],cheat_patch_data[15:0]} :
+						{cheat_patch_data[15:0],cheat_patch_read_data[15:0]};
+				end
 				cheat_patch_wr <= 1;
 				cheat_patch_state <= 10;
 			end
@@ -2541,6 +2561,8 @@ module saturn_cheat_poc
 `ifdef SATURN_CHEAT_RMW_POC
 	output reg         patch_rmw,
 	output reg         patch_half,
+	output reg         patch_byte,
+	output reg [ 1: 0] patch_byte_lane,
 `endif
 	input              patch_ack
 );
@@ -2548,8 +2570,11 @@ module saturn_cheat_poc
 	localparam [31:0] CHT_MAGIC = 32'h53434854; // ASCII bytes "SCHT"
 `ifdef SATURN_CHEAT_RMW_POC
 	localparam [31:0] RMW_MAGIC = 32'h53524D57; // ASCII bytes "SRMW"
+	localparam [31:0] RM8_MAGIC = 32'h53524D38; // ASCII bytes "SRM8"
+	localparam [31:0] RMG_MAGIC = 32'h53524D47; // ASCII bytes "SRMG"
 `ifdef SATURN_CHEAT_RMW_REFRESH_POC
 	localparam [31:0] RMR_MAGIC = 32'h53524D52; // ASCII bytes "SRMR"
+	localparam [31:0] RM9_MAGIC = 32'h53524D39; // ASCII bytes "SRM9"
 	localparam [31:0] RMC_MAGIC = 32'h53524D43; // ASCII bytes "SRMC"
 `endif
 `endif
@@ -2557,12 +2582,33 @@ module saturn_cheat_poc
 	reg        magic_ok = 0;
 `ifdef SATURN_CHEAT_RMW_POC
 	reg        rmw_magic_ok = 0;
+	reg        rm8_magic_ok = 0;
+	reg        rmg_magic_ok = 0;
+	reg [ 2:0] rmg_count = 0;
+	reg [ 3:0] rmg_record_magic = 0;
+	reg [ 3:0] rmg_record_valid = 0;
+	reg [31:0] rmg_record_addr = 0;
+	reg [17:0] rmg_addr0 = 0;
+	reg [17:0] rmg_addr1 = 0;
+	reg [17:0] rmg_addr2 = 0;
+	reg [17:0] rmg_addr3 = 0;
+	reg [15:0] rmg_data0 = 0;
+	reg [15:0] rmg_data1 = 0;
+	reg [15:0] rmg_data2 = 0;
+	reg [15:0] rmg_data3 = 0;
+	reg [ 3:0] rmg_half = 0;
+	reg        rmg_active = 0;
+	reg [ 1:0] rmg_index = 0;
+	reg        old_cht_download = 0;
 `ifdef SATURN_CHEAT_RMW_REFRESH_POC
 	reg        rmr_magic_ok = 0;
+	reg        rm9_magic_ok = 0;
 	reg        refresh_valid = 0;
 	reg [17:0] refresh_addr = 0;
 	reg [15:0] refresh_data = 0;
 	reg        refresh_half = 0;
+	reg        refresh_byte = 0;
+	reg [ 1:0] refresh_byte_lane = 0;
 	reg [ 5:0] refresh_div = 0;
 	reg        old_vbl_n = 1;
 `endif
@@ -2578,6 +2624,24 @@ module saturn_cheat_poc
 	wire        valid_record_addr = record_addr[31:20] == 12'h060 && !record_addr[1:0];
 `ifdef SATURN_CHEAT_RMW_POC
 	wire        valid_rmw_addr = record_addr[31:20] == 12'h060 && !record_addr[0];
+	wire        valid_rm8_addr = record_addr[31:20] == 12'h060;
+	wire [ 2:0] rmg_file_record = ioctl_addr[6:4];
+	wire [ 1:0] rmg_slot = ioctl_addr[5:4] - 2'd1;
+	wire        rmg_record_word = rmg_magic_ok && rmg_file_record >= 3'd1 && rmg_file_record <= 3'd4;
+	wire        rmg_count_valid = rmg_count >= 3'd1 && rmg_count <= 3'd4;
+	wire        rmg_records_ready =
+		(rmg_count == 3'd1 && rmg_record_valid[0]) ||
+		(rmg_count == 3'd2 && rmg_record_valid[1:0] == 2'b11) ||
+		(rmg_count == 3'd3 && rmg_record_valid[2:0] == 3'b111) ||
+		(rmg_count == 3'd4 && rmg_record_valid == 4'b1111);
+	wire [17:0] rmg_issue_addr =
+		(rmg_index == 2'd0) ? rmg_addr0 :
+		(rmg_index == 2'd1) ? rmg_addr1 :
+		(rmg_index == 2'd2) ? rmg_addr2 : rmg_addr3;
+	wire [15:0] rmg_issue_data =
+		(rmg_index == 2'd0) ? rmg_data0 :
+		(rmg_index == 2'd1) ? rmg_data1 :
+		(rmg_index == 2'd2) ? rmg_data2 : rmg_data3;
 `endif
 
 	initial begin
@@ -2585,12 +2649,17 @@ module saturn_cheat_poc
 `ifdef SATURN_CHEAT_RMW_POC
 		patch_rmw = 0;
 		patch_half = 0;
+		patch_byte = 0;
+		patch_byte_lane = 0;
 `endif
 	end
 
 	always @(posedge clk) begin
 		patch_ack_meta <= patch_ack;
 		patch_ack_sync <= patch_ack_meta;
+`ifdef SATURN_CHEAT_RMW_POC
+		old_cht_download <= cht_download;
+`endif
 
 		if (request_active) begin
 			if (patch_ack_sync == patch_req) begin
@@ -2601,16 +2670,35 @@ module saturn_cheat_poc
 `ifdef SATURN_CHEAT_RMW_REFRESH_POC
 		if (cht_download && ioctl_wr && ioctl_addr[1] && ioctl_addr[3:2] == 2'd0 && u32_value == RMC_MAGIC) begin
 			refresh_valid <= 0;
+			refresh_byte <= 0;
+`ifdef SATURN_CHEAT_RMW_POC
+			rmg_active <= 0;
+`endif
 		end
 `endif
 
-		if (cht_download && ioctl_wr && !request_active) begin
+`ifdef SATURN_CHEAT_RMW_POC
+		if (old_cht_download && !cht_download && rmg_magic_ok && rmg_count_valid && rmg_records_ready) begin
+			rmg_active <= 1;
+			rmg_index <= 0;
+		end
+`endif
+
+		if (cht_download && ioctl_wr) begin
 			if (ioctl_addr == 0) begin
 				magic_ok <= 0;
 `ifdef SATURN_CHEAT_RMW_POC
 				rmw_magic_ok <= 0;
+				rm8_magic_ok <= 0;
+				rmg_magic_ok <= 0;
+				rmg_count <= 0;
+				rmg_record_magic <= 0;
+				rmg_record_valid <= 0;
+				rmg_record_addr <= 0;
+				rmg_active <= 0;
 `ifdef SATURN_CHEAT_RMW_REFRESH_POC
 				rmr_magic_ok <= 0;
+				rm9_magic_ok <= 0;
 `endif
 `endif
 				record_addr <= 0;
@@ -2622,38 +2710,117 @@ module saturn_cheat_poc
 			else begin
 				case (ioctl_addr[3:2])
 					2'd0: begin
-						magic_ok <= u32_value == CHT_MAGIC;
 `ifdef SATURN_CHEAT_RMW_POC
-						rmw_magic_ok <= u32_value == RMW_MAGIC;
+						if (rmg_magic_ok && rmg_file_record != 3'd0) begin
+							if (rmg_record_word) begin
+								rmg_record_magic[rmg_slot] <= u32_value == RMW_MAGIC;
+								rmg_record_valid[rmg_slot] <= 0;
+							end
+							magic_ok <= 0;
+							rmw_magic_ok <= 0;
+							rm8_magic_ok <= 0;
 `ifdef SATURN_CHEAT_RMW_REFRESH_POC
-						rmr_magic_ok <= u32_value == RMR_MAGIC;
+							rmr_magic_ok <= 0;
+							rm9_magic_ok <= 0;
 `endif
+						end
+						else begin
+`endif
+							magic_ok <= u32_value == CHT_MAGIC;
+`ifdef SATURN_CHEAT_RMW_POC
+							rmw_magic_ok <= u32_value == RMW_MAGIC;
+							rm8_magic_ok <= u32_value == RM8_MAGIC;
+							rmg_magic_ok <= u32_value == RMG_MAGIC;
+`ifdef SATURN_CHEAT_RMW_REFRESH_POC
+							rmr_magic_ok <= u32_value == RMR_MAGIC;
+							rm9_magic_ok <= u32_value == RM9_MAGIC;
+`endif
+						end
 `endif
 					end
-					2'd2: if (magic_ok
+`ifdef SATURN_CHEAT_RMW_POC
+					2'd1: if (rmg_magic_ok && rmg_file_record == 3'd0) begin
+						rmg_count <= (u32_value[31:3] == 29'd0 && u32_value[2:0] >= 3'd1 && u32_value[2:0] <= 3'd4) ? u32_value[2:0] : 3'd0;
+					end
+`endif
+					2'd2:
+`ifdef SATURN_CHEAT_RMW_POC
+						if (rmg_record_word && rmg_record_magic[rmg_slot]) begin
+							rmg_record_addr <= u32_value;
+						end
+						else
+`endif
+						if (magic_ok
 `ifdef SATURN_CHEAT_RMW_POC
 					             || rmw_magic_ok
+					             || rm8_magic_ok
 `ifdef SATURN_CHEAT_RMW_REFRESH_POC
 					             || rmr_magic_ok
+					             || rm9_magic_ok
 `endif
 `endif
 					        ) record_addr <= u32_value;
-					2'd3: if (magic_ok && valid_record_addr) begin
+					2'd3:
+`ifdef SATURN_CHEAT_RMW_POC
+						if (rmg_record_word && rmg_record_magic[rmg_slot]) begin
+							if (rmg_record_addr[31:20] == 12'h060 && !rmg_record_addr[0]) begin
+								case (rmg_slot)
+									2'd0: begin
+										rmg_addr0 <= rmg_record_addr[19:2];
+										rmg_data0 <= u32_value[15:0];
+									end
+									2'd1: begin
+										rmg_addr1 <= rmg_record_addr[19:2];
+										rmg_data1 <= u32_value[15:0];
+									end
+									2'd2: begin
+										rmg_addr2 <= rmg_record_addr[19:2];
+										rmg_data2 <= u32_value[15:0];
+									end
+									default: begin
+										rmg_addr3 <= rmg_record_addr[19:2];
+										rmg_data3 <= u32_value[15:0];
+									end
+								endcase
+								rmg_half[rmg_slot] <= rmg_record_addr[1];
+								rmg_record_valid[rmg_slot] <= 1;
+							end
+							else begin
+								rmg_record_valid[rmg_slot] <= 0;
+							end
+						end
+						else
+`endif
+						if (!request_active && magic_ok && valid_record_addr) begin
 						patch_addr <= record_addr[19:2];
 						patch_data <= u32_value;
 `ifdef SATURN_CHEAT_RMW_POC
 						patch_rmw <= 0;
 						patch_half <= 0;
+						patch_byte <= 0;
+						patch_byte_lane <= 0;
 `endif
 						patch_req <= ~patch_req;
 						request_active <= 1;
 					end
 `ifdef SATURN_CHEAT_RMW_POC
-					else if (rmw_magic_ok && valid_rmw_addr) begin
+					else if (!request_active && rmw_magic_ok && valid_rmw_addr) begin
 						patch_addr <= record_addr[19:2];
 						patch_data <= {16'h0000,u32_value[15:0]};
 						patch_rmw <= 1;
 						patch_half <= record_addr[1];
+						patch_byte <= 0;
+						patch_byte_lane <= 0;
+						patch_req <= ~patch_req;
+						request_active <= 1;
+					end
+					else if (!request_active && rm8_magic_ok && valid_rm8_addr) begin
+						patch_addr <= record_addr[19:2];
+						patch_data <= {24'h000000,u32_value[7:0]};
+						patch_rmw <= 1;
+						patch_half <= 0;
+						patch_byte <= 1;
+						patch_byte_lane <= record_addr[1:0];
 						patch_req <= ~patch_req;
 						request_active <= 1;
 					end
@@ -2663,6 +2830,16 @@ module saturn_cheat_poc
 						refresh_addr <= record_addr[19:2];
 						refresh_data <= u32_value[15:0];
 						refresh_half <= record_addr[1];
+						refresh_byte <= 0;
+						refresh_byte_lane <= 0;
+					end
+					else if (rm9_magic_ok && valid_rm8_addr) begin
+						refresh_valid <= 1;
+						refresh_addr <= record_addr[19:2];
+						refresh_data <= {8'h00,u32_value[7:0]};
+						refresh_half <= 0;
+						refresh_byte <= 1;
+						refresh_byte_lane <= record_addr[1:0];
 					end
 `endif
 `endif
@@ -2670,15 +2847,40 @@ module saturn_cheat_poc
 			end
 		end
 
+`ifdef SATURN_CHEAT_RMW_POC
+		if (!cht_download && !request_active && rmg_active) begin
+			patch_addr <= rmg_issue_addr;
+			patch_data <= {16'h0000,rmg_issue_data};
+			patch_rmw <= 1;
+			patch_half <= rmg_half[rmg_index];
+			patch_byte <= 0;
+			patch_byte_lane <= 0;
+			patch_req <= ~patch_req;
+			request_active <= 1;
+			if ({1'b0,rmg_index} == rmg_count - 3'd1) begin
+				rmg_active <= 0;
+			end
+			else begin
+				rmg_index <= rmg_index + 1'd1;
+			end
+		end
+`endif
+
 `ifdef SATURN_CHEAT_RMW_REFRESH_POC
 		old_vbl_n <= vbl_n;
 		if (old_vbl_n && !vbl_n) refresh_div <= refresh_div == 6'd59 ? 6'd0 : refresh_div + 1'd1;
 
-		if (!cht_download && !request_active && refresh_valid && old_vbl_n && !vbl_n && refresh_div == 6'd59) begin
+		if (!cht_download && !request_active
+`ifdef SATURN_CHEAT_RMW_POC
+		    && !rmg_active
+`endif
+		    && refresh_valid && old_vbl_n && !vbl_n && refresh_div == 6'd59) begin
 			patch_addr <= refresh_addr;
-			patch_data <= {16'h0000,refresh_data};
+			patch_data <= refresh_byte ? {24'h000000,refresh_data[7:0]} : {16'h0000,refresh_data};
 			patch_rmw <= 1;
 			patch_half <= refresh_half;
+			patch_byte <= refresh_byte;
+			patch_byte_lane <= refresh_byte_lane;
 			patch_req <= ~patch_req;
 			request_active <= 1;
 		end

@@ -1,0 +1,64 @@
+MiSTer Saturn Old Cheats Archive and Cleanup Report - 20260616
+Generated: 2026-06-16T05:50:03
+
+Archive folder path:
+C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_OLD_CHEATS_FOLDERS_ARCHIVE_20260616
+
+ZIP path:
+C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_OLD_CHEATS_FOLDERS_ARCHIVE_20260616.zip
+ZIP SHA256: 33A7E3102F7067845C4545209612FD3851750E5607A16A1117592C86F1686526
+
+Old folder counts before archive:
+Cheats_Trigger: 1120
+Cheats_60Frames: 1120
+Cheats_Trigger_8bit: 164
+Cheats_60Frames_8bit: 164
+Cheats_Grouped_Experimental: 181
+Cheats_Master_SubOnly_Experimental: 2086
+Cheats_06TEST_Experimental: 39
+
+Archive counts:
+Cheats_Trigger: 1120 (match expected: True)
+Cheats_60Frames: 1120 (match expected: True)
+Cheats_Trigger_8bit: 164 (match expected: True)
+Cheats_60Frames_8bit: 164 (match expected: True)
+Cheats_Grouped_Experimental: 181 (match expected: True)
+Cheats_Master_SubOnly_Experimental: 2086 (match expected: True)
+Cheats_06TEST_Experimental: 39 (match expected: True)
+
+Old folders removed from MiSTer:
+Cheats_Trigger: removed=True
+Cheats_60Frames: removed=True
+Cheats_Trigger_8bit: removed=True
+Cheats_60Frames_8bit: removed=True
+Cheats_Grouped_Experimental: removed=True
+Cheats_Master_SubOnly_Experimental: removed=True
+Cheats_06TEST_Experimental: removed=True
+old folders removed yes/no: True
+
+New clean Cheats folder counts after cleanup:
+Constant: 2266
+Trigger: 2265
+Experimental_Grouped: 305
+Experimental_06TEST: 39
+Total under clean Cheats: 4875
+Bad-size files under clean Cheats: 0
+
+SRMC unchanged:
+path: \\MiSTer\sdcard\games\Saturn\SRMC_Clear_Refresh.CHT
+size: 16
+sha256: EF72445E6AE2E4E22735830DAA3EF4ADABDF37E1A0D8E35F6937AAFA537E57F1
+verified: True
+
+Errors / notes:
+Archive folder and ZIP verified before deletion.
+Initial PowerShell Remove-Item recursive directory cleanup was rejected by the MiSTer SMB server after files had been removed; empty directory trees were then removed using scoped .NET Directory.Delete calls against the same seven verified old folder paths.
+Final validation found all seven old folder roots absent.
+
+Scope confirmation:
+No RBF files touched.
+No build performed.
+No RTL edits performed.
+No git stage or commit performed.
+No release package changes performed.
+No generated source folders modified.

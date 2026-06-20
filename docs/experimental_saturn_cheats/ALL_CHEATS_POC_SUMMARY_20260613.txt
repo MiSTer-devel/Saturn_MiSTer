@@ -1,0 +1,83 @@
+All-cheats POC converter summary
+Generated: 2026-06-15T08:20:37
+
+Classification input:
+C:\MiSTer-Work\Saturn_Cheat_Sources\mister_library_classification_20260613
+
+Implemented active formats:
+- SRMW: direct 16-bit one-shot
+- SRMR: direct 16-bit 60-frame refresh
+- SRM8: direct 8-bit one-shot
+- SRM9: direct 8-bit 60-frame refresh
+- SRMG: grouped direct 16-bit one-shot, 1..4 records in parser, generated groups are 2..4 records
+- SRMC: clear active refresh state; generated in SRMR folder only
+
+Deferred formats:
+- SRGA grouped 8-bit: deferred; current refresh model supports one active byte record and no 8-bit group executor.
+- SRMX mixed-width groups: deferred; no mixed group record-width dispatch in this build.
+- SR32/SR3R 32-bit writes: deferred; no confirmed source-prefix mapping and no RTL format in this build.
+- Conditionals: deferred; no runtime read/compare/apply-next engine.
+- Master/enabler runtime: deferred; opcode behavior is not implemented.
+- Unknown prefixes: report only.
+
+Converted counts by format:
+- manual_part: 597
+- SRM8: 164
+- SRM9: 164
+- SRMG: 392
+- SRMR: 1121
+- SRMW: 1120
+
+Games represented by active format:
+- SRM8: 42 games
+- SRM9: 42 games
+- SRMG: 78 games
+- SRMR: 226 games
+- SRMW: 226 games
+
+Skipped/reported rows by top reason:
+- 259: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: unsupported_prefix_10
+- 259: unsupported or mixed record types: unsupported_prefix_10
+- 244: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: master_enable
+- 244: unsupported or mixed record types: master_enable
+- 202: multi-record simple 16-bit cheat split into manual parts; not emitted as a combined usable cheat yet
+- 152: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: conditional_d6,simple_16bit
+- 152: unsupported or mixed record types: conditional_d6,simple_16bit
+- 53: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: unsupported_prefix_30
+- 53: unsupported or mixed record types: unsupported_prefix_30
+- 21: 8-bit row handled by SRM8/SRM9 path: multi-record simple 8-bit cheat skipped; current proof supports one active refresh record only
+- 21: multi-record simple 8-bit cheat skipped; current proof supports one active refresh record only
+- 21: SRMG skipped: 8-bit groups are out of scope for direct 16-bit SRMG
+- 18: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: unsupported_prefix_06
+- 18: unsupported or mixed record types: unsupported_prefix_06
+- 12: unsupported or mixed record types: conditional_d6,simple_8bit
+- 11: RetroArch address/value field cheat
+- 11: SRMG skipped: unsupported/non-direct-16-bit source - RetroArch address/value field cheat
+- 11: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: simple_16bit,unsupported_prefix_10
+- 11: unsupported or mixed record types: simple_16bit,unsupported_prefix_10
+- 10: unsupported or mixed record types: simple_16bit,simple_8bit
+- 9: SRMG skipped: group has 13 records; first pass supports 2 to 4 direct 16-bit records only
+- 8: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: unsupported_prefix_10,unsupported_prefix_D0
+- 8: unsupported or mixed record types: unsupported_prefix_10,unsupported_prefix_D0
+- 7: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: conditional_d6
+- 7: unsupported or mixed record types: conditional_d6
+- 6: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: conditional_d6,simple_8bit
+- 5: SRMG skipped: unsupported/non-direct-16-bit source - unsupported or mixed record types: simple_16bit,simple_8bit
+- 4: invalid value token after 3605C99F: 00??
+- 4: SRMG skipped: group has 5 records; first pass supports 2 to 4 direct 16-bit records only
+- 4: SRMG skipped: group has 8 records; first pass supports 2 to 4 direct 16-bit records only
+- 3: simple 16-bit write is not 16-bit aligned
+- 3: SRMG skipped: unsupported/non-direct-16-bit source - simple 16-bit write is not 16-bit aligned
+- 2: invalid value token after 16050E64: 00??
+- 2: invalid value token after 16060CB6: 00??
+- 2: invalid value token after 36055CD0: 00??
+- 2: invalid value token after 36055CD1: 00??
+- 2: invalid value token after 36055CD2: 00??
+- 2: invalid value token after 36055CD3: 00??
+- 2: invalid value token after 36055CD4: 00??
+- 2: invalid value token after 3608870F: 00??
+
+Output reports:
+- C:\MiSTer-Work\Saturn_Cheat_Sources\ALL_CHEATS_POC_CONVERTED_20260613.csv
+- C:\MiSTer-Work\Saturn_Cheat_Sources\ALL_CHEATS_POC_SKIPPED_20260613.csv
+- C:\MiSTer-Work\Saturn_Cheat_Sources\ALL_CHEATS_POC_SUMMARY_20260613.txt

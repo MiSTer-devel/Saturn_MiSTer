@@ -1,0 +1,47 @@
+Opcode 06 Test-Only Conversion Summary - 20260613
+Generated: 2026-06-15T08:56:03
+
+Scope
+- Test-only converter output for clean standalone/non-conditional 06xxxxxx+yyyy rows.
+- 06 is treated as an inferred RAMH direct 16-bit write candidate, not as a confirmed opcode.
+- No stable generated packs or MiSTer active folders were touched.
+
+Total 06 code records analyzed: 36
+Clean 06 source records converted: 19
+Games represented: 5
+SRMW count: 19
+SRMR count: 19
+SRMG count: 1
+Bad-size count: 0
+
+Output folders
+- SRMW: C:\MiSTer-Work\Saturn_Cheat_Sources\generated_06test_srmw_pack
+- SRMR: C:\MiSTer-Work\Saturn_Cheat_Sources\generated_06test_srmr_pack
+- SRMG: C:\MiSTer-Work\Saturn_Cheat_Sources\generated_06test_srmg_pack
+
+Skipped reasons
+- conditional D6 dependency present: 15
+- mixed row contains non-06 opcode; test pass requires all-clean 06 records: 1
+- placeholder or unknown value/address: 1
+
+Converted output by format
+- SRMG: 1
+- SRMR: 19
+- SRMW: 19
+
+10 representative converted examples
+- Bug / Unlimited Lives: 0602556E+0009 -> 0x0602556E=0x0009
+- Bug / Unlimited Energy: 0602552E+0009 -> 0x0602552E=0x0009
+- Daytona USA / Number of Cars on Course 1=5: 06048072+0005 -> 0x06048072=0x0005
+- Daytona USA / Numbers of Cars on Course 2=5: 06048074+0005 -> 0x06048074=0x0005
+- Daytona USA / Number of Cars on Course 3=5: 06048076+0005 -> 0x06048076=0x0005
+- Daytona USA / Number of Laps Course 3=6: 0604805E+0006 -> 0x0604805E=0x0006
+- Daytona USA / Number of Laps Course 1=16: 0604805A+0010 -> 0x0604805A=0x0010
+- Daytona USA / Number of Laps Course 2=10: 0604805C+000A -> 0x0604805C=0x000A
+- Daytona USA (USA MK-81200) (GameHacking) / Number of Cars on Course 1=5 [InterAct]: 06048072+0005 -> 0x06048072=0x0005
+- Daytona USA (USA MK-81200) (GameHacking) / Number of Cars on Course 3=5 [InterAct]: 06048076+0005 -> 0x06048076=0x0005
+
+Warning
+- This is test-only because 06 semantics are likely from local pattern analysis but not hardware-confirmed.
+- Do not merge these outputs into stable folders or release packages without hardware testing.
+- D6+06 conditional blocks, placeholders, mixed opcode rows, and master/enabler-looking rows are intentionally skipped.
