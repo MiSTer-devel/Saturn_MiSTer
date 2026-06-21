@@ -21,19 +21,27 @@ The packaged clean layout is:
 games/Saturn/Cheats/
   Constant/
   Trigger/
-  Experimental_Grouped/
-  Experimental_06TEST/
 ```
 
 | Folder | Files |
 |---|---:|
-| Constant | 2266 |
-| Trigger | 2265 |
-| Experimental_Grouped | 305 |
-| Experimental_06TEST | 39 |
+| Constant | 2285 |
+| Trigger | 2590 |
 | Total | 4875 |
 
 Format-aware validation found no bad-size files.
+
+`Constant` contains refresh/always-on cheats. `Trigger` contains one-shot
+cheats, including grouped one-shot cheats and opcode-06-derived trigger-style
+test cheats. The earlier internal `Experimental_Grouped` and
+`Experimental_06TEST` folders were merged into this final Constant/Trigger
+layout.
+
+The refresh clear utility is included at:
+
+```text
+games/Saturn/Cheats/Constant/G/Global/Clear Active Refresh.CHT
+```
 
 ## Build
 
@@ -115,8 +123,8 @@ Release tag:
 
 Package:
 
-`Saturn_Experimental_AllCheats_POC_20260616.zip`
+`Saturn_Experimental_AllCheats_POC_20260620_FinalLayout.zip`
 
 Package SHA-256:
 
-`87A3CF70708BA5D490177FF58C4DD74086AEC3CAA950A096BF400F7FF9708300`
+`B9BBC8B3343077108A7F247010A3BC6D1A84E5FF0CCEB64CB23C77ACD8A1844F`

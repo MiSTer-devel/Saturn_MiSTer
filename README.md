@@ -26,6 +26,20 @@ The `release_packages/Saturn_SRM_Cheat_POC_20260611` package contains the HDMI-t
 
 Only direct 16-bit writes are supported by the active cheat proof. Unsupported active cheat types remain unsupported: 8-bit writes, 32-bit writes, conditionals, master/enabler codes, odd-aligned writes, out-of-range writes, and true grouped multi-record cheats.
 
+## Saturn Experimental All-Cheats POC
+
+The `Saturn Experimental All-Cheats POC 20260616` prerelease is a separate
+experimental package. Its current final cheat menu layout is:
+
+- `games/Saturn/Cheats/Constant`: 2,285 refresh/always-on cheats.
+- `games/Saturn/Cheats/Trigger`: 2,590 one-shot cheats, including grouped
+  one-shot and opcode-06-derived trigger-style test cheats.
+- Total active supported cheats: 4,875.
+
+This package uses `Experimental_AllCheats_Saturn.rbf` and remains a prerelease
+test build with negative timing slack. It does not replace the official Saturn
+core.
+
 ## Deferred / Unused Cheat Research
 
 The remaining unsupported Saturn cheat pools are documented under
