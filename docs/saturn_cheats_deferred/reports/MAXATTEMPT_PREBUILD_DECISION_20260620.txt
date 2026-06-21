@@ -1,0 +1,12 @@
+MAXATTEMPT PREBUILD DECISION 20260620
+Generated: 2026-06-20T18:49:26
+
+Formats implemented in this branch: none beyond current tested all-cheats POC.
+Formats carried forward: SRMW, SRMR, SRMC, SRM8, SRM9, SRMG, clean 06 through existing RAMH formats.
+Formats deferred: F6/B6 runtime enabler, D6 conditionals, prefix 10 low-work-RAM 16-bit, prefix 30/36 low-work-RAM 8-bit, grouped 8-bit, mixed-width groups, 32-bit writes, placeholders, malformed/unknown rows.
+Expected new cheat count: 0
+Estimated RTL complexity: high for 10/30/D6; medium-high for grouped 8-bit/mixed; unsafe for F6/B6 without docs.
+New memory path added: no
+Block RAM likely added: no, because no RTL changed
+Timing risk: high if new RTL were added; existing POC already had negative setup/hold slack
+Codex build recommendation: do not build. There are no RTL changes to validate and no coherent safe implementation accepted by the design gate.

@@ -90,6 +90,19 @@ leaving the last written value in memory until the game changes or resets it.
 - 32-bit writes, mixed-width groups, and grouped 8-bit writes are deferred.
 - The retained refresh model supports one active refresh record.
 
+## Deferred / Unused Cheat Research
+
+The repository includes the remaining unsupported Saturn cheat pools for future
+contributors under
+[`docs/saturn_cheats_deferred/`](saturn_cheats_deferred/README.md). These files
+are research and classification material only. They are not active supported
+cheats and should not be copied directly into a MiSTer cheat folder.
+
+The deferred research covers master/enabler rows, low-work-RAM candidates,
+conditionals, placeholders, malformed rows, odd-aligned writes, out-of-range
+addresses, and other cases that need new RTL, opcode confirmation, or value
+tables before they can become working cheats.
+
 ## Source and Package Policy
 
 This branch tracks the RTL, converter/layout tooling, and supporting

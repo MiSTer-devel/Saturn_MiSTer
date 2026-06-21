@@ -1,0 +1,12 @@
+category,count,current_status,likely_requirement,risk_level,next_step,source_report
+F6 master/enabler,230,Deferred; likely original cheat-device metadata/enabler,Confirmed opcode behavior before runtime support,High correctness risk,Do not execute blindly; research opcode semantics,MAXATTEMPT_REMAINING_POOL_SUMMARY_20260620.txt
+prefix 30/36 low-work-RAM 8-bit,215,Deferred; likely low-work-RAM byte writes,Safe RAML byte-lane write path,High timing and correctness risk,Design isolated low-work-RAM injector,MAXATTEMPT_REMAINING_POOL_SUMMARY_20260620.txt
+prefix 10 low-work-RAM 16-bit,204,Deferred; likely low-work-RAM 16-bit writes,Safe RAML 16-bit write path,High timing and correctness risk,Design isolated low-work-RAM injector,MAXATTEMPT_REMAINING_POOL_SUMMARY_20260620.txt
+D6/button conditional,181,Deferred; likely conditional compare or input gate,Confirmed semantics plus conditional read/compare/apply engine,High correctness risk,Prototype direct-write-only conditional engine after documentation/testing,MAXATTEMPT_REMAINING_POOL_SUMMARY_20260620.txt
+modifier placeholder,103,Deferred; not concrete cheats,Value tables or user selection UX,Medium correctness risk,Build manual value table before conversion,FULL_UNSUPPORTED_CHEAT_TYPE_SUMMARY_20260613.txt
+malformed/unknown,49,Deferred; source or opcode is unclear,Source cleanup and opcode research,High correctness risk,Inspect raw source lines case by case,FULL_UNSUPPORTED_CHEAT_TYPE_CLASSIFICATION_20260613.csv
+prefix 06 leftovers,20,Deferred; clean standalone 06 rows already handled,Conditional/mixed handling for remaining rows,Medium correctness risk,Keep D6-linked 06 deferred until conditional engine exists,OPCODE_06_TEST_SKIPPED_20260613.csv
+duplicate,14,Deferred audit rows,Manual dedupe policy if desired,Low,Leave preserved for traceability,FULL_UNSUPPORTED_CHEAT_TYPE_CLASSIFICATION_20260613.csv
+odd-aligned 16-bit,3,Deferred; unsafe as normal 16-bit writes,Semantic review or byte split strategy,High correctness risk,Do not convert as aligned 16-bit,FULL_UNSUPPORTED_CHEAT_TYPE_SUMMARY_20260613.txt
+out-of-range,2,Deferred; target outside supported range,Address mapping proof or skip,High correctness risk,Leave skipped unless mapping is proven,FULL_UNSUPPORTED_CHEAT_TYPE_SUMMARY_20260613.txt
+D6 + 06 dependency,1,Deferred with conditionals,D6 conditional engine plus 06 apply support,High correctness risk,Revisit after D6 engine exists,MAXATTEMPT_REMAINING_POOL_SUMMARY_20260620.txt

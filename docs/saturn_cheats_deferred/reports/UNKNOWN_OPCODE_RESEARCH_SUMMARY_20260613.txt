@@ -1,0 +1,265 @@
+Unknown/Unconfirmed Saturn Cheat Opcode Research - 20260613
+Generated: 2026-06-15T08:49:55
+Scope: local reports and raw local .cht source scan only; no web lookup or opcode claim beyond observed local patterns.
+Primary counts below are deduped from ALL_CHEATS_POC_SKIPPED_20260613.csv by source file, cheat name, code text, and token position.
+
+Count by opcode
+- F6: 207 rows, 207 games
+- B6: 164 rows, 164 games
+- D6: 174 rows, 41 games
+- 10: 393 rows, 36 games
+- 30: 68 rows, 7 games
+- 06: 36 rows, 7 games
+
+Raw local .cht scan cross-check (noisy because duplicate imported source files may exist; generated/backup folders excluded):
+- F6: 414 raw .cht records, 207 raw-game/file stems
+- B6: 328 raw .cht records, 164 raw-game/file stems
+- D6: 348 raw .cht records, 41 raw-game/file stems
+- 10: 786 raw .cht records, 36 raw-game/file stems
+- 30: 136 raw .cht records, 7 raw-game/file stems
+- 06: 72 raw .cht records, 7 raw-game/file stems
+
+Full unsupported classification cross-check counts (not deduped):
+- F6: 197 records observed
+- B6: 154 records observed
+- D6: 182 records observed
+- 10: 329 records observed
+- 30: 68 records observed
+- 06: 39 records observed
+
+Master/sub-code context
+- SUB-only master/enabler variants already generated: 2086 files across 177 games.
+- SUB-only generated formats: SRM8=124, SRM9=124, SRMG=124, SRMR=857, SRMW=857
+- MC-included skip reasons: master/enabler opcode prefix F6 is not confirmed as a direct write=1117, sub-code row is not fully supported direct write: unsupported or mixed record types: unsupported_prefix_10=241, sub-code row is not fully supported direct write: unsupported or mixed record types: conditional_d6,simple_16bit=149, sub-code row is not fully supported direct write: unsupported or mixed record types: unsupported_prefix_30=53, no following sub-code lines after master/enabler row=39, master/enabler opcode prefix B6 is not confirmed as a direct write=19, sub-code row is not fully supported direct write: unsupported or mixed record types: unsupported_prefix_06=15, sub-code row is not fully supported direct write: unsupported or mixed record types: simple_16bit,unsupported_prefix_10=10
+- This means F6/B6 often gate cheat groups in the source list, but no F6/B6 row was safely representable as a direct write in the existing converter.
+
+Patterns by opcode
+F6: 207 deduped code-record rows across 207 games.
+  Position: first 207 (100.0%), alone 44 (21.3%), has following record 163 (78.7%).
+  Following direct-ish records: 16=0, 36=0, 06=0.
+  Address pattern: RAMH-candidate low offsets=207, low-work-RAM literal candidates=0, even=207, odd=0.
+  Value pattern: byte-looking=0, 16-bit-or-smaller=207, placeholders=0.
+  Top address fields: 0x000914 (155), 0x000924 (43), 0x003DEE (2), 0x017588 (1), 0x017598 (1), 0x017918 (1), 0x02ADD4 (1), 0x0073C6 (1), 0x017718 (1), 0x00341A (1)
+  Top values: 0xC305 (174), 0xFFFF (21), 0xC30A (4), 0x230B (3), 0xC30B (2), 0xC304 (2), 0xC321 (1)
+  Top inferred roles: master/enabler first record (207)
+
+B6: 164 deduped code-record rows across 164 games.
+  Position: first 1 (0.6%), alone 1 (0.6%), has following record 0 (0.0%).
+  Following direct-ish records: 16=0, 36=0, 06=0.
+  Address pattern: RAMH-candidate low offsets=164, low-work-RAM literal candidates=0, even=164, odd=0.
+  Value pattern: byte-looking=164, 16-bit-or-smaller=164, placeholders=0.
+  Top address fields: 0x002800 (158), 0x030040 (2), 0x062800 (2), 0x0C2800 (1), 0x000B00 (1)
+  Top values: 0x0000 (162), 0x0001 (2)
+  Top inferred roles: secondary master/enabler record paired after F6 (163), B6 master/enabler-like opcode (1)
+
+D6: 174 deduped code-record rows across 41 games.
+  Position: first 160 (92.0%), alone 8 (4.6%), has following record 152 (87.4%).
+  Following direct-ish records: 16=148, 36=2, 06=1.
+  Address pattern: RAMH-candidate low offsets=173, low-work-RAM literal candidates=0, even=174, odd=0.
+  Value pattern: byte-looking=142, 16-bit-or-smaller=172, placeholders=1.
+  Top address fields: 0x0723A2 (8), 0x07476E (8), 0x065C06 (8), 0x092072 (5), 0x0945A0 (4), 0x0945A4 (4), 0x0955B8 (4), 0x0955DC (4), 0x0BDB70 (4), 0x0BDD04 (4)
+  Top values: 0x0090 (24), 0x00A6 (24), 0x0000 (23), 0x00A0 (17), 0x0200 (16), 0x0078 (16), 0x00FA (10), 0x0032 (8), 0x0070 (8), 0x008F (8)
+  Top inferred roles: conditional compare candidate before direct write (151), D6 conditional candidate, following action unclear (17), conditional/enabler candidate (6)
+
+10: 393 deduped code-record rows across 36 games.
+  Position: first 260 (66.2%), alone 237 (60.3%), has following record 120 (30.5%).
+  Following direct-ish records: 16=1, 36=0, 06=0.
+  Address pattern: RAMH-candidate low offsets=0, low-work-RAM literal candidates=393, even=393, odd=0.
+  Value pattern: byte-looking=81, 16-bit-or-smaller=385, placeholders=8.
+  Top address fields: 0x2F51AC (5), 0x205502 (4), 0x2FF6FC (4), 0x2F8784 (4), 0x2F877A (4), 0x2F877C (4), 0x2F877E (4), 0x2F8780 (4), 0x2F8782 (4), 0x2F8778 (4)
+  Top values: 0x0999 (68), 0x4000 (60), 0x0009 (29), 0x6400 (17), 0x03E8 (15), 0x0064 (10), 0x0000 (9), 0x0001 (8), 0x00?? (7), 0x0320 (4)
+  Top inferred roles: likely low work RAM 16-bit direct write pattern, unconfirmed opcode (393)
+
+30: 68 deduped code-record rows across 7 games.
+  Position: first 54 (79.4%), alone 51 (75.0%), has following record 15 (22.1%).
+  Following direct-ish records: 16=0, 36=0, 06=0.
+  Address pattern: RAMH-candidate low offsets=0, low-work-RAM literal candidates=68, even=25, odd=43.
+  Value pattern: byte-looking=68, 16-bit-or-smaller=68, placeholders=0.
+  Top address fields: 0x2F8669 (4), 0x2F8785 (2), 0x2F8787 (2), 0x2F8789 (2), 0x2F878B (2), 0x2F878D (2), 0x2F878F (2), 0x2F8791 (2), 0x2F8793 (2), 0x2FF229 (2)
+  Top values: 0x0001 (44), 0x00FF (17), 0x0014 (2), 0x0033 (1), 0x0002 (1), 0x0006 (1), 0x0003 (1), 0x0007 (1)
+  Top inferred roles: likely low work RAM 8-bit direct write pattern, unconfirmed opcode (68)
+
+06: 36 deduped code-record rows across 7 games.
+  Position: first 18 (50.0%), alone 16 (44.4%), has following record 19 (52.8%).
+  Following direct-ish records: 16=1, 36=0, 06=17.
+  Address pattern: RAMH-candidate low offsets=36, low-work-RAM literal candidates=0, even=36, odd=0.
+  Value pattern: byte-looking=16, 16-bit-or-smaller=35, placeholders=1.
+  Top address fields: 0x048072 (2), 0x048074 (2), 0x048076 (2), 0x04805E (2), 0x04805A (2), 0x04805C (2), 0x0272E0 (1), 0x02556E (1), 0x02552E (1), 0x0459D8 (1)
+  Top values: 0x0005 (6), 0x0009 (3), 0x0006 (2), 0x0010 (2), 0x000A (2), 0x436E (1), 0x6465 (1), 0x2020 (1), 0x6279 (1), 0x6D72 (1)
+  Top inferred roles: likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode (36)
+
+Representative examples
+F6 examples:
+  - Albert Odyssey - Legend of Eldean / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Alien Trilogy / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - All-Star 1997 / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Alone in the Dark - One-Eyed Jacks Revenge / Master Code: F6000924+C305 [master/enabler first record]
+  - Andretti Racing / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Area 51 / Master Code: F6000924+C305 -> B6002800+0000 [master/enabler first record]
+  - Astal / Master Code: F6000914+C305 [master/enabler first record]
+  - Bases Loaded 96 - Double Header / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Battle Arena Toshinden Remix / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Battle Arena Toshinden Ultimate Revenge Attack / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Battle Monsters / (M): F6000924+C305 -> B6002800+0000 [master/enabler first record]
+  - Battle Stations / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Bottom of the 9th / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Bubble Bobble featuring Rainbow Islands / Master Code: F6000924+C305 -> B6002800+0000 [master/enabler first record]
+  - Bug / Master Code: F6017588+C305 [master/enabler first record]
+  - Bug Too / Master Code: F6017598+C305 [master/enabler first record]
+  - Burning Rangers / Master Code: F6000924+FFFF -> B6002800+0000 [master/enabler first record]
+  - Bust-a-Move 3 / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Castlevania - Symphony of the Night / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Center Ring Boxing / Master Code: F6000924+C305 -> B6002800+0000 [master/enabler first record]
+  - College Slam / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Congo The Movie - The Lost City of Zinj / Master Code: F6000914+230B -> B6002800+0000 [master/enabler first record]
+  - Contra - Legacy of War / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Corpse Killer - Graveyard Edition / Master Code: F6000914+C305 -> B6002800+0000 [master/enabler first record]
+  - Creature Shock - Special Edition / Master Code: F6000924+C305 -> B6002800+0000 [master/enabler first record]
+
+B6 examples:
+  - Albert Odyssey - Legend of Eldean / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Alien Trilogy / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - All-Star 1997 / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Andretti Racing / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Area 51 / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Bases Loaded 96 - Double Header / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Battle Arena Toshinden Remix / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Battle Arena Toshinden Ultimate Revenge Attack / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Battle Monsters / (M): B6002800+0000 [secondary master/enabler record paired after F6]
+  - Battle Stations / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Bottom of the 9th / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Bubble Bobble featuring Rainbow Islands / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Burning Rangers / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Bust-a-Move 3 / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Castlevania - Symphony of the Night / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Center Ring Boxing / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - College Slam / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Congo The Movie - The Lost City of Zinj / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Contra - Legacy of War / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Corpse Killer - Graveyard Edition / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Creature Shock - Special Edition / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Crime Wave / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Criticom / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Croc - Legend of the Gobbos / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+  - Crow The - City of Angels / Master Code: B6002800+0000 [secondary master/enabler record paired after F6]
+
+D6 examples:
+  - Robo Pit / Infinite Health P1: D6980090+1609D6E8 [D6 conditional candidate, following action unclear]
+  - Battle Arena Toshinden Ultimate Revenge Attack / 25% Energy P1: D60723A2+0200 -> 160723A2+0080 [conditional compare candidate before direct write]
+  - Battle Arena Toshinden Ultimate Revenge Attack / 25% Energy P2: D607476E+0200 -> 1607476E+0080 [conditional compare candidate before direct write]
+  - Battle Arena Toshinden Ultimate Revenge Attack / P1 Needs 1 Win to Win: D6072300+0000 -> 16072300+0001 [conditional compare candidate before direct write]
+  - Battle Arena Toshinden Ultimate Revenge Attack / P2 Needs 1 Win to Win: D60746CC+0000 -> 160746CC+0001 [conditional compare candidate before direct write]
+  - Crime Wave / 1-Hit Death P1: D6065C06+0032 -> 16065C06+0001 [conditional compare candidate before direct write]
+  - Die Hard Arcade / Infinite Energy P1: D60CC166+0000 -> 160CC166+0072 [conditional compare candidate before direct write]
+  - F1 Challenge / 1 Lap to Finish The Race (Ferrari): D6017CD8+1700 [D6 conditional candidate, following action unclear]
+  - F1 Challenge / 1 Lap to Finish The Race (Tyrrell): D6017BE8+1700 [D6 conditional candidate, following action unclear]
+  - F1 Challenge / 1 Lap to Finish The Race (Williams): D6017C38+1700 [D6 conditional candidate, following action unclear]
+  - F1 Challenge / 1 Lap to Finish The Race (Benetton): D6017B98+1700 [D6 conditional candidate, following action unclear]
+  - FIFA - Road to World Cup 98 / Faster Halves: D60F621A+0000 -> 160F621A+0090 [conditional compare candidate before direct write]
+  - FIFA Soccer 97 / Enable Code (Must Be On): D6010048+0000 [conditional/enabler candidate]
+  - Fighters Megamix / 1-Hit Death P1: D606552C+00FA -> 1606552C+0001 [conditional compare candidate before direct write]
+  - Fighters Megamix / 1-Hit Death P2: D606732C+00FA -> 1606732C+0001 [conditional compare candidate before direct write]
+  - Fighting Vipers / P1 Needs 1 Match to Win: D60E0008+0000 -> 360E0008+0001 [conditional compare candidate before direct write]
+  - Fighting Vipers / 25% Energy P1: D60945A0+00FA -> 16062828+003E [conditional compare candidate before direct write]
+  - Fighting Vipers / 25% Energy P2: D60945A4+00FA -> 16064728+003E [conditional compare candidate before direct write]
+  - Guardian Heroes / Must Be On Code: D6033C60+270F [conditional/enabler candidate]
+  - Last Bronx / 25% Health P1: D60955B8+0090 -> 160955B8+0024 [conditional compare candidate before direct write]
+  - Last Bronx / 25% Health P2: D60955DC+0090 -> 160955DC+0024 [conditional compare candidate before direct write]
+  - Mortal Kombat II / 25% Energy P1: D60BDB70+00A6 -> 160BDB70+0029 [conditional compare candidate before direct write]
+  - Mortal Kombat II / 25% Energy P2: D60BDD04+00A6 -> 160BDD04+0029 [conditional compare candidate before direct write]
+  - Mortal Kombat Trilogy / 25% Energy P1: D6083ED4+00A6 -> 16083ED4+0029 [conditional compare candidate before direct write]
+  - Mortal Kombat Trilogy / 25% Energy P2: D608404C+00A6 -> 1608404C+0029 [conditional compare candidate before direct write]
+
+10 examples:
+  - Alone in the Dark - One-Eyed Jacks Revenge / Infinite Revolver Shots: 102B800A+0009 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Alone in the Dark - One-Eyed Jacks Revenge / Infinite Thompson Ammo: 102B7FF8+0009 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Area 51 / Infinite Health P1: 10205502+0004 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Area 51 / Infinite Bullets P1: 102054D6+0008 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Area 51 / Infinite Grenade P1: 102054DA+0009 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Area 51 / Infinite Credits P1: 10250BEC+0009 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Area 51 / Infinite Ammo P2: 1020557E+0009 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Area 51 / Infinite Grenade P2: 10205582+0009 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Area 51 / Infinite Lives P2: 102055AA+0009 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Area 51 / Infinite Credits P2: 10250BEE+0009 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Black Dawn / Infinite Missiles: 102B9630+0064 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Black Dawn / Infinite Napalm: 102B9634+0064 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Black Dawn / Infinite Rockets: 102B9632+0064 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Black Dawn / Infinite TAC: 102B9636+0064 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Criticom / Infinite Health P1: 102FFA24+0320 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Criticom / Infinite Health P2: 102FF6FC+0320 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Infinite Points: 102FB02E+FFFF [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Garian Max Attack: 102D0338+03E7 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Garian Max Defense: 102D033A+03E7 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - Daytona USA - Championship Circuit Edition / Play As Uma: 102FC21C+0009 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - DragonHeart - Fire _ Steel / Infinite Energy (Pine Forest): 10246B18+6400 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - DragonHeart - Fire _ Steel / Infinite Energy (Creek): 1020D798+6400 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - DragonHeart - Fire _ Steel / Infinite Energy (Dark Forest): 1020D7E4+6400 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - DragonHeart - Fire _ Steel / Infinite Energy (Plundered Farm): 10246C34+6400 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+  - DragonHeart - Fire _ Steel / Infinite Energy (Viking Village): 10247228+6400 [likely low work RAM 16-bit direct write pattern, unconfirmed opcode]
+
+30 examples:
+  - Dark Savior / Always Have Meat: 302FB0DC+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Captain's Key: 302FB0DD+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Chocolate: 302FB0DE+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Bottle: 302FB0DF+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Magazine: 302FB0E0+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Bilanium: 302FB0E1+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Emergency Exit Key: 302FB0E2+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have JLO's Key: 302FB0E3+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Liquid Nitrogen: 302FB0E4+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Grid Iron Door Key: 302FB0E5+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Jloid Badge: 302FB0E6+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Diary of Wouda: 302FB0E7+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Blue Rose: 302FB0E8+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Deadley: 302FB0E9+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Man's Key: 302FB0EA+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Key to The Ruins: 302FB0EB+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Scroll of Lavian: 302FB0EC+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Copper Ring: 302FB0ED+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Golden Ring: 302FB0EE+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Silver Ring: 302FB0EF+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Warden's Diary 1: 302FB0F0+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Warden's Diary 2: 302FB0F1+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Doc's Diary: 302FB0F2+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Alibaba's Diary 1: 302FB0F3+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+  - Dark Savior / Always Have Alibaba's Diary 2: 302FB0F4+0001 [likely low work RAM 8-bit direct write pattern, unconfirmed opcode]
+
+06 examples:
+  - Bug / Unlimited Zap: 060272E0+0009 -> 16053F30+00FF [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Bug / Unlimited Lives: 0602556E+0009 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Bug / Unlimited Energy: 0602552E+0009 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Daytona USA / Number of Cars on Course 1=5: 06048072+0005 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Daytona USA / Numbers of Cars on Course 2=5: 06048074+0005 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Daytona USA / Number of Cars on Course 3=5: 06048076+0005 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Daytona USA / Number of Laps Course 3=6: 0604805E+0006 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Daytona USA / Number of Laps Course 1=16: 0604805A+0010 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Daytona USA / Number of Laps Course 2=10: 0604805C+000A [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459D8+436E -> 060459DA+6465 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459DA+6465 -> 060459DC+2020 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459DC+2020 -> 060459DE+6279 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459DE+6279 -> 060459E4+6D72 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459E4+6D72 -> 060459E6+7361 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459E6+7361 -> 060459E8+7475 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459E8+7475 -> 060459EA+726E [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459EA+726E -> 060459EC+4074 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459EC+4074 -> 060459EE+656C [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459EE+656C -> 060459F0+6570 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459F0+6570 -> 060459F2+6F72 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459F2+6F72 -> 060459F4+742E [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459F4+742E -> 060459F6+636F [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459F6+636F -> 060459F8+6D00 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Panzer Dragoon Demo / Enable Code (Must Be On): 060459F8+6D00 -> D60459E2+0000 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+  - Daytona USA (USA MK-81200) / Number of Cars on Course 1=5 [InterAct]: 06048072+0005 [likely RAMH 16-bit direct write/code-patch pattern, unconfirmed opcode]
+
+Likely meaning and recommended classification
+- F6: Master/enabler first-line opcode. The address/value pattern is highly repeated, especially 0x000914/0x000924 with 0xC305, and it appears as position 1/1 or 1/2 master rows. Classify as D: deferred / E: unsafe to convert blindly. Use only as metadata for SUB-only experiments unless documentation proves direct semantics.
+- B6: Secondary master/enabler opcode paired after F6, usually B6002800+0000. Classify as D/E. It is not a normal direct write based on local evidence.
+- D6: Conditional candidate. Most occurrences are followed by 16-prefix writes and address/value shape fits a read/compare gate. Classify as D: deferred until a conditional format and RTL read/compare/apply-next engine are designed. Confidence medium, not confirmed.
+- 10: Likely low-work-RAM 16-bit direct write pattern, not RAMH. All deduped address fields fall in 0x00200000-0x002FFFFF if interpreted literally and all are even; values are 16-bit-looking. Classify as D: defer until a low-work-RAM write path is implemented and opcode semantics are confirmed.
+- 30: Likely low-work-RAM 8-bit direct write pattern, not RAMH. Addresses are in the same 0x002xxxxx range and often odd; values are byte-looking. Classify as D: defer until low-work-RAM byte-lane RTL exists and semantics are confirmed.
+- 06: Small RAMH 16-bit direct-write/code-patch candidate. All deduped address fields fit the current RAMH range if mapped as 0x06xxxxxx and are even; most values are 16-bit-looking. Classify as A/B for a test-only converter experiment on clean non-conditional rows, with no RTL change, while leaving D6-linked/placeholder rows deferred.
+
+Best next opcode to attempt
+- Best low-risk next attempt: 06, because clean 06 rows can likely be represented by existing SRMW/SRMR/SRMG records without RTL changes. Keep it test-only and skip conditional D6+06 blocks and placeholders.
+- Best higher-payoff future path: 10/30 as low-work-RAM direct writes, but that requires a new non-RAMH target path in RTL and has higher timing/resource/correctness risk.
+- D6 is plausible but needs new conditional sequencing and should not be attempted before a small isolated design/test plan.

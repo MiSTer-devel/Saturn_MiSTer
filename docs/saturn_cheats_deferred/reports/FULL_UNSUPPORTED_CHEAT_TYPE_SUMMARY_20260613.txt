@@ -1,0 +1,122 @@
+Full Unsupported Saturn Cheat Type Summary - 2026-06-13
+
+Inputs read:
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_srmr_unsupported_or_skipped.csv
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_LIBRARY_SKIPPED_20260613.csv
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_LIBRARY_CONVERTED_20260613.csv
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\MISTER_LIBRARY_DUPLICATES_20260613.csv
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srm8_srm9_unsupported_or_skipped.csv
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srm8_srm9_manifest.csv
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_manual_multirecord_parts
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srm8_pack
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srm9_pack
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmw_pack
+  - C:\MiSTer-Work\Saturn_Cheat_Sources\generated_srmr_pack
+
+Normalized classification rows: 1183
+
+Count by unsupported type:
+  - other: 413
+  - master/enabler only: 230
+  - conditional + direct write: 167
+  - multi-record direct 16-bit group: 161
+  - modifier placeholder like 00??: 103
+  - malformed/unknown: 56
+  - multi-record direct 8-bit group: 21
+  - duplicate: 14
+  - button/input conditional if present: 8
+  - mixed 16-bit + 8-bit group: 5
+  - odd-aligned 16-bit write: 3
+  - out-of-range: 2
+
+Games affected by each type:
+  - other: Alone in the Dark - One-Eyed Jacks Revenge; Area 51; Astal; Black Dawn; Blast Wind; Bug; Bug!; Criticom; Crusader - No Remorse; Dark Savior; Daytona USA; Daytona USA - Championship Circuit Edition; Dragon Force; DragonHeart - Fire _ Steel; DragonHeart - Fire & Steel; Duke Nukem 3D; Earthworm Jim 2; Enemy Zero; ... (60 games)
+  - master/enabler only: Albert Odyssey - Legend of Eldean; Alien Trilogy; All-Star 1997; Alone in the Dark - One-Eyed Jacks Revenge; Andretti Racing; Arcade's Greatest Hits; Area 51; Assault Suit Leynos 2; Astal; Bases Loaded '96 - Double Header; Bases Loaded 96 - Double Header; Battle Arena Toshinden Remix; Battle Arena Toshinden Ultimate Revenge Attack; Battle Arena Toshinden URA - Ultimate Revenge Attack; Battle Monsters; Battle Stations; Blazing Heroes; Bottom of the 9th; ... (207 games)
+  - conditional + direct write: Albert Odyssey - Legend of Eldean; Battle Arena Toshinden Ultimate Revenge Attack; Battle Arena Toshinden URA - Ultimate Revenge Attack; Crime Wave; Crimewave; D-Xhird; Die Hard Arcade; F1 Challenge; FIFA - Road to World Cup 98; Fighters Megamix; Fighting Vipers; Iron Storm; Iron Storm - World Advanced Strategy; Last Bronx; Mortal Kombat II; Mortal Kombat Trilogy; Need for Speed The; Night Warriors - Darkstalkers Revenge; ... (32 games)
+  - multi-record direct 16-bit group: Albert Odyssey - Legend of Eldean; Amok; Battle Arena Toshinden Remix; Battle Arena Toshinden URA - Ultimate Revenge Attack; Blam-Machinehead; Bottom of the 9th; Bug Too; Bug Too!; Burning Rangers; Castlevania - Symphony of the Night; Choro Q Park; Criticom; Cyber Speedway; Darius II; Dark Savior; Darklight Conflict; Daytona USA; Doom; ... (71 games)
+  - modifier placeholder like 00??: Andretti Racing; Battle Arena Toshinden Ultimate Revenge Attack; Bubble Bobble featuring Rainbow Islands; Bug; Bug Too; Bug Too!; Bug!; Castlevania - Symphony of the Night; Crime Wave; Crusader - No Remorse; Darius Gaiden; Dark Savior; Daytona USA; Daytona USA - Championship Circuit Edition; DragonHeart - Fire _ Steel; DragonHeart - Fire & Steel; Guardian Heroes; House of the Dead The; ... (43 games)
+  - malformed/unknown: Alien Trilogy; Battle Stations; Bug; Die Hard Arcade; FIFA Soccer 97; Gex; Ghen War; Guardian Heroes; Impact Racing; Johnny Bazookatone; Langrriser 5 - The End of Legend (Korea); Madden NFL 97; MechWarrior 2 - 31st Century Combat; NHL All-Star Hockey; NHL Powerplay '96; NHL Powerplay 96; Off-World Interceptor Extreme; Panzer Dragoon; ... (35 games)
+  - multi-record direct 8-bit group: Magic Knight Rayearth; Panzer Dragoon Demo; Willy Wombat
+  - duplicate: Crusader - No Remorse; Dragon Force
+  - button/input conditional if present: Resident Evil
+  - mixed 16-bit + 8-bit group: Castlevania - Symphony of the Night; F1 Challenge; Guardian Force; Ninpen Manmaru
+  - odd-aligned 16-bit write: Saturn Bomberman; Virtua Cop 2
+  - out-of-range: Bug!; Winning Post
+
+Examples of high-value cheats by type:
+  - other:
+      Astal - Unlimited Energy [360DBD38+0005]
+      Astal - Infinite Energy P2 [360DBD39+0005]
+      Astal - Infinite Power [360DBB76+00FF]
+      Astal - Infinite Lives [360DBD3A+0063]
+      Crusader - No Remorse - Infinite Magazines (RP 32 and ??) [360DBE24+000A]
+  - master/enabler only:
+      Albert Odyssey - Legend of Eldean - Master Code [F6000914+C305+B6002800+0000]
+      Alien Trilogy - Master Code [F6000914+C305+B6002800+0000]
+      Andretti Racing - Master Code [F6000914+C305+B6002800+0000]
+  - conditional + direct write:
+      Die Hard Arcade - Infinite Energy P1 [D60CC166+0000+160CC166+0072]
+      Fighting Vipers - 25% Energy P1 [D60945A0+00FA+16062828+003E+160945A0+003E]
+      Fighting Vipers - 50% Energy P1 [D60945A0+00FA+16062828+007D+160945A0+007D]
+      Fighting Vipers - 75% Energy P1 [D60945A0+00FA+16062828+00B7+160945A0+00B7]
+      Fighting Vipers - 25% Energy P2 [D60945A4+00FA+16064728+003E+160945A4+003E]
+  - multi-record direct 16-bit group:
+      Battle Arena Toshinden Remix - Infinite Health P1 [16065578+0380+160723A2+0200]
+      Battle Arena Toshinden Remix - Infinite Health P2 [160669B0+0380+1607476E+0200]
+      Burning Rangers - Infinite Crystals [160FFE68+0063+160FFEB8+0006]
+      Burning Rangers - Infinite Energy [160D8DF8+0000+160D8E2C+0000+160FFEB8+0000]
+      Cyber Speedway - Infinite Rockets [1609E598+0005+160D3AD2+0005]
+  - modifier placeholder like 00??:
+      Dark Savior - Garian Attack, Defense, & Speed Modifier (CCCC - is HIGH for all!) [102FB0C4+????]
+      Guardian Heroes - Sub Weapon Modifier [3605C99F+00??]
+      NBA Jam Extreme - Game Timer Speed Modifier [360FBFB9+00??]
+      NBA Jam Extreme - Over Time Length Modifier [360FBFBB+00??]
+      Castlevania - Symphony of the Night - Sub Weapon Modifier [3605C99F+00??]
+  - malformed/unknown:
+      Ghen War - Infinite Mines [360949200006]
+      Ghen War - Infinite Robots [360949210006]
+      Ghen War - Infinite Rockets [3609491f0008]
+      Die Hard Arcade - Infinite Credits (Alternative) - No Master Code Needed []
+      Johnny Bazookatone - Infinite Lives [10288ee60008]
+  - multi-record direct 8-bit group:
+      Magic Knight Rayearth - Infinite HP Hikaru [360BFC4B+0014+360BFC4C+0014]
+      Magic Knight Rayearth - Infinite MP Hikaru [360BFC4D+0014+360BFC4E+0014]
+      Magic Knight Rayearth - Infinite HP Umi [360BFC55+0014+360BFC56+0014]
+      Magic Knight Rayearth - Infinite MP Umi [360BFC57+0014+360BFC58+0014]
+      Magic Knight Rayearth - Infinite HP Fuu [360BFC5F+0014+360BFC60+0014]
+  - duplicate:
+      Dragon Force - Duel Automatically [pete@axionet.com] []
+      Dragon Force - Enemy Has 0 HP [ReyVGM] []
+      Dragon Force - Infinite Energy [pete@axionet.com] []
+      Dragon Force - Stop Timer At 88 [pete@axionet.com] []
+      Dragon Force - Duel Automatically [pete@axionet.com] []
+  - button/input conditional if present:
+      Resident Evil - Weapons In Crate At Start [D02F867C00A0+102F877A030F+102F877C040F+102F877E060F+102F8780070F+102F87820A0F+102F8778050F+102F8776080F+102F8774090F]
+      Resident Evil - Health Restore With X Button [D02FF8460008+102F51AC008C+102F867E008C]
+      Resident Evil - All Weapons In Inventory Box When You Start New Game [D02F867C+00A0+102F877A+030F+102F877C+040F+102F877E+060F+102F8780+070F+102F8782+0A0F+102F8778+050F+102F8776+080F+102F8774+090F]
+      Resident Evil - All Weapons In Inventory Box When You Start New Game [Various Creators] [D02F867C+00A0+102F877A+030F+102F877C+040F+102F877E+060F+102F8780+070F+102F8782+0A0F+102F8778+050F+102F8776+080F+102F8774+090F]
+      Resident Evil - Health Restore With X Button [InterAct] [D02FF846+0008+102F51AC+008C+D02FF846+0008+102F867E+008C]
+  - mixed 16-bit + 8-bit group:
+      Guardian Force - Max Level [Helder] [3600401D+000C+16004016+044C]
+      Castlevania - Symphony of the Night - Max Status [1605C942+270F+1605C946+270F+1605C94A+270F+1605C94E+270F+1605C952+270F+1605C956+270F+1605C95A+03E7+1605C95E+03E7+1605C962+03E7+1605C966+03E7+3605C98B+0063+1605C98C+000F+1605C98E+423F+1605C9CA+03E7]
+  - odd-aligned 16-bit write:
+      Virtua Cop 2 - Infinite Ammo P2 [16052C89+0600]
+      Saturn Bomberman - Infinite Lives [Ramdemann] [160C063F+0003]
+  - out-of-range:
+      Winning Post - Max money [luc-ita] [16166710+7FFF+16166712+FFFF]
+
+Payoff estimates by possible future support:
+  A. multi-record direct write support: 166 cheats (multi-record 16-bit plus mixed direct groups)
+  B. 8-bit multi-record support: 26 cheats (multi-record 8-bit plus mixed direct groups)
+  C. 32-bit write support: 0 confirmed cheats; unsupported prefix 10/06/30 rows remain in other until opcode semantics are proven
+  D. odd-aligned handling: 3 cheats
+  E. master/enabler support: 230 cheats/entries
+  F. conditionals: 175 cheats/entries
+  G. modifier placeholder handling: 103 cheats/entries
+
+Interpretation:
+  - The best low-resource payoff is grouped direct-write support. It converts already-understood multi-record 16-bit groups and, after SRM8/SRM9 timing is cleaned up, multi-record 8-bit and mixed direct groups.
+  - Master/enabler-only rows are mostly metadata for original cartridges and are not useful as standalone MiSTer cheats. Master/enabler + following writes require conservative group handling and validation before ignoring enablers globally.
+  - D6/D0 conditionals and button/input conditionals are high-correctness-risk because the engine must preserve compare/gate semantics, not just apply writes.
+  - Prefix 10/06/30 rows look like direct writes but were not mapped by the current converters. Treat them as opcode-research items before hardware design.
+  - Modifier placeholders should stay manual/reference until concrete values are selected.

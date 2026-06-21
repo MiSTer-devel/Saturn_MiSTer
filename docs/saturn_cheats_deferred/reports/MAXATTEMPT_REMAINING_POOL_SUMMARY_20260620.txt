@@ -1,0 +1,108 @@
+MAXATTEMPT REMAINING POOL SUMMARY 20260620
+Generated: 2026-06-20T18:49:25
+
+Detailed unsupported rows inventoried: 1183
+
+Category counts from full unsupported classification:
+- F6 master/enabler: rows=230, games=207, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=none unless opcode is later understood; runtime enabler deliberately not implemented, timing_risk=n/a or unsafe, correctness_risk=high
+- prefix 30/36 low-work-RAM 8-bit candidate: rows=215, games=38, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=new low-work-RAM/RAML 8-bit byte-lane write and optional refresh path, timing_risk=high, correctness_risk=high
+- prefix 10 low-work-RAM 16-bit candidate: rows=204, games=22, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=new low-work-RAM/RAML 16-bit write and optional refresh path, timing_risk=high, correctness_risk=high
+- D6/button conditional: rows=181, games=37, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=conditional read/compare/apply sequencer and one active conditional slot, timing_risk=high, correctness_risk=high
+- grouped 16-bit already supported by SRMG: rows=161, games=71, attempted=already implemented in current SRMG POC, rtl=none, timing_risk=low, correctness_risk=low-medium
+- modifier placeholder: rows=103, games=43, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=none, timing_risk=n/a or unsafe, correctness_risk=high
+- malformed/unknown: rows=49, games=31, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=none, timing_risk=n/a or unsafe, correctness_risk=high
+- prefix 06 RAMH direct candidate: rows=20, games=5, attempted=already attempted/tested for clean standalone rows; leftovers deferred, rtl=none, timing_risk=low, correctness_risk=low-medium
+- duplicate: rows=14, games=2, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=none, timing_risk=low, correctness_risk=low-medium
+- odd-aligned 16-bit: rows=3, games=2, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=none, timing_risk=low, correctness_risk=high
+- out-of-range: rows=2, games=2, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=none, timing_risk=low, correctness_risk=low-medium
+- D6 + 06 dependency: rows=1, games=1, attempted=no; design gate deferred as unsafe or too risky for this branch, rtl=conditional read/compare/apply sequencer and one active conditional slot, timing_risk=high, correctness_risk=high
+
+Opcode research row counts:
+- 06: rows=36, games=7
+- 10: rows=393, games=36
+- 30: rows=68, games=7
+- B6: rows=164, games=164
+- D6: rows=174, games=41
+- F6: rows=207, games=207
+
+06 leftovers after clean converter test:
+- conditional D6 dependency present: 15
+- mixed row contains non-06 opcode; test pass requires all-clean 06 records: 1
+- placeholder or unknown value/address: 1
+
+Representative examples by category:
+
+## F6 master/enabler
+- Albert Odyssey - Legend of Eldean - Master Code: F6000914+C305+B6002800+0000
+- Albert Odyssey - Legend of Eldean - Master Code [InterAct]: F6000914+C305+B6002800+0000
+- Alien Trilogy - Master Code: F6000914+C305+B6002800+0000
+- All-Star 1997 - Master Code: F6000914+C305+B6002800+0000
+- Alone in the Dark - One-Eyed Jacks Revenge - Master Code: F6000924+C305
+
+## prefix 30/36 low-work-RAM 8-bit candidate
+- Castlevania - Symphony of the Night - Magic Machine: 1605C6F0+0101+1605C6F2+0101+1605C6F4+0101+1605C6F6+0101+1605C6F8+0101+1605C6FA+0101+1605C6FC+0101+1605C6FE+0101+1605C700+0101+1605C702+0101+1605C704+0101+1605C706+0101+1605C708+0101+1605C70A+0101+1605C70C+0101+3605C70E+0001
+- Castlevania - Symphony of the Night - Max Status: 1605C942+270F+1605C946+270F+1605C94A+270F+1605C94E+270F+1605C952+270F+1605C956+270F+1605C95A+03E7+1605C95E+03E7+1605C962+03E7+1605C966+03E7+3605C98B+0063+1605C98C+000F+1605C98E+423F+1605C9CA+03E7
+- F1 Challenge - 1 Lap to Finish The Race (McLaren): 36017CB1+0007+16017CB0+1700
+- Guardian Force - Max Level [Helder]: 3600401D+000C+16004016+044C
+- Ninpen Manmaru - Invulnerable [luc-ita]: 16004F10+A047+16007CDE+0009+36067CC3+0002+36067CC0+0002
+
+## prefix 10 low-work-RAM 16-bit candidate
+- Alone in the Dark - One-Eyed Jacks Revenge - Infinite Revolver Shots: 102B800A+0009
+- Alone in the Dark - One-Eyed Jacks Revenge - Infinite Thompson Ammo: 102B7FF8+0009
+- Area 51 - Infinite Ammo P2: 1020557E+0009
+- Area 51 - Infinite Ammo P2 [ripi3top@centrin.net.id.]: 1020557E+0009
+- Area 51 - Infinite Bullets P1: 102054D6+0008
+
+## D6/button conditional
+- Resident Evil - All Weapons In Inventory Box When You Start New Game: D02F867C+00A0+102F877A+030F+102F877C+040F+102F877E+060F+102F8780+070F+102F8782+0A0F+102F8778+050F+102F8776+080F+102F8774+090F
+- Resident Evil - All Weapons In Inventory Box When You Start New Game [Various Creators]: D02F867C+00A0+102F877A+030F+102F877C+040F+102F877E+060F+102F8780+070F+102F8782+0A0F+102F8778+050F+102F8776+080F+102F8774+090F
+- Resident Evil - Crate O' Goodies: D02F867C00A0+102F87240BFF+102F87260CFF+102F87280DFF+102F872A0EFF+102F872C0FFF+102F872E10FF+102F873011FF+102F873212FF+102F873446FF+102F873647FF+102F873848FF
+- Resident Evil - Crate O' Goodies [InterAct]: D02F867C00A0+102F87240BFF+102F87260CFF+102F87280DFF+102F872A0EFF+102F872C0FFF+102F872E10FF+102F873011FF+102F873212FF+102F873446FF+102F873647FF+102F873848FF
+- Resident Evil - Health Restore With X Button: D02FF8460008+102F51AC008C+102F867E008C
+
+## grouped 16-bit already supported by SRMG
+- Albert Odyssey - Legend of Eldean - Everything Is Free [Helder]: 1601CFBC+0009+1601C680+A005+1601C7D2+0009
+- Amok - Infinite Bombs (ASM) [Helder]: 1602FA6C+7100+16009DB4+0009
+- Amok - Infinite Health (ASM) [Helder]: 160348B6+0009+16034500+0009
+- Amok - Infinite Heavy Missiles (ASM) [Helder]: 1602F944+7100+16009DF0+0009
+- Amok - Infinite Machine Gun Ammo (ASM) [Helder]: 1602F7D6+7100+1602F77E+7100
+
+## modifier placeholder
+- Andretti Racing - Race ?? Laps: 160786A2+00??
+- Andretti Racing - Start On Lap ?? P1: D60B374E+0000+160B374E+00??
+- Andretti Racing - Start On Lap ?? P2: D60B3BAE+0000+160B3BAE+00??
+- Battle Arena Toshinden Ultimate Revenge Attack - P1 Strength Is ??: 160575EC+00??
+- Battle Arena Toshinden Ultimate Revenge Attack - P1's Character Modifier: 1607A462+00??
+
+## malformed/unknown
+- Alien Trilogy - Infinite Batteries: 160CE42+0001
+- Battle Stations - Infinite Energy P1: 160067C92+0064
+- Battle Stations - Infinite Energy P2: 160067FC2+0064
+- Bug - Always "Stunt Bug": 16953F2E+029C+16054A3A+029C
+- Die Hard Arcade - Infinite Credits (Alternative) - No Master Code Needed:
+
+## prefix 06 RAMH direct candidate
+- Bug - Unlimited Energy: 0602552E+0009
+- Bug - Unlimited Lives: 0602556E+0009
+- Bug - Unlimited Zap: 060272E0+0009+16053F30+00FF
+- Bug! - Unlimited Energy: 0602552E+0009
+- Bug! - Unlimited Lives: 0602556E+0009
+
+## duplicate
+- Crusader - No Remorse - Have Laser Rifle:
+- Crusader - No Remorse - Have Laser Rifle:
+- Crusader - No Remorse - Have RP-32:
+- Crusader - No Remorse - Have RP-32:
+- Crusader - No Remorse - Have Shotgun:
+
+## odd-aligned 16-bit
+- Saturn Bomberman - Infinite Lives [Ramdemann]: 160C063F+0003
+- Saturn Bomberman - Walk Through Enemies [Ramdemann]: 160D5F56+0001+160D5F35+0001
+- Virtua Cop 2 - Infinite Ammo P2: 16052C89+0600
+
+## out-of-range
+- Bug! - Always "Stunt Bug": 16953F2E+029C+16054A3A+029C
+- Winning Post - Max money [luc-ita]: 16166710+7FFF+16166712+FFFF
+
+## D6 + 06 dependency
+- Panzer Dragoon Demo - Enable Code (Must Be On): D6045980+5468+060459D8+436E+060459DA+6465+060459DC+2020+060459DE+6279+060459E4+6D72+060459E6+7361+060459E8+7475+060459EA+726E+060459EC+4074+060459EE+656C+060459F0+6570+060459F2+6F72+060459F4+742E+060459F6+636F+060459F8+6D00+D60459E2+0000
