@@ -318,16 +318,14 @@ module emu
 		"P1o[50],Composite Blend,Off,On;",
 		"P1-;",
 		"P1o[64],Horizontal Crop,Off,On;",
-		"D8P1o[81:80],Vertical Crop,Disabled,216p(5x),224p;",
-		"D8P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
-		"P1o[56:55],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
-`ifdef STV_BUILD
-		"P1-;",
-		"P1o[75],CRT H/V offset,Off,On;",
-		"D5P1o[69:65],CRT H offset,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
-		"D5P1o[74:70],CRT V offset,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
-`endif
-		"P2,Input;",
+				"D8P1o[81:80],Vertical Crop,Disabled,216p(5x),224p;",
+				"D8P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
+				"P1o[56:55],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
+				"P1-;",
+				"P1O[75],Analog Video H/V offset,Off,On;",
+				"D5P1O[69:65],Analog Video H-Pos,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
+				"D5P1O[74:70],Analog Video V-Pos,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
+				"P2,Input;",
 		"P2-;",
 `ifndef STV_BUILD
 		"P2O[76],Swap Joysticks,No,Yes;",
@@ -480,7 +478,7 @@ module emu
 `ifndef STV_BUILD
 	assign menumask = {(status[56:55] != 2'b00), ~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
 `else
-	assign menumask = {(status[56:55] != 2'b00), 1'b1, 1'b1, ~status[75], 1'b1, 1'b1, ~status[8], ~STV_ALTBIOS, 1'b0};
+	assign menumask = {(status[56:55] != 2'b00), 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, ~status[8], ~STV_ALTBIOS, 1'b0};
 `endif
 	
 	wire bios_download = ioctl_download & (ioctl_index[5:2] == 4'b0000 && ioctl_index[1:0] != 2'h3);
@@ -2138,8 +2136,7 @@ module emu
 
 //adjust analog H/V
 	wire analog_hs, analog_vs;
-	
-`ifdef STV_BUILD
+
 	wire [4:0] hoffset = status[75] ? status[69:65] : 5'd0;
 	wire [4:0] voffset = status[75] ? status[74:70] : 5'd0;
 
@@ -2156,10 +2153,6 @@ module emu
 		.hs_out(analog_hs),
 		.vs_out(analog_vs)
 	);
-`else
-	assign analog_hs = cofi_hs;
-	assign analog_vs = cofi_vs;
-`endif
 	
 	//debug
 	reg  [ 7: 0] SCRN_EN = 8'b11111111;
