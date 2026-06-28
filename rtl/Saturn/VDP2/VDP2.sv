@@ -2370,12 +2370,12 @@ module VDP2 (
 					end
 				end
 				
-				if (NBG_FETCH_START_EN) begin
-					NBG_CDC[0] <= '{8{'0}}; NBG_CDP[0] <= CDP_NULL; NBG_CDP[4] <= CDP_NULL; NBG_CDP[6] <= CDP_NULL;
-					NBG_CDC[1] <= '{8{'0}}; NBG_CDP[1] <= CDP_NULL; NBG_CDP[5] <= CDP_NULL; NBG_CDP[7] <= CDP_NULL;
-					NBG_CDC[2] <= '{8{'0}}; NBG_CDP[2] <= CDP_NULL; 
-					NBG_CDC[3] <= '{8{'0}}; NBG_CDP[3] <= CDP_NULL; 
-				end
+//				if (NBG_FETCH_START_EN) begin
+//					NBG_CDC[0] <= '{8{'0}}; NBG_CDP[0] <= CDP_NULL; NBG_CDP[4] <= CDP_NULL; NBG_CDP[6] <= CDP_NULL;
+//					NBG_CDC[1] <= '{8{'0}}; NBG_CDP[1] <= CDP_NULL; NBG_CDP[5] <= CDP_NULL; NBG_CDP[7] <= CDP_NULL;
+//					NBG_CDC[2] <= '{8{'0}}; NBG_CDP[2] <= CDP_NULL; 
+//					NBG_CDC[3] <= '{8{'0}}; NBG_CDP[3] <= CDP_NULL; 
+//				end
 					
 				NEN[3] = 0;
 				if (BG_PIPE[3].NxCH[0] && NSxREG[0].CHCN[2]) begin
@@ -2463,7 +2463,7 @@ module VDP2 (
 						default:;
 					endcase
 				end
-				if (NEN[3]) begin
+				if (NEN[3] && NCHEN[3]) begin
 					case (NCHCN[3])
 						3'b000: begin				//4bits/dot, 16 colors
 							if (!NCNT[3][2] && NCNT[3][0] == 2'b11 && NSxREG[1].ZMQT && NSxREG[1].ON) begin
@@ -2563,7 +2563,7 @@ module VDP2 (
 						default:;
 					endcase
 				end
-				if (NEN[2]) begin
+				if (NEN[2] && NCHEN[2]) begin
 					case (NCHCN[2])
 						3'b000: begin				//4bits/dot, 16 colors
 							if (!NCNT[2][2] && NCNT[2][1:0] == 2'b11 && NSxREG[0].ZMQT && NSxREG[0].ON) begin
@@ -2672,7 +2672,7 @@ module VDP2 (
 						default:;
 					endcase
 				end
-				if (NEN[1]) begin
+				if (NEN[1] && NCHEN[1]) begin
 					case (NCHCN[1])
 						3'b000: begin				//4bits/dot, 16 colors
 							if (NCNT[1][0] && (NSxREG[1].ZMHF || NSxREG[1].ZMQT) && NSxREG[1].ON) begin
@@ -2773,7 +2773,7 @@ module VDP2 (
 						default:;
 					endcase
 				end
-				if (NEN[0]) begin
+				if (NEN[0] && NCHEN[0]) begin
 					case (NCHCN[0])
 						3'b000: begin				//4bits/dot, 16 colors
 							if (NCNT[0][0] && (NSxREG[0].ZMHF || NSxREG[0].ZMQT) && NSxREG[0].ON) begin
