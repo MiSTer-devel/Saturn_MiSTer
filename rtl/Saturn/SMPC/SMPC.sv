@@ -281,6 +281,14 @@ module SMPC
 			DCD1 <= '0;
 			DCD2 <= '0;
 			DCD3 <= '0;
+			DCR0 <= '0;
+			DCR1 <= '0;
+			DCR2 <= '0;
+			DCR3 <= '0;
+			DCR4 <= '0;
+			DCR5 <= '0;
+			DCR6 <= '0;
+			DCR7 <= '0;
 			TC_UPD <= 0;
 		end
 		else if (!RESET_N) begin
@@ -305,6 +313,14 @@ module SMPC
 			DCD1 <= '0;
 			DCD2 <= '0;
 			DCD3 <= '0;
+			DCR0 <= '0;
+			DCR1 <= '0;
+			DCR2 <= '0;
+			DCR3 <= '0;
+			DCR4 <= '0;
+			DCR5 <= '0;
+			DCR6 <= '0;
+			DCR7 <= '0;
 		end
 		else if (EN && CE) begin
 			INT0_N = PMRC.INT0 ? D_I[13] : 1'b1;
@@ -476,7 +492,7 @@ module SMPC
 	assign {D10,D9,D8,D7,D6,D5,D4,D0} = {D_O[10:4],D_O[0]} | ~{D_D[10:4],D_D[0]};
 	assign {R61_D,R60_D} = DCR6[1:0];
 	assign {R61_O,R60_O} = R6_O[1:0] | ~DCR6[1:0];
-	assign {R73_O,R72_O} = R7_O[3:2] | ~DCR7[3:2];
+	assign {R73_O,R72_O} = R7_O[3:2] /*| ~DCR7[3:2]*/;
 	
 	assign PIOA_O = IOSEL1 ? PDR1_O : {R2_O[3:1],R1_O};
 	assign PIOA_D = IOSEL1 ? DDR1   : {DCR2[3:1],DCR1};
