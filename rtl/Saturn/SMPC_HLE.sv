@@ -1,4 +1,4 @@
-module SMPC (
+module SMPC_HLE (
 	input              CLK,
 	input              RST_N,
 	input              CE,
@@ -103,7 +103,6 @@ module SMPC (
 	bit  [15: 0] RTC_YEAR = 16'h2024;
 	bit          SETTIME_EXEC,SETTIME_UPDATE,SETTIME_TICK;
 	bit  [ 2: 0] SETTIME_POS;
-	bit  [16: 0] SETTIME_DELAY;
 	bit          RTC_IRQ;
 	
 	always @(posedge CLK) begin
@@ -315,8 +314,6 @@ module SMPC (
 			CONT_PREV <= 0;
 			CHECK_CONTINUE <= 0;
 			VBLANK_PEND <= 0;
-			
-			SETTIME_DELAY <= '0;
 			
 			PORT_ST <= PS_IDLE;
 		end else begin

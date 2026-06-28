@@ -688,6 +688,8 @@ module Saturn
 	assign STVIO_CS_N = ~(CA >= 25'h0400000 && CA <= 25'h040007F && ~CCS0_N);
 `endif
 	
+	
+`ifndef STV_BUILD
 	bit MRES_N;
 	bit CE32K;
 	always @(posedge CLK or negedge RST_N) begin
@@ -771,6 +773,63 @@ module Saturn
 		
 		.EXT_RTC(RTC)
 	);
+	
+`else
+
+	bit MRES_N;
+	always @(posedge CLK or negedge RST_N) begin		
+		if (!RST_N) begin
+			MRES_N <= 0;
+		end else begin
+			if (SMPC_CE) begin
+				MRES_N <= 1;
+			end
+		end
+	end
+	
+	SMPC_HLE SMPC
+	(
+		.CLK(CLK),
+		.RST_N(RST_N),
+		.CE(SMPC_CE),
+		
+		.MRES_N(MRES_N),
+		.TIME_SET(TIME_SET),
+		
+		.EXT_RTC(RTC),
+		
+		.AC(SMPC_AREA),	
+		
+		.A(CA[6:1]),
+		.DI(CDI[7:0]),
+		.DO(SMPC_DO),
+		.CS_N(SMPCCE_N),
+		.RW_N(MWR_N),
+		
+		.SRES_N(SRES_N),
+		
+		.IRQV_N(IRQV_N),
+		.EXL_N(EXL_N),
+		
+		.MSHRES_N(MSHRES_N),
+		.MSHNMI_N(MSHNMI_N),
+		.SSHRES_N(SSHRES_N),
+		.SSHNMI_N(SSHNMI_N),
+		.SYSRES_N(SYSRES_N),
+		.SNDRES_N(SNDRES_N),
+		.CDRES_N(CDRES_N),
+		
+		.MIRQ_N(MIRQ_N),
+		.DOTSEL(SMPC_DOTSEL),
+		
+		.PDR1I(SMPC_PDR1I),
+		.PDR1O(SMPC_PDR1O),
+		.DDR1(SMPC_DDR1),
+		.PDR2I(SMPC_PDR2I),
+		.PDR2O(SMPC_PDR2O),
+		.DDR2(SMPC_DDR2)
+	);
+`endif
 	
 	VDP1 VDP1
 	(

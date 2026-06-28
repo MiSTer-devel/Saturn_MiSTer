@@ -1,5 +1,5 @@
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) Saturn.sv ]
-#set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) SMPC.sv ]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) SMPC_HLE.sv ]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) SMPC/HMCS400_pkg.sv ]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) SMPC/HMCS400_core.sv ]
 set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) SMPC/HMCS400_mem.sv ]
