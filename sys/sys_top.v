@@ -322,6 +322,7 @@ reg  [9:0] coef_data;
 reg        coef_wr = 0;
 
 wire[12:0] ARX, ARY;
+wire       video_flip_180;
 reg [11:0] VSET = 0, HSET = 0;
 reg        FREESCALE = 0;
 reg  [2:0] scaler_flt;
@@ -764,6 +765,7 @@ wire         bob_deint;
 		.swblack  (hdmi_blackout),
 
 		.mode     ({~lowlat,LFB_EN ? LFB_FLT : |scaler_flt,2'b00}),
+		.flip_180 (video_flip_180),
 		.poly_clk (clk_sys),
 		.poly_a   (coef_addr),
 		.poly_dw  (coef_data),
@@ -1764,6 +1766,7 @@ emu emu
 	.VGA_SL(scanlines),
 	.VIDEO_ARX(ARX),
 	.VIDEO_ARY(ARY),
+	.VIDEO_FLIP_180(video_flip_180),
 
 `ifdef MISTER_FB
 	.FB_EN(fb_en),

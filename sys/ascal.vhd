@@ -204,7 +204,8 @@ ENTITY ascal IS
 		run       : IN std_logic :='1'; -- 1=Enable output image. 0=No image
 		freeze    : IN std_logic :='0'; -- 1=Disable framebuffer writes
 		mode      : IN unsigned(4 DOWNTO 0);
- 		bob_deint : IN std_logic := '0';
+		flip_180  : IN std_logic := '0';
+		bob_deint : IN std_logic := '0';
 		-- SYNC  |_________________________/"""""""""\_______|
 		-- DE    |""""""""""""""""""\________________________|
 		-- RGB   |    <#IMAGE#>      ^HDISP                  |
@@ -447,6 +448,7 @@ ARCHITECTURE rtl OF ascal IS
 	SIGNAL o_run : std_logic;
 	SIGNAL o_freeze : std_logic;
 	SIGNAL o_bob_deint : std_logic;
+	SIGNAL o_flip_180 : std_logic;
 	SIGNAL o_iwfl : std_logic_vector(2 DOWNTO 0);
 	SIGNAL o_mode,o_hmode,o_vmode : unsigned(4 DOWNTO 0);
 	SIGNAL o_format : unsigned(5 DOWNTO 0);
@@ -484,6 +486,9 @@ ARCHITECTURE rtl OF ascal IS
 	SIGNAL o_copyv : unsigned(0 TO 14);
 	SIGNAL o_adrs : unsigned(31 DOWNTO 0); -- Avalon address
 	SIGNAL o_adrs_pre : natural RANGE 0 TO 2**24-1;
+	SIGNAL o_flip_adrs_pre : natural RANGE 0 TO 2**24-1;
+	SIGNAL o_flip_fload2_adrs : natural RANGE 0 TO 2**24-1;
+	SIGNAL o_flip_fload1_adrs : natural RANGE 0 TO 2**24-1;
 	SIGNAL o_stride : unsigned(13 DOWNTO 0);
 	SIGNAL o_adrsa,o_adrsb,o_rline : std_logic;
 	SIGNAL o_ad,o_ad1,o_ad2,o_ad3 : natural RANGE 0 TO 2*BLEN-1;
@@ -1874,6 +1879,10 @@ BEGIN
 			o_copy<=sWAIT;
 			o_state<=sDISP;
 			o_read_pre<='0';
+			o_flip_180<='0';
+			o_flip_adrs_pre<=0;
+			o_flip_fload2_adrs<=0;
+			o_flip_fload1_adrs<=0;
 			o_readlev<=0;
 			o_copylev<=0;
 			o_hsp<='0';
@@ -1884,6 +1893,7 @@ BEGIN
 			o_format <="0001" & format; -- <ASYNC> ?
 
 			o_run    <=run; -- <ASYNC> ?
+			o_flip_180 <= flip_180; -- <ASYNC> ?
 
 			o_htotal <=htotal; -- <ASYNC> ?
 			o_hsstart<=hsstart; -- <ASYNC> ?
@@ -2003,6 +2013,17 @@ BEGIN
 			ELSE
 				o_stride<=to_unsigned(o_ihsize_temp2,14);
 				o_stride(NB_BURST-1 DOWNTO 0)<=(OTHERS =>'0');
+			END IF;
+
+			IF o_ivsize>0 THEN
+				o_flip_fload2_adrs <= (o_ivsize - 1) * to_integer(o_stride);
+			ELSE
+				o_flip_fload2_adrs <= 0;
+			END IF;
+			IF o_ivsize>1 THEN
+				o_flip_fload1_adrs <= (o_ivsize - 2) * to_integer(o_stride);
+			ELSE
+				o_flip_fload1_adrs <= 0;
 			END IF;
 			------------------------------------------------------
 			o_hmode<=o_mode;
@@ -2166,15 +2187,33 @@ BEGIN
 				o_adrs_pre<=to_integer(o_vacpt) * to_integer(o_stride);
 			END IF;
 
+			IF o_adrs_pre<=o_flip_fload2_adrs THEN
+				o_flip_adrs_pre<=o_flip_fload2_adrs - o_adrs_pre;
+			ELSE
+				o_flip_adrs_pre<=0;
+			END IF;
+
 			IF o_adrsa='1' THEN
 				IF o_fload=2 THEN
-					o_adrs<=to_unsigned(o_hbcpt * N_BURST,32);
+					IF o_flip_180='1' THEN
+						o_adrs<=to_unsigned(o_flip_fload2_adrs + (o_hbcpt * N_BURST),32);
+					ELSE
+						o_adrs<=to_unsigned(o_hbcpt * N_BURST,32);
+					END IF;
 					o_alt<="1111";
 				ELSIF o_fload=1 THEN
-					o_adrs<=to_unsigned(o_hbcpt * N_BURST,32) + o_stride;
+					IF o_flip_180='1' THEN
+						o_adrs<=to_unsigned(o_flip_fload1_adrs + (o_hbcpt * N_BURST),32);
+					ELSE
+						o_adrs<=to_unsigned(o_hbcpt * N_BURST,32) + o_stride;
+					END IF;
 					o_alt<="0100";
 				ELSE
-					o_adrs<=to_unsigned(o_adrs_pre + (o_hbcpt * N_BURST),32);
+					IF o_flip_180='1' THEN
+						o_adrs<=to_unsigned(o_flip_adrs_pre + (o_hbcpt * N_BURST),32);
+					ELSE
+						o_adrs<=to_unsigned(o_adrs_pre + (o_hbcpt * N_BURST),32);
+					END IF;
 					o_alt<=altx(o_vacptl + 1);
 				END IF;
 			END IF;
@@ -2684,7 +2723,11 @@ BEGIN
 			o_h_poly_pix<=poly_final(o_h_poly_t);
 
 			-- C11 : Select interpoler ----------------------------
-			o_wadl<=o_dcptv(14);
+			IF o_flip_180='1' AND o_dcptv(14)<o_hsize THEN
+				o_wadl<=o_hsize - 1 - o_dcptv(14);
+			ELSE
+				o_wadl<=o_dcptv(14);
+			END IF;
 			o_wr<=o_altx AND (o_copyv(14) & o_copyv(14) & o_copyv(14) & o_copyv(14));
 			o_ldw<=(x"00",x"00",x"00");
 

@@ -37,6 +37,7 @@ module emu
 	//if VIDEO_ARX[12] or VIDEO_ARY[12] is set then [11:0] contains scaled size instead of aspect ratio.
 	output [12:0] VIDEO_ARX,
 	output [12:0] VIDEO_ARY,
+	output        VIDEO_FLIP_180,
 
 	output  [7:0] VGA_R,
 	output  [7:0] VGA_G,
@@ -192,7 +193,12 @@ module emu
 	assign VGA_SCALER= 0;
 	assign HDMI_BLACKOUT = 1;
 	assign HDMI_BOB_DEINT = status[29];
-	
+`ifdef STV_BUILD
+	assign VIDEO_FLIP_180 = status[82];
+`else
+	assign VIDEO_FLIP_180 = 0;
+`endif
+
 	wire [1:0] ar = status[63:62];
 	wire [7:0] arx,ary;
 
@@ -322,6 +328,7 @@ module emu
 		"D8P1o[54:51],Crop Offset,0,2,4,8,10,12,-12,-10,-8,-6,-4,-2;",
 		"P1o[56:55],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
 `ifdef STV_BUILD
+		"P1o[82],Shienryu 180 Flip,Off,On;",
 		"P1-;",
 		"P1o[75],CRT H/V offset,Off,On;",
 		"D5P1o[69:65],CRT H offset,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
