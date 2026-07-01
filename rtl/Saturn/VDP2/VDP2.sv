@@ -3604,7 +3604,6 @@ module VDP2 (
 		.WREN_B({2{IO_PAL1_WE}}),
 		.Q_B(PAL1_DO)
 	);
-	wire [15:0] PAL_DO = !IO_PAL_RD ? PAL0_DO : PAL1_DO;
 	
 	bit  [10:1] CT_CRAM_A;
 	bit  [31:0] CT_CRAM_Q;
@@ -3645,6 +3644,7 @@ module VDP2 (
 	bit [15: 0] REG_DO;
 	bit         REG_RRDY;
 	bit [ 8: 1] REG_RA;
+	bit [15: 0] PAL_DO;
 	always @(posedge CLK or negedge RST_N) begin
 		bit         EXLAT_N_OLD;
 		bit [ 3: 0] REG_RD_DELAY;
@@ -4096,6 +4096,10 @@ module VDP2 (
 				if (REG_SEL && WE_N && !REQ_N) begin
 					REG_RA <= A[8:1];
 					REG_RRDY <= 0;
+				end
+				
+				if (PAL_SEL && WE_N && !REQ_N) begin
+					PAL_DO <= !IO_PAL_RD ? PAL0_DO : PAL1_DO;
 				end
 			end
 			if (CE_R) begin
