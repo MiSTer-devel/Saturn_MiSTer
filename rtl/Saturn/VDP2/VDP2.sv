@@ -3557,23 +3557,13 @@ module VDP2 (
 	//Color RAM
 	wire         PAL_SEL = (A[20:19] == 2'b10) && !CS_N && !AD_N;	//100000-17FFFF
 	wire         PAL_WE = PAL_SEL && !WE_N && !DTEN_N && !REQ_N;
-	wire [10: 1] IO_PAL_A   = REGS.RAMCTL.CRMD >= 2'b10 ? A[11:2] : A[10:1];
+	wire [11: 1] IO_PAL_ADDR = AD_N ? {A[11:9],DI[7:0]} : A[11:1];
+	wire [10: 1] IO_PAL_A   = REGS.RAMCTL.CRMD >= 2'b10 ? IO_PAL_ADDR[11:2] : IO_PAL_ADDR[10:1];
 	wire         IO_PAL0_WE = (REGS.RAMCTL.CRMD == 2'b01 ? ~A[11] : REGS.RAMCTL.CRMD >= 2'b10 ? ~A[1] : 1'b1) & PAL_WE;
 	wire         IO_PAL1_WE = (REGS.RAMCTL.CRMD == 2'b01 ?  A[11] : REGS.RAMCTL.CRMD >= 2'b10 ?  A[1] : 1'b1) & PAL_WE;
 	wire [10: 1] PAL_A = PAL_N[9:0];
 	
-	bit          IO_PAL_RD;
-	always @(posedge CLK or negedge RST_N) begin
-		if (!RST_N) begin
-			// synopsys translate_off
-			IO_PAL_RD <= 0;
-			// synopsys translate_on
-		end else begin
-			if (PAL_SEL && WE_N && DTEN_N && !REQ_N) begin
-				IO_PAL_RD <= REGS.RAMCTL.CRMD >= 2'b10 ? A[1] : A[11];
-			end
-		end
-	end
+	wire         IO_PAL_RD = REGS.RAMCTL.CRMD >= 2'b10 ? A[1] : A[11];
 	
 	VDP2_PAL_RAM pal1
 	(
