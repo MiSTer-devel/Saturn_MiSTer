@@ -1237,7 +1237,7 @@ module emu
 	lightgun  lightgun_p1
 	(
 		.CLK(clk_sys),
-		.RESET(~rst_sys),
+		.RESET(rst_sys),
 
 		.MOUSE(ps2_mouse),
 		.MOUSE_XY(gun_p1_xy_mode),		// 0=Use joystick to control LGun XY.
@@ -1294,7 +1294,7 @@ module emu
 	lightgun  lightgun_p2
 	(
 		.CLK(clk_sys),
-		.RESET(~rst_sys),
+		.RESET(rst_sys),
 
 		.MOUSE(ps2_mouse),
 		.MOUSE_XY(gun_p2_xy_mode),		// 0=Use joystick to control LGun XY.
