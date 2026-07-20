@@ -1646,7 +1646,7 @@ module VDP1 (
 			TP = 0;
 			EC = 0;
 		end
-		CALC_C = CMD.CMDPMOD.MON ? {1'b1,DRAW_BACK_C[14:0]} : !TVMR.TVM[0] ? ColorCalc(ORIG_C, DRAW_BACK_C, DRAW_GHCOLOR, CMD.CMDPMOD.CCB) : ORIG_C;
+		CALC_C = CMD.CMDPMOD.MON ? DRAW_BACK_C : !TVMR.TVM[0] ? ColorCalc(ORIG_C, DRAW_BACK_C, DRAW_GHCOLOR, CMD.CMDPMOD.CCB) : ORIG_C;
 			
 		SCLIP = !DRAW_X[11:10]                                    && DRAW_X[9:0] <= SYS_CLIP.X2[9:0] && !DRAW_Y[11:10]                                    && DRAW_Y[9:0] <= SYS_CLIP.Y2[9:0];
 		UCLIP = !DRAW_X[11:10] && DRAW_X[9:0] >= USR_CLIP.X1[9:0] && DRAW_X[9:0] <= USR_CLIP.X2[9:0] && !DRAW_Y[11:10] && DRAW_Y[9:0] >= USR_CLIP.Y1[9:0] && DRAW_Y[9:0] <= USR_CLIP.Y2[9:0];
@@ -2218,20 +2218,20 @@ module VDP1 (
 						casex (TVMR.TVM[1:0]) 
 							2'bx0: begin
 								FB_A <= {FB_Y[7:0],DRAW_X[8:0]};
-								FB_D <= FB_DRAW_D;
+								FB_D <= FB_DRAW_D | {CMD.CMDPMOD.MON,15'h0000};
 								FB_WE <= {2{FB_DRAW_PEND}};
 								FB_RD <= FB_READ_PEND;
 							end
 							2'b01: begin
 								FB_A <= {FB_Y[7:0],DRAW_X[9:1]};
-								FB_D <= {FB_DRAW_D[7:0],FB_DRAW_D[7:0]};
-								FB_WE <= {~DRAW_X[0],DRAW_X[0]} & {2{FB_DRAW_PEND}};
+								FB_D <= {FB_DRAW_D[7:0],FB_DRAW_D[7:0]} | {CMD.CMDPMOD.MON,15'h0000};
+								FB_WE <= ({~DRAW_X[0],DRAW_X[0]} | {2{CMD.CMDPMOD.MON}}) & {2{FB_DRAW_PEND}};
 								FB_RD <= FB_READ_PEND;
 							end
 							2'b11: begin
 								FB_A <= {FB_Y[8:0],DRAW_X[8:1]};
-								FB_D <= {FB_DRAW_D[7:0],FB_DRAW_D[7:0]};
-								FB_WE <= {~DRAW_X[0],DRAW_X[0]} & {2{FB_DRAW_PEND}};
+								FB_D <= {FB_DRAW_D[7:0],FB_DRAW_D[7:0]} | {CMD.CMDPMOD.MON,15'h0000};
+								FB_WE <= ({~DRAW_X[0],DRAW_X[0]} | {2{CMD.CMDPMOD.MON}}) & {2{FB_DRAW_PEND}};
 								FB_RD <= FB_READ_PEND;
 							end
 						endcase
