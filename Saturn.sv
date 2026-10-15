@@ -140,7 +140,10 @@ module emu
 		"FS3,BIN,Load cartridge;",
 		"O[4],Reset on insert,Yes,No;",
 		"-;",
-		"O[23:21],Cartridge,None,ROM 2M,DRAM 1M,DRAM 4M,DRAM 6M DEV,BACKUP;",
+		"O[23:21],Cartridge,Auto,ROM 2M,DRAM 1M,DRAM 4M,DRAM 6M DEV,BACKUP,None;",
+		"h9-,Auto cartridge:        None;",
+		"hA-,Auto cartridge:     DRAM 1M;",
+		"hB-,Auto cartridge:     DRAM 4M;",
 		"O[35:33],Region,Japan,Taiwan,USA,Brazil,Korea,Asia,Europe,Auto;",
 `else
 		"ST-V;;",
@@ -326,7 +329,7 @@ module emu
 	);
 	
 `ifndef STV_BUILD
-	assign menumask = {(status[56:55] != 2'b00), ~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
+	assign menumask = {4'b0000, (cart_sel == 3'd0 && cart_auto == 3'd3), (cart_sel == 3'd0 && cart_auto == 3'd2), (cart_sel == 3'd0 && cart_auto == 3'd0), (status[56:55] != 2'b00), ~lg_p2_ena, ~lg_p1_ena, snac, 1'b1, 1'b1, ~status[8], 1'b1, ~bk_ena};
 `else
 	assign menumask = {(status[56:55] != 2'b00), 1'b1, 1'b1, ~status[75], 1'b1, 1'b1, ~status[8], ~STV_ALTBIOS, 1'b0};
 `endif
@@ -354,7 +357,10 @@ module emu
 `endif
 	
 `ifndef STV_BUILD
-	wire [2:0] cart_type = status[23:21];
+	wire [2:0] cart_sel = status[23:21];
+	reg  [2:0] cart_auto_pending = 3'd0;
+	reg  [2:0] cart_auto = 3'd0;
+	wire [2:0] cart_type = (cart_sel == 3'd0) ? cart_auto : (cart_sel < 3'd6) ? cart_sel : 3'd0;
 `else
 	wire [2:0] cart_type = 3'd5;
 	wire bios_sel = status[30] & STV_ALTBIOS;
@@ -492,18 +498,21 @@ module emu
 	reg [  7: 0] cd_area_symbol;
 	reg          dezaemon2_hack = 0;
 	always @(posedge clk_sys) begin
+		if (reset && !cdboot_download) cart_auto <= cart_auto_pending;
 		if (cdboot_download && ioctl_wr) begin
-			case (ioctl_addr[7:0])
-				8'h20: game_id[127:112] <= {ioctl_data[7:0],ioctl_data[15:8]};
-				8'h22: game_id[111:96] <= {ioctl_data[7:0],ioctl_data[15:8]};
-				8'h24: game_id[95:80] <= {ioctl_data[7:0],ioctl_data[15:8]};
-				8'h26: game_id[79:64] <= {ioctl_data[7:0],ioctl_data[15:8]};
-				8'h28: game_id[63:48] <= {ioctl_data[7:0],ioctl_data[15:8]};
-				8'h2A: game_id[47:32] <= {ioctl_data[7:0],ioctl_data[15:8]};
-				8'h2C: game_id[31:16] <= {ioctl_data[7:0],ioctl_data[15:8]};
-				8'h2E: game_id[15:0] <= {ioctl_data[7:0],ioctl_data[15:8]};
-				8'h30: dezaemon2_hack <= (game_id[127:64] == "T-16804G");
-				8'h40: cd_area_symbol <= ioctl_data[7:0];
+			case (ioctl_addr)
+				26'h0: cart_auto_pending <= 3'd0;
+				26'h100: cart_auto_pending <= (ioctl_data == 16'hA102) ? 3'd2 : (ioctl_data == 16'hA103) ? 3'd3 : 3'd0;
+				26'h20: game_id[127:112] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				26'h22: game_id[111:96] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				26'h24: game_id[95:80] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				26'h26: game_id[79:64] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				26'h28: game_id[63:48] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				26'h2A: game_id[47:32] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				26'h2C: game_id[31:16] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				26'h2E: game_id[15:0] <= {ioctl_data[7:0],ioctl_data[15:8]};
+				26'h30: dezaemon2_hack <= (game_id[127:64] == "T-16804G");
+				26'h40: cd_area_symbol <= ioctl_data[7:0];
 			endcase
 		end
 	end
