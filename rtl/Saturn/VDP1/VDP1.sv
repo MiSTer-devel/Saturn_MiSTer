@@ -1431,11 +1431,11 @@ module VDP1 (
 				end
 				
 				CMDS_ROW_CLIP: begin
-					CMD_DELAY <= CMD_DELAY - 9'd1;
-					if (!CMD_DELAY || PENALTY_CNT >= CMD_DELAY) begin
-						CMD_DELAY <= 9'd8;
+//					CMD_DELAY <= CMD_DELAY - 9'd1;
+//					if (!CMD_DELAY || PENALTY_CNT >= CMD_DELAY) begin
+//						CMD_DELAY <= 9'd8;
 						CMD_ST <= CMDS_ROW_DRAW;
-					end
+//					end
 				end
 				
 				CMDS_END: begin
@@ -1497,6 +1497,8 @@ module VDP1 (
 	bit          FB_READ_PEND;
 	bit          PAT_NEXT;
 	always @(posedge CLK or negedge RST_N) begin
+		bit  [11: 0] DRAW_X_NEW,DRAW_Y_NEW;
+		bit          DI_NOT_DRAW,MESH_NOT_DRAW;
 		bit  [ 1: 0] RAS_DELAY;
 		bit          FBD_RAS;
 		
@@ -1517,19 +1519,25 @@ module VDP1 (
 					end else if (SPR_DATA_READY || CMD.CMDCTRL.COMM >= 4'h4) begin
 						if ((CMD_ST == CMDS_NSPR_DRAW || CMD_ST == CMDS_SSPR_DRAW || CMD_ST == CMDS_LINE_DRAW || CMD_ST == CMDS_AA_DRAW || CMD_ST == CMDS_LINE_END)) begin
 							if ((CMD_ST == CMDS_AA_DRAW || CMD_ST == CMDS_LINE_END)) begin
-								DRAW_X <= LOC_COORD.X + AA_X;
-								DRAW_Y <= LOC_COORD.Y + AA_Y;
+								DRAW_X_NEW = LOC_COORD.X + AA_X;
+								DRAW_Y_NEW = LOC_COORD.Y + AA_Y;
 							end else begin
 								if (LINE_AA_STEP && LINE_S) begin
-									DRAW_X <= LOC_COORD.X + LINE_VERTA.X + {{11{LINE_DIRX}},1'b1};
+									DRAW_X_NEW = LOC_COORD.X + LINE_VERTA.X + {{11{LINE_DIRX}},1'b1};
 								end else begin
-									DRAW_X <= LOC_COORD.X + LINE_VERTA.X;
+									DRAW_X_NEW = LOC_COORD.X + LINE_VERTA.X;
 								end
 								if (LINE_AA_STEP && !LINE_S) begin
-									DRAW_Y <= LOC_COORD.Y + LINE_VERTA.Y + {{11{LINE_DIRY}},1'b1};
+									DRAW_Y_NEW = LOC_COORD.Y + LINE_VERTA.Y + {{11{LINE_DIRY}},1'b1};
 								end else begin
-									DRAW_Y <= LOC_COORD.Y + LINE_VERTA.Y;
+									DRAW_Y_NEW = LOC_COORD.Y + LINE_VERTA.Y;
 								end
+							end
+							DRAW_X <= DRAW_X_NEW;
+							DRAW_Y <= DRAW_Y_NEW;
+							if ((CMD_ST == CMDS_AA_DRAW || CMD_ST == CMDS_LINE_END)) begin
+								
+							end else begin
 								if (!(TEXT_X_READ_STEP && EC_FIND && IS_PAT_EC)) begin
 									DRAW_PAT <= PAT;
 									DRAW_GHCOLOR <= RGBFtoI(LINE_GHCOLOR);
@@ -1537,8 +1545,9 @@ module VDP1 (
 								FBD_RAS <= LINE_DRAW_STEP && (CMD.CMDCTRL.COMM <= 4'h1) && &LINE_VERTA.X[3:0];
 							end
 							
-							
-							if (LINE_DRAW_STEP && !IS_PAT_EC) begin
+							DI_NOT_DRAW = DIE & (DIL ^ DRAW_Y_NEW[0]);
+							MESH_NOT_DRAW = CMD.CMDPMOD.MESH & ((DRAW_X_NEW[0] ^ DRAW_Y_NEW[0]) ^ (FRAME_ODD&BLUR_MESH));
+							if (LINE_DRAW_STEP && !IS_PAT_EC && !DI_NOT_DRAW && !MESH_NOT_DRAW) begin
 								if (CMD.CMDPMOD.CCB[0] || CMD.CMDPMOD.MON) begin
 									FB_READ_PEND <= 1;
 									FBD_ST <= FBDS_READ;
@@ -1627,8 +1636,6 @@ module VDP1 (
 	always_comb begin
 		bit [15: 0] CALC_C;
 		bit         EC;
-		bit         MESH;
-		bit         IDRAW;
 		
 		if (!CMD.CMDCTRL.COMM[2]) begin
 			case (CMD.CMDPMOD.CM)
@@ -1650,10 +1657,8 @@ module VDP1 (
 			
 		SCLIP = !DRAW_X[11:10]                                    && DRAW_X[9:0] <= SYS_CLIP.X2[9:0] && !DRAW_Y[11:10]                                    && DRAW_Y[9:0] <= SYS_CLIP.Y2[9:0];
 		UCLIP = !DRAW_X[11:10] && DRAW_X[9:0] >= USR_CLIP.X1[9:0] && DRAW_X[9:0] <= USR_CLIP.X2[9:0] && !DRAW_Y[11:10] && DRAW_Y[9:0] >= USR_CLIP.Y1[9:0] && DRAW_Y[9:0] <= USR_CLIP.Y2[9:0];
-		MESH = ~(DRAW_X[0] ^ DRAW_Y[0]) ^ (FRAME_ODD&BLUR_MESH);
-		IDRAW = ~(DIL ^ DRAW_Y[0]);
 		FB_DRAW_D = CALC_C;
-		FB_DRAW_WE = (~TP | CMD.CMDPMOD.SPD) & (~EC | CMD.CMDPMOD.ECD) & SCLIP & ((UCLIP^CMD.CMDPMOD.CMOD) | ~CMD.CMDPMOD.CLIP) & (MESH | ~CMD.CMDPMOD.MESH) & (IDRAW | ~DIE);
+		FB_DRAW_WE = (~TP | CMD.CMDPMOD.SPD) & (~EC | CMD.CMDPMOD.ECD) & SCLIP & ((UCLIP^CMD.CMDPMOD.CMOD) | ~CMD.CMDPMOD.CLIP);
 	end
 `ifdef DEBUG
 	assign ORIG_C_DBG = ORIG_C;
