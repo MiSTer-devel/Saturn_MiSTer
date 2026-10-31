@@ -3298,7 +3298,7 @@ module VDP2 (
 			FST = {3'b000,1'b0,1'b0,BKCCRT,BKCOEN,BKCOSL,BKSDEN,1'b0,1'b0,1'b0,BACK_DC}; FST_PRI = 3'd0;
 			SEC = {3'b000,1'b0,1'b0,BKCCRT,BKCOEN,BKCOSL,BKSDEN,1'b0,1'b0,1'b0,BACK_DC}; SEC_PRI = 3'd0;
 			THD = {3'b000,1'b0,1'b0,BKCCRT,BKCOEN,BKCOSL,BKSDEN,1'b0,1'b0,1'b0,BACK_DC}; THD_PRI = 3'd0;
-			if (DISP) begin
+			if (DISP_INT) begin
 				if          (SON  && SPRIN                     ) begin
 					THD = SEC; THD_PRI = SEC_PRI;
 					SEC = FST; SEC_PRI = FST_PRI;
