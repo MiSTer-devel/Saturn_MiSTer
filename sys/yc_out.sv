@@ -77,9 +77,9 @@ reg de_dly4 = 1'b0, de_dly5 = 1'b0, de_dly6 = 1'b0;
 
 reg [10:0]  cburst_phase = 11'd0; // colorburst counter
 reg unsigned [7:0] vref = 'd128; // Voltage reference point (Used for Chroma)
-logic [7:0]  chroma_LUT_COS = 8'd0; // Chroma cos LUT reference
-logic [7:0]  chroma_LUT_SIN = 8'd0; // Chroma sin LUT reference
-logic [7:0]  chroma_LUT_BURST = 8'd0; // Chroma colorburst LUT reference
+logic signed [10:0] chroma_COS = 11'sd0; // Chroma cos carrier
+logic signed [10:0] chroma_SIN = 11'sd0; // Chroma sin carrier
+logic signed [10:0] chroma_BURST = 11'sd0; // Chroma colorburst carrier
 logic [7:0]  chroma_LUT = 8'd0;
 
 /*
@@ -161,15 +161,15 @@ always_ff @(posedge clk) begin
 	// Adjust SINE carrier reference for PAL (Also adjust for PAL Switch)
 	if (PAL_EN) begin
 		if (PAL_FLIP)
-			chroma_LUT_BURST <= chroma_LUT + 8'd160;
+			chroma_BURST <= chroma_sin(chroma_LUT + 8'd160);
 		else
-			chroma_LUT_BURST <= chroma_LUT + 8'd96;
+			chroma_BURST <= chroma_sin(chroma_LUT + 8'd96);
 	end else  // Adjust SINE carrier reference for NTSC
-		chroma_LUT_BURST <= chroma_LUT + 8'd128;
+		chroma_BURST <= chroma_sin(chroma_LUT + 8'd128);
 
 	// Prepare LUT values for sin / cos (+90 degress)
-	chroma_LUT_SIN <= chroma_LUT;
-	chroma_LUT_COS <= chroma_LUT + 8'd64;
+	chroma_SIN <= chroma_sin(chroma_LUT);
+	chroma_COS <= chroma_sin(chroma_LUT + 8'd64);
 
 	// Calculate for U, V - Bit Shift Multiple by u = by * 1024 x 0.492 = 504, v = ry * 1024 x 0.877 = 898
 	phase[0].u <= $signed({2'b0 ,(blue_2)}) - $signed({2'b0 ,phase[0].y[17:10]});
@@ -194,7 +194,7 @@ always_ff @(posedge clk) begin
 	else begin // Generate Colorburst for 9 cycles
 		if (cburst_phase >= COLORBURST_RANGE[16:10] && cburst_phase <= COLORBURST_RANGE[9:0]) begin // Start the color burst signal at 40 samples or 0.9 us
 			// COLORBURST SIGNAL GENERATION (9 CYCLES ONLY or between count 40 - 240)
-			phase[2].u <= $signed({chroma_sin(chroma_LUT_BURST),5'd0});
+			phase[2].u <= $signed({chroma_BURST,5'd0});
 			phase[2].v <= 21'b0;
 			phase[2].burst <= 1'b1;
 			phase[2].chroma_en <= 1'b0;
@@ -211,8 +211,8 @@ always_ff @(posedge clk) begin
 			U,V are both multiplied by 1024 earlier to scale for the decimals in the YUV colorspace conversion.
 			U and V are both divided by 2^10 which introduce chroma subsampling of 4:1:1 (25% or from 8 bit to 6 bit)
 			*/
-			phase[2].u <= $signed((phase[1].u)>>>10) * $signed(chroma_sin(chroma_LUT_SIN));
-			phase[2].v <= $signed((phase[1].v)>>>10) * $signed(chroma_sin(chroma_LUT_COS));
+			phase[2].u <= $signed((phase[1].u)>>>10) * chroma_SIN;
+			phase[2].v <= $signed((phase[1].v)>>>10) * chroma_COS;
 			phase[2].burst <= 1'b0;
 			phase[2].chroma_en <= de_dly3;
 
