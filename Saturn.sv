@@ -211,11 +211,11 @@ module emu
 		"R0,Reset;",
 `ifndef STV_BUILD
 		"J1,A,B,C,Start,R,X,Y,Z,L,Coin;",
+		"jn,A,B,R,Start,R2,X,Y,L,L2,Select;",
+		"jp,A,B,R,Start,R2,X,Y,L,L2,Select;",
 `else
 		"J1,B1,B2,B3,B4,B5,B6,Start,Coin,Service,Test;",
 `endif
-//		"jn,A,B,R,Start,Select,X,Y,L;", 
-//		"jp,Y,B,A,Start,Select,L,X,R;",
 		"V,v",`BUILD_DATE
 	};
 
@@ -224,6 +224,7 @@ module emu
 	wire [  1:0] buttons;
 	wire [ 13:0] joystick_0,joystick_1,joystick_2,joystick_3,joystick_4;
 	wire [  7:0] joy0_x0,joy0_y0,joy0_x1,joy0_y1,joy1_x0,joy1_y0,joy1_x1,joy1_y1;
+	wire [  7:0] joy0_l2,joy0_r2,joy1_l2,joy1_r2;
 	wire         ioctl_download,ioctl_upload;
 	wire         ioctl_upload_req;
 	wire         ioctl_wr,ioctl_rd;
@@ -280,6 +281,10 @@ module emu
 		.joystick_l_analog_1({joy1_y0, joy1_x0}),
 		.joystick_r_analog_0({joy0_y1, joy0_x1}),
 		.joystick_r_analog_1({joy1_y1, joy1_x1}),
+		.joystick_lt_analog_0(joy0_l2),
+		.joystick_rt_analog_0(joy0_r2),
+		.joystick_lt_analog_1(joy1_l2),
+		.joystick_rt_analog_1(joy1_r2),
 	
 		.buttons(buttons),
 		.forced_scandoubler(forced_scandoubler),
@@ -1055,6 +1060,10 @@ module emu
 		.JOY2_Y1(joy1_y0),
 		.JOY2_X2(joy1_x1),
 		.JOY2_Y2(joy1_y1),
+		.JOY1_L2(status[76] ? joy1_l2 : joy0_l2),
+		.JOY1_R2(status[76] ? joy1_r2 : joy0_r2),
+		.JOY2_L2(status[76] ? joy0_l2 : joy1_l2),
+		.JOY2_R2(status[76] ? joy0_r2 : joy1_r2),
 
 		.JOY1_TYPE(status[18:15]),
 		.JOY2_TYPE(status[45:42]),
